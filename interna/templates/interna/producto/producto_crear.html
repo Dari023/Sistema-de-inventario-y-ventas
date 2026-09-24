@@ -1,0 +1,28 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+
+{% if producto %}
+<h1>Editar Producto: {{ producto.nombre }}</h1>
+{% else %}
+<h1>Crear Producto</h1>
+{% endif %}
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-6">
+            {{ form.as_p }}
+        </div>
+    </div>
+    <button type="submit">
+        {% if producto %}
+        Actualizar Producto
+        {% else %}
+        Guardar Producto
+        {% endif %}
+    </button>
+
+    <a href="{% url 'producto_listar' %}">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<h1>Detalles del Producto</h1>
+<img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" width="200" height="200">
+<p><strong>Nombre:</strong> {{ producto.nombre }}</p>
+<p><strong>Categoría:</strong> {{ producto.categoria.nombre }}</p>
+<p><strong>Precio:</strong> ${{ producto.precio }}</p>
+<p><strong>Descripción:</strong> {{ producto.descripcion }}</p>
+<p><strong>Stock Actual:</strong> {{ producto.stock_actual }}</p>
+<p><strong>Stock Crítico:</strong> {{ producto.stock_critico }}</p>
+<p><strong>Modalidad de Venta:</strong> {{ producto.modalidad_de_venta }}</p>
+
+<a href="{% url 'producto_editar' producto.pk %}">Editar</a> |
+<a href="{% url 'producto_listar' %}">Volver a la lista</a>
+{% endblock %}
