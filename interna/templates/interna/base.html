@@ -11,6 +11,13 @@
     {% block content %}
     <h1>prueba</h1>
     <a href="{% url 'producto_listar' %}">Productos</a>
+    <a href="{% url 'usuario-list' %}">Usuarios</a>
+    {% if user.is_authenticated %}
+    <span>Hola, {{ user.username }}</span>
+    <a href="{% url 'logout' %}">Cerrar Sesión</a>
+    {% else %}
+    <a href="{% url 'login' %}">Iniciar Sesión</a>
+    {% endif %}
     {% endblock %}
 </body>
 

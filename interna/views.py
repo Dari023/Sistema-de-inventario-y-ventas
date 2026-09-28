@@ -2,11 +2,14 @@ from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Producto
 from .forms import ProductoForm
-
+from django.contrib.auth.decorators import login_required
 # Create your views here.
+
+@login_required
 def home(request):
     return render(request, 'interna/base.html')
 
+@login_required
 def producto_listar(request):
     productos = Producto.objects.all()
     return render(request, 'interna/producto/producto_listar.html', {'productos': productos})
