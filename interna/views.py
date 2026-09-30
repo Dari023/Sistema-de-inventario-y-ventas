@@ -6,9 +6,12 @@ from .models import Producto, ProductoMateriaPrima, MateriaPrima
 from .forms import ProductoForm, MateriaPrimaForm, ProductoMateriaPrimaForm
 
 # Create your views here.
+
+@login_required
 def home(request):
     return render(request, 'interna/base.html')
 
+@login_required
 def producto_listar(request):
     productos = Producto.objects.all()
     return render(request, 'interna/producto/producto_listar.html', {'productos': productos})

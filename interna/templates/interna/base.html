@@ -11,18 +11,27 @@
     {% block content %}
     <h1>Inicio</h1>
     <nav>
-        <a href="{% url 'producto_listar' %}">Productos</a>
+        <a href="{% url 'producto_listar' %}">
+            Productos
+        </a>
+        <a href="{% url 'materia_prima_listar' %}">
+            Materia Prima
+        </a>
+        <a href="{% url 'usuario-list' %}">
+            Usuarios
+        </a>
     </nav>
-    <nav>
-        <a href="{% url 'materia_prima_listar' %}">Materia Prima</a>
-    </nav>
-    <nav>
-        {% for p in productos %}
-        {{ p.nombre }}
-            <a href="{% url 'gestionar_materias_producto' producto_id=p.pk %}">Gestionar Materias Primas</a>    
-        {% endfor %}
-    </nav>    
-    {% endblock %}
+    {% if user.is_authenticated %}
+        <span>Hola, {{ user.username }}</span>
+        <a href="{% url 'logout' %}">
+            Cerrar Sesión
+        </a>
+    {% else %}
+        <a href="{% url 'login' %}">
+            Iniciar Sesión
+        </a>
+    {% endif %}
+{% endblock %}
 </body>
 
 </html>
