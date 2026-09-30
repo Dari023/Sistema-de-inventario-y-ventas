@@ -6,6 +6,7 @@ from usuarios.models import Usuario, Rol
 
 
 admin.site.register(Producto)
+admin.site.register(MateriaPrima)
 admin.site.register(CategoriaProducto)
 admin.site.register(Usuario)
 admin.site.register(Rol)

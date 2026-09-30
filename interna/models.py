@@ -14,8 +14,8 @@ class MateriaPrima(models.Model):
     UNIDADES_MEDIDA = [
         ('KG', 'Kilogramos'),
         ('G', 'Gramos'),
-        ('L', 'Litros'),
-        ('ML', 'Mililitros'),
+        ('M', 'Metros'),
+        ('CM', 'Centímetros'),
         ('UN', 'Unidad'),
     ]
 
@@ -51,3 +51,11 @@ class ProductoMateriaPrima(models.Model):
 
     def __str__(self):
         return f"{self.producto.nombre} - {self.materia_prima.nombre}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["producto", "materia_prima"],
+                name = "producto_materia_prima_unica"
+            )
+        ]
