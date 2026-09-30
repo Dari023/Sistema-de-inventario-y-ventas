@@ -5,4 +5,5 @@ from .models import *
 
 
 admin.site.register(Producto)
+admin.site.register(MateriaPrima)
 admin.site.register(CategoriaProducto)

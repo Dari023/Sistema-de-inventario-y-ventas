@@ -1,0 +1,19 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<h1>Lista de Materias Primas</h1>
+<ul>
+    {% for mp in materia_prima %}
+    <li>
+        {{ mp.nombre }} - 
+        <a href="#">Detalles</a> |
+        <a href="#">Editar</a>
+    </li>
+    {% empty %}
+    <h1>No hay Materia Prima Registrada</h1>
+    {% endfor %}
+</ul>
+
+<a href="{% url 'materia_prima_crear' %}">Agregar Materia Prima</a>
+
+{% endblock %}

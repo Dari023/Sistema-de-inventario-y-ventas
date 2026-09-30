@@ -1,0 +1,17 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+    <h1>Registrar Materia Prima</h1>
+
+    {% for message in messages %}
+        <p>{{ message }}</p>
+    {% endfor %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button type="submit">Guardar</button>
+    </form>
+{% endblock %}
