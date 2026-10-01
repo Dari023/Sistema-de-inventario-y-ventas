@@ -1,9 +1,10 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.contrib.auth.decorators import (login_required, permission_required)
-from .models import Producto, ProductoMateriaPrima, MateriaPrima
-from .forms import ProductoForm, MateriaPrimaForm, ProductoMateriaPrimaForm
+from .models import Producto, ProductoMateriaPrima, MateriaPrima, CategoriaProducto
+from .forms import ProductoForm, MateriaPrimaForm, ProductoMateriaPrimaForm, CategoriaProductoForm
 
 # Create your views here.
 
@@ -45,23 +46,56 @@ def materia_prima_listar(request):
     materia_prima = MateriaPrima.objects.all()
     return render(request, 'interna/inventario/materia_prima_listar.html', {'materia_prima': materia_prima})
 
+def materia_prima_detalles(request, pk):
+    materia_prima = get_object_or_404(MateriaPrima, pk=pk)
+    return render(request, 'interna/inventario/materia_prima_detalles.html', {'materia_prima': materia_prima})
+
 def materia_prima_crear(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         form = MateriaPrimaForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(
-                request,
-                "Materia Prima Registrada Correctamente.",
-            )
             return redirect('materia_prima_listar')
     else:
         form = MateriaPrimaForm()
-    return render(
-        request,
-        'interna/inventario/materia_prima_crear.html',
-        {"form": form},
-    )
+    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form})
+
+def materia_prima_editar(request, pk):
+    materia_prima = get_object_or_404(MateriaPrima, pk=pk)
+    if request.method == 'POST':
+        form = MateriaPrimaForm(request.POST, instance=materia_prima)
+        if form.is_valid():
+            form.save()
+            return redirect('materia_prima_listar')
+    else:
+        form = MateriaPrimaForm(instance=materia_prima)
+    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
+
+@login_required
+def categoria_listar(request):
+    categorias = CategoriaProducto.objects.all()
+    return render(request, 'interna/inventario/categoria_listar.html', {'categorias': categorias})
+
+def categoria_crear(request):
+    if request.method == 'POST':
+        form = CategoriaProductoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('categoria_listar')
+    else:
+        form = CategoriaProductoForm()
+    return render(request, 'interna/inventario/categoria_crear.html', {'form': form})
+
+def categoria_editar(request, pk):
+    categoria = get_object_or_404(CategoriaProducto, pk=pk)
+    if request.method == 'POST':
+        form = CategoriaProductoForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            return redirect('categoria_listar')
+    else:
+        form = CategoriaProductoForm(instance=categoria)
+    return render(request, 'interna/inventario/categoria_crear.html', {'form': form, 'categoria': categoria})
 
 @login_required
 @permission_required("interna.change_producto", raise_exception=True)

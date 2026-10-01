@@ -1,37 +1,43 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Sistema de Inventario y Ventas</title>
+    <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+    <link rel="stylesheet" href="https://cdn.datatables.net/3.1.2/css/dataTables.dataTables.min.css">
+    {% block extra_css %}{% endblock %}
 </head>
 
 <body>
     {% block content %}
-    <h1>Inicio</h1>
-    <nav>
-        <a href="{% url 'producto_listar' %}">
-            Productos
-        </a>
-        <a href="{% url 'materia_prima_listar' %}">
-            Materia Prima
-        </a>
-        <a href="{% url 'usuario-list' %}">
-            Usuarios
-        </a>
-    </nav>
-    {% if user.is_authenticated %}
-        <span>Hola, {{ user.username }}</span>
-        <a href="{% url 'logout' %}">
-            Cerrar Sesión
-        </a>
-    {% else %}
-        <a href="{% url 'login' %}">
-            Iniciar Sesión
-        </a>
-    {% endif %}
-{% endblock %}
+        <h1>Inicio</h1>
+        <nav>
+            <li>
+                <a href="{% url 'producto_listar' %}">Productos</a>
+            </li>
+            <li>   
+                <a href="{% url 'materia_prima_listar' %}">Materia Prima</a>
+            </li> 
+            <li>
+                <a href="{% url 'usuario-list' %}">Usuarios</a>
+            </li>
+            <li>
+                <a href="{% url 'categoria_listar' %}">Categorías</a>
+            </li>
+        </nav>
+        {% if user.is_authenticated %}
+            <span>Hola, {{ user.username }}</span>
+            <a href="{% url 'logout' %}">Cerrar Sesión</a>
+        {% else %}
+            <a href="{% url 'login' %}">Iniciar Sesión</a>
+        {% endif %}
+    {% endblock %}
+    <script src="https://cdn.datatables.net/3.1.2/js/dataTables.min.js"></script>
+    <script src="{% static 'interna/js/tablas.js' %}"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 
 </html>

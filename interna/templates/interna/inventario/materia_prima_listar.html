@@ -1,19 +1,77 @@
 {% extends 'interna/base.html' %}
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+<link rel="stylesheet" href="{% static 'interna/css/detalles.css' %}">
+{% endblock %}
 
 {% block content %}
-<h1>Lista de Materias Primas</h1>
-<ul>
-    {% for mp in materia_prima %}
-    <li>
-        {{ mp.nombre }} - 
-        <a href="#">Detalles</a> |
-        <a href="#">Editar</a>
-    </li>
-    {% empty %}
-    <h1>No hay Materia Prima Registrada</h1>
-    {% endfor %}
-</ul>
+<main class="inventario">
 
-<a href="{% url 'materia_prima_crear' %}">Agregar Materia Prima</a>
+    <header class="inventario-cabecera">
+        <div>
+            <h1>MATERIAS PRIMAS</h1>
+            <p>Consulta y Administra las Materias Primas de la Tienda.</p>
+        </div>
+        <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}" style="margin-right:-26rem;">Volver Atrás</a>
+        <a class="boton-crear" href="{% url 'materia_prima_crear' %}">+ Crear MP </a>
+    </header>
 
+    <section class="inventario-panel">
+        <div class="filtro-estado">
+            <label for="filtro-estado">Estado:</label>
+            <select id="filtro-estado">
+                <option value="">Todos</option>
+                <option value="Activo">Activos</option>
+                <option value="Deshabilitado">Deshabilitados</option>
+            </select>
+        </div>
+
+        <table id="tabla-productos"
+               class="js-datatable"
+               data-filtro-estado="filtro-estado"
+               data-columna-estado="4"
+               data-columna-acciones="5">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Stock Actual</th>
+                    <th>Stock Crítico</th>
+                    <th>Unidad de Medida</th>
+                    <th>Costo Unitario</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mp in materia_prima %}
+                <tr>
+                    <td>{{ mp.nombre }}</td>
+                    <td>{{ mp.cantidad_actual }}</td>
+                    <td>{{ mp.cantidad_critica }}</td>
+                    <td>{{ mp.unidad_de_medida }}</td>
+                    <td data-order="{{ mp.costo_unitario|unlocalize }}">${{ mp.costo_unitario }}</td>        
+                    <td data-search="{% if mp.estado %}Activo{% else %}Deshabilitado{% endif %}">
+                        {% if mp.estado %}
+                            <span class="estado estado-activo">Activo</span>
+                        {% else %}
+                            <span class="estado estado-deshabilitado">
+                                Deshabilitado
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="acciones">
+                            <a href="{% url 'materia_prima_detalles' mp.pk %}">Detalles</a>
+                            <a href="{% url 'materia_prima_editar' mp.pk %}">Editar</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </section>
+</main>
 {% endblock %}

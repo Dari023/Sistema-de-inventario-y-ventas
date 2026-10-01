@@ -1,5 +1,5 @@
 from django import forms
-from .models import Producto, MateriaPrima, ProductoMateriaPrima
+from .models import Producto, MateriaPrima, ProductoMateriaPrima, CategoriaProducto
 
 class ProductoForm(forms.ModelForm):
     class Meta:
@@ -14,6 +14,21 @@ class ProductoForm(forms.ModelForm):
             'categoria': forms.Select(attrs={'class': 'form-select'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["categoria"].queryset = (
+        CategoriaProducto.objects
+        .filter(activo=True)
+        .order_by("nombre")
+        )
+
+        self.fields["categoria"].empty_label = "Selecciona una Opción"
+
+        self.fields["categoria"].error_messages["invalid_choice"] = (
+        "Selecciona una Categoría que se Encuentre Activa."
+        )
+
 class MateriaPrimaForm(forms.ModelForm):
     class Meta:
         model = MateriaPrima
@@ -23,6 +38,7 @@ class MateriaPrimaForm(forms.ModelForm):
             "cantidad_critica",
             "unidad_de_medida",
             "costo_unitario",
+            "estado"
         ]
         labels = {
             "nombre": "Nombre",
@@ -30,6 +46,7 @@ class MateriaPrimaForm(forms.ModelForm):
             "cantidad_critica": "Cantidad Crítica",
             "unidad_de_medida": "Unidad de Medida",
             "costo_unitario": "Costo por Unidad de Medida",
+            "estado": "Activa"
         }
 
     def clean(self):
@@ -51,6 +68,18 @@ class MateriaPrimaForm(forms.ModelForm):
                 )
 
         return datos
+
+class CategoriaProductoForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaProducto
+        fields = ['nombre', 'activo']
+        labels = {
+            'nombre': 'Nombre',
+            'activo': 'Activa',
+        }
+        widgets = {
+            'nombre': forms.TextInput(),
+        }    
 
 class ProductoMateriaPrimaForm(forms.ModelForm):
     class Meta:
