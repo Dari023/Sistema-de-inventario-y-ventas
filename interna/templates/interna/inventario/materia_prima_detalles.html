@@ -1,0 +1,56 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+<link rel="stylesheet" href="{% static 'interna/css/detalles.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="inventario detalle-materia-prima">
+
+    <header class="inventario-cabecera">
+        <div>
+            <h1>DETALLES DE LA MATERIA PRIMA</h1>
+            <p>Consulta su Información y Disponibilidad en el Inventario.</p>
+        </div>
+    </header>
+
+    <section class="inventario-panel detalle detalle-sin-imagen">
+        <div class="detalle-informacion">
+            <div class="detalle-titulo">
+                <h2>{{ materia_prima.nombre }}</h2>
+                {% if materia_prima.estado %}
+                    <span class="estado estado-activo">Activo</span>
+                {% else %}
+                    <span class="estado estado-deshabilitado">
+                        Deshabilitado
+                    </span>
+                {% endif %}
+            </div>
+            <p class="detalle-categoria">Costo Unitario</p>
+            <p class="detalle-precio">${{ materia_prima.costo_unitario|floatformat:"0" }}</p>
+            <dl class="detalle-datos">
+                <div>
+                    <dt>Stock Actual</dt>
+                    <dd>{{ materia_prima.cantidad_actual }}</dd>
+                </div>
+                <div>
+                    <dt>Stock Crítico</dt>
+                    <dd>{{ materia_prima.cantidad_critica }}</dd>
+                </div>
+                <div>
+                    <dt>Unidad de Medida</dt>
+                    <dd>
+                        {{ materia_prima.get_unidad_de_medida_display }}
+                    </dd>
+                </div>
+            </dl>
+            <div class="detalle-acciones">
+                <a class="detalle-boton detalle-boton-secundario" href="{% url 'materia_prima_listar' %}">Volver a la Lista</a>
+            </div>
+        </div>
+    </section>
+
+</main>
+{% endblock %}
