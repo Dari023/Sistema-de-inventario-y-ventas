@@ -1,0 +1,39 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+<link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="inventario formulario-contenedor">
+    <h1>Registrar fabricación: {{ producto.nombre }}</h1>
+
+    <section class="inventario-panel">
+        <p>
+            Esta operación descuenta materiales y aumenta el stock del producto.
+        </p>
+
+        <form class="formulario" method="post">
+            {% csrf_token %}
+
+            <div class="formulario-campo">
+                {{ form.as_p }}
+            </div>
+
+            <div class="formulario-acciones">
+                <button type="submit"
+                        class="formulario-boton formulario-boton-principal">
+                    Registrar fabricación
+                </button>
+
+                <a class="formulario-boton formulario-boton-secundario"
+                   href="{% url 'producto_listar' %}">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}

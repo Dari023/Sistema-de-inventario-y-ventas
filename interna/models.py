@@ -36,7 +36,7 @@ class Producto(models.Model):
     descripcion = models.CharField(max_length=500)
     imagen = models.ImageField(upload_to="media/productos")
     activo = models.BooleanField(default=True)
-    stock_actual = models.IntegerField()
+    stock_actual = models.IntegerField(default=0)
     stock_critico = models.IntegerField()
     modalidad_de_venta = models.CharField(max_length=20)
 

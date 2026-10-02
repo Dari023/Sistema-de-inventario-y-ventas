@@ -2,11 +2,10 @@ from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from django.db import transaction
 from django.contrib.auth.decorators import (login_required, permission_required)
 from .models import Producto, ProductoMateriaPrima, MateriaPrima, CategoriaProducto
-from .forms import ProductoForm, MateriaPrimaForm, ProductoMateriaPrimaForm, CategoriaProductoForm
-
-# Create your views here.
+from .forms import ProductoForm, MateriaPrimaForm, ProductoMateriaPrimaForm, CategoriaProductoForm, ProductoMateriaPrimaFormSet, FabricacionForm
 
 @login_required
 def home(request):
@@ -17,26 +16,108 @@ def producto_listar(request):
     productos = Producto.objects.all()
     return render(request, 'interna/producto/producto_listar.html', {'productos': productos})
 
-def producto_crear(request):
-    if request.method == 'POST':
-        form = ProductoForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            return redirect('producto_listar')
-    else:
-        form = ProductoForm()
-    return render(request, 'interna/producto/producto_crear.html', {'form': form})
+def _formulario_producto(request, producto):
+    editando = producto.pk is not None
+    if request.method == "POST":
+        form = ProductoForm(
+            request.POST,
+            request.FILES,
+            instance=producto,
+        )
+        materiales = ProductoMateriaPrimaFormSet(
+            request.POST,
+            instance=producto,
+            prefix="materiales",
+        )
 
-def producto_editar(request, pk):
-    producto = get_object_or_404(Producto, pk=pk)
-    if request.method == 'POST':
-        form = ProductoForm(request.POST, request.FILES, instance=producto)
-        if form.is_valid():
-            form.save()
-            return redirect('producto_listar')
+        producto_valido = form.is_valid()
+        materiales_validos = materiales.is_valid()
+
+        if producto_valido and materiales_validos:
+            with transaction.atomic():
+                producto = form.save()
+                materiales.instance = producto
+                materiales.save()
+            return redirect("producto_listar")
     else:
         form = ProductoForm(instance=producto)
-    return render(request, 'interna/producto/producto_crear.html', {'form': form, 'producto': producto})
+        materiales = ProductoMateriaPrimaFormSet(
+            instance=producto,
+            prefix="materiales",
+        )
+    return render(
+        request, "interna/producto/producto_crear.html",
+        {
+            "form": form,
+            "producto": producto if editando else None,
+            "materiales": materiales,
+        },
+    )
+
+@login_required
+@permission_required("interna.add_producto", raise_exception=True)
+def producto_crear(request):
+    return _formulario_producto(request, Producto())
+
+@login_required
+@permission_required("interna.change_producto", raise_exception=True)
+def producto_editar(request, pk):
+    producto = get_object_or_404(Producto, pk=pk)
+    return _formulario_producto(request, producto)
+
+@login_required
+@permission_required(
+    ["interna.change_producto", "interna.change_materiaprima"],
+    raise_exception=True,
+)
+def producto_fabricar(request, pk):
+    producto = get_object_or_404(Producto, pk=pk)
+    datos = request.POST if request.method == "POST" else None
+    form = FabricacionForm(datos)
+
+    if request.method == "POST" and form.is_valid():
+        cantidad = form.cleaned_data["cantidad"]
+        with transaction.atomic():
+            producto = Producto.objects.select_for_update().get(pk=pk)
+            materiales = list(
+                ProductoMateriaPrima.objects
+                .select_for_update()
+                .filter(producto=producto)
+                .select_related("materia_prima")
+                .order_by("materia_prima_id")
+            )
+            if not materiales:
+                form.add_error(None, "El producto no tiene materiales asociados.")
+            elif any(
+                not material.materia_prima.estado
+                or material.cantidad_requerida <= 0
+                for material in materiales
+            ):
+                form.add_error(None, "Revisa los materiales de la receta.")
+
+            elif any(
+                material.materia_prima.cantidad_actual
+                < material.cantidad_requerida * cantidad
+                for material in materiales
+            ):
+                form.add_error(None, "No hay suficientes materias primas.")
+
+            else:
+                for material in materiales:
+                    materia_prima = material.materia_prima
+                    consumo = material.cantidad_requerida * cantidad
+                    materia_prima.cantidad_actual -= consumo
+                    materia_prima.save(update_fields=["cantidad_actual"])
+                producto.stock_actual += cantidad
+                producto.save(update_fields=["stock_actual"])
+
+                return redirect("producto_detalles", producto.pk)
+
+    return render(
+        request,
+        "interna/producto/producto_fabricar.html",
+        {"form": form, "producto": producto},
+    )
 
 def producto_detalles(request, pk):
     producto = get_object_or_404(Producto, pk=pk)

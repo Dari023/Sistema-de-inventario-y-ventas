@@ -4,6 +4,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
 <link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/css/tom-select.css">
 {% endblock %}
 
 {% block content %}
@@ -68,21 +69,46 @@
                     </div>
                 {% endfor %}
             </div>
-
+            <h2>Materias Primas Asociadas</h2>
+            <p>Indica el consumo por unidad de producto, puedes dejarlo vacío si guardas el producto deshabilitado.</p>
+            {{ materiales.management_form }}
+            {{ materiales.non_form_errors }}
+            <div id="lista-materiales">
+                {% for material in materiales %}
+                    <div class="fila-material formulario-campo">
+                        {{ material.as_p }}
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="button"
+                    style="margin-top: 1rem;"
+                    id="agregar-material"
+                    class="formulario-boton formulario-boton-secundario">
+                + Agregar Material
+            </button>
+            <template id="material-vacio">
+                <div class="fila-material formulario-campo">
+                    {{ materiales.empty_form.as_p }}
+                </div>
+            </template>
             <div class="formulario-acciones">
                 <button class="formulario-boton formulario-boton-principal" type="submit">
                     {% if producto %}
-                        Actualizar producto
+                        Actualizar Producto
                     {% else %}
-                        Guardar producto
+                        Guardar Producto
                     {% endif %}
                 </button>
 
                 <a class="formulario-boton formulario-boton-secundario" href="{% url 'producto_listar' %}">Cancelar</a>
             </div>
-
         </form>
     </section>
+
+    {% block extra_js %}
+        <script src="https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/js/tom-select.complete.min.js"></script>
+        <script src="{% static 'interna/js/producto_materiales.js' %}"></script>
+    {% endblock %}
 
 </main>
 {% endblock %}
