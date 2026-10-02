@@ -45,7 +45,14 @@ class CarritoAPIView(APIView):
         user = request.user if request.user.is_authenticated else User.objects.first()
         pedido = Pedido.objects.filter(usuario=user, estado='pendiente').first()
         if pedido:
-            pedido.delete()
+            producto_id = request.data.get('producto_id')
+            if producto_id:
+                detalle = pedido.detallepedido_set.filter(producto=producto_id).first()
+                if detalle:
+                    detalle.delete()
+                return Response({"mensaje": "producto eliminado"}, status=status.HTTP_200_OK)
+            else:
+                pedido.delete()
         return Response({"mensaje": "se cancelo la compra"}, status=status.HTTP_200_OK)
 
 class PagarCarritoAPIView(APIView):
