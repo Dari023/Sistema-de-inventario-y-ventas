@@ -24,6 +24,18 @@ export const Carrito = () => {
       .catch((error) => alert(error.response?.data?.error || "Error al pagar"));
   };
 
+  const actualizarCantidad = (producto_id, cantidad) => {
+    axios.post("/api/carrito/", { producto_id: producto_id, cantidad: cantidad })
+      .then(() => cargarCarrito())
+      .catch((error) => alert(error.response?.data?.error || "Error al actualizar cantidad"));
+  };
+
+  const eliminarProducto = (producto_id) => {
+    axios.delete("/api/carrito/", { data: { producto_id: producto_id } })
+      .then(() => cargarCarrito())
+      .catch((error) => console.log(error));
+  };
+
   const cancelarCompra = () => {
     if (window.confirm("¿Estás seguro de vaciar el carrito?")) {
       axios.delete("/api/carrito/")
@@ -45,12 +57,16 @@ export const Carrito = () => {
         <div>
           <ul>
             {carrito.detalles.map((item) => (
-              <li key={item.id}>
-                {item.cantidad}x {item.producto_nombre} - Subtotal: ${item.subtotal}
+              <li key={item.id} style={{ marginBottom: "10px" }}>
+                <button  onClick={() => actualizarCantidad(item.producto, -1)}disabled={item.cantidad <= 1}> - </button>
+                <span style={{ margin: "0 10px" }}>{item.cantidad}</span>
+                <button onClick={() => actualizarCantidad(item.producto, 1)}style={{ marginRight: "10px" }}> + </button>
+                <button onClick={() => eliminarProducto(item.producto)}style={{ marginLeft: "15px", color: "red", cursor: "pointer" }}>x</button>
+                {item.producto_nombre} - Subtotal: ${item.subtotal}
               </li>
             ))}
           </ul>
-          
+
           <h3>Total a Pagar: ${carrito.total}</h3>
           
           <button onClick={pagar}>Pagar Ahora</button>
