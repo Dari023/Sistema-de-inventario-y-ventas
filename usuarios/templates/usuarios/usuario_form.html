@@ -1,0 +1,89 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="inventario formulario-contenedor">
+
+    <header class="inventario-cabecera">
+        <div>
+            <h1>{{ action }} usuario</h1>
+            <p>Completa los datos de la cuenta y su rol.</p>
+        </div>
+    </header>
+
+    <section class="inventario-panel">
+        <p class="formulario-aviso">
+            Los campos con <span>*</span> son obligatorios.
+        </p>
+
+        <form class="formulario" method="post">
+            {% csrf_token %}
+
+            {% for campo in form.hidden_fields %}
+                {{ campo }}
+            {% endfor %}
+
+            {% if form.non_field_errors %}
+                <div class="formulario-errores" role="alert">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="formulario-grid">
+                {% for campo in form.visible_fields %}
+                <div class="formulario-campo">
+
+                    {% if campo.field.widget.input_type == 'checkbox' %}
+                        <label class="formulario-checkbox"
+                                for="{{ campo.id_for_label }}">
+                            {{ campo }}
+                            <span>{{ campo.label }}</span>
+                        </label>
+                    {% else %}
+                        <label for="{{ campo.id_for_label }}">
+                            {{ campo.label }}
+                            {% if campo.field.required %}
+                                <span class="formulario-obligatorio">*</span>
+                            {% endif %}
+                        </label>
+                        {{ campo }}
+                    {% endif %}
+
+                    {% if campo.help_text %}
+                        <p class="formulario-ayuda">
+                            {{ campo.help_text }}
+                        </p>
+                    {% endif %}
+
+                    {% if campo.errors %}
+                        <ul class="formulario-error-campo" role="alert">
+                            {% for error in campo.errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="formulario-acciones">
+                <button class="formulario-boton formulario-boton-principal"
+                        type="submit">
+                    Guardar usuario
+                </button>
+
+                <a class="formulario-boton formulario-boton-secundario"
+                    href="{% url 'usuario-list' %}">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </section>
+
+</main>
+{% endblock %}

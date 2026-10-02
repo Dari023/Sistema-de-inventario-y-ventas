@@ -7,23 +7,22 @@
 {% endblock %}
 
 {% block content %}
-<main class="inventario formulario-contenedor">
-
+<main class="inventario formulario-contenedor formulario-categoria">
     <header class="inventario-cabecera">
         <div>
-            {% if producto %}
-                <h1>EDITAR PRODUCTO</h1>
-                <p>Actualiza la Información de {{ producto.nombre }}.</p>
+            {% if categoria %}
+                <h1>EDITAR CATEGORÍA</h1>
+                <p>Actualiza la Información de {{ categoria.nombre }}.</p>
             {% else %}
-                <h1>CREAR PRODUCTO</h1>
-                <p>Completa la Información para Registrar un Producto.</p>
+                <h1>CREAR CATEGORÍA</h1>
+                <p>Registra una Categoría para Organizar los Productos.</p>
             {% endif %}
         </div>
     </header>
 
     <section class="inventario-panel">
         <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios.</p>
-        <form class="formulario" method="post" enctype="multipart/form-data">
+        <form class="formulario" method="post">
             {% csrf_token %}
             {% for campo in form.hidden_fields %}
                 {{ campo }}
@@ -37,12 +36,12 @@
                     </ul>
                 </div>
             {% endif %}
-
             <div class="formulario-grid">
                 {% for campo in form.visible_fields %}
-                    <div class="formulario-campo{% if campo.name == 'descripcion' or campo.name == 'imagen' %} formulario-campo-completo{% endif %}">
+                    <div class="formulario-campo formulario-campo-completo">
                         {% if campo.field.widget.input_type == 'checkbox' %}
-                            <label class="formulario-checkbox" for="{{ campo.id_for_label }}" style="margin-top: 1.55rem;">
+                            <label class="formulario-checkbox"
+                                   for="{{ campo.id_for_label }}">
                                 {{ campo }}
                                 <span>{{ campo.label }}</span>
                             </label>
@@ -56,7 +55,9 @@
                             {{ campo }}
                         {% endif %}
                         {% if campo.help_text %}
-                            <p class="formulario-ayuda">{{ campo.help_text }}</p>
+                            <p class="formulario-ayuda">
+                                {{ campo.help_text }}
+                            </p>
                         {% endif %}
                         {% if campo.errors %}
                             <ul class="formulario-error-campo">
@@ -68,17 +69,21 @@
                     </div>
                 {% endfor %}
             </div>
-
+            
             <div class="formulario-acciones">
-                <button class="formulario-boton formulario-boton-principal" type="submit">
-                    {% if producto %}
-                        Actualizar producto
+                <button class="formulario-boton formulario-boton-principal"
+                        type="submit">
+                    {% if categoria %}
+                        Actualizar Categoría
                     {% else %}
-                        Guardar producto
+                        Guardar Categoría
                     {% endif %}
                 </button>
 
-                <a class="formulario-boton formulario-boton-secundario" href="{% url 'producto_listar' %}">Cancelar</a>
+                <a class="formulario-boton formulario-boton-secundario"
+                   href="{% url 'categoria_listar' %}">
+                    Cancelar
+                </a>
             </div>
 
         </form>

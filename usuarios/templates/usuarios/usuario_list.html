@@ -1,0 +1,89 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<main class="inventario">
+
+    <header class="inventario-cabecera">
+        <div>
+            <h1>USUARIOS</h1>
+            <p>Consulta y administra las cuentas del sistema.</p>
+        </div>
+
+        <a class="boton-crear" href="{% url 'usuario-create' %}">
+            <i class="bi bi-person-plus" aria-hidden="true"></i>
+            Crear usuario
+        </a>
+    </header>
+
+    <section class="inventario-panel">
+
+        <div class="filtro-estado">
+            <label for="filtro-usuarios-estado">Estado:</label>
+            <select id="filtro-usuarios-estado">
+                <option value="">Todos</option>
+                <option value="Activo">Activos</option>
+                <option value="Deshabilitado">Deshabilitados</option>
+            </select>
+        </div>
+
+        <table id="tabla-usuarios"
+                class="js-datatable"
+                data-filtro-estado="filtro-usuarios-estado"
+                data-columna-estado="4"
+                data-columna-acciones="5">
+            <thead>
+                <tr>
+                    <th scope="col">Usuario</th>
+                    <th scope="col">Nombre completo</th>
+                    <th scope="col">RUT</th>
+                    <th scope="col">Rol</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.user.username }}</td>
+                    <td>{{ usuario.nombre_completo }}</td>
+                    <td>{{ usuario.rut }}</td>
+                    <td>{{ usuario.rol }}</td>
+
+                    <td data-search="{% if usuario.user.is_active %}Activo{% else %}Deshabilitado{% endif %}">
+                        {% if usuario.user.is_active %}
+                            <span class="estado estado-activo">
+                                Activo
+                            </span>
+                        {% else %}
+                            <span class="estado estado-deshabilitado">
+                                Deshabilitado
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div class="acciones">
+                            <a href="{% url 'usuario-update' usuario.pk %}"
+                                aria-label="Editar a {{ usuario.user.username }}">
+                                <i class="bi bi-pencil-square"
+                                    aria-hidden="true"></i>
+                                Editar
+                            </a>
+
+                            <a href="{% url 'usuario-delete' usuario.pk %}"
+                                aria-label="Eliminar a {{ usuario.user.username }}">
+                                <i class="bi bi-trash"
+                                    aria-hidden="true"></i>
+                                Eliminar
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </section>
+</main>
+{% endblock %}

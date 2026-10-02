@@ -11,11 +11,11 @@
 
     <header class="inventario-cabecera">
         <div>
-            <h1>PRODUCTOS</h1>
-            <p>Consulta y Administra los Productos de la Tienda.</p>
+            <h1>MATERIAS PRIMAS</h1>
+            <p>Consulta y Administra las Materias Primas de la Tienda.</p>
         </div>
         <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}" style="margin-right:-26rem;">Volver Atrás</a>
-        <a class="boton-crear" href="{% url 'producto_crear' %}">+ Crear Producto</a>
+        <a class="boton-crear" href="{% url 'materia_prima_crear' %}">+ Crear MP </a>
     </header>
 
     <section class="inventario-panel">
@@ -36,31 +36,35 @@
             <thead>
                 <tr>
                     <th>Nombre</th>
-                    <th>Categoría</th>
-                    <th>Precio</th>
-                    <th>Stock actual</th>
+                    <th>Stock Actual</th>
+                    <th>Stock Crítico</th>
+                    <th>Unidad de Medida</th>
+                    <th>Costo Unitario</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                {% for producto in productos %}
+                {% for mp in materia_prima %}
                 <tr>
-                    <td>{{ producto.nombre }}</td>
-                    <td>{{ producto.categoria }}</td>
-                    <td data-order="{{ producto.precio|unlocalize }}">${{ producto.precio }}</td>
-                    <td>{{ producto.stock_actual }}</td>
-                    <td data-search="{% if producto.activo %}Activo{% else %}Deshabilitado{% endif %}">
-                        {% if producto.activo %}
+                    <td>{{ mp.nombre }}</td>
+                    <td>{{ mp.cantidad_actual }}</td>
+                    <td>{{ mp.cantidad_critica }}</td>
+                    <td>{{ mp.unidad_de_medida }}</td>
+                    <td data-order="{{ mp.costo_unitario|unlocalize }}">${{ mp.costo_unitario }}</td>        
+                    <td data-search="{% if mp.estado %}Activo{% else %}Deshabilitado{% endif %}">
+                        {% if mp.estado %}
                             <span class="estado estado-activo">Activo</span>
                         {% else %}
-                            <span class="estado estado-deshabilitado">Deshabilitado</span>
+                            <span class="estado estado-deshabilitado">
+                                Deshabilitado
+                            </span>
                         {% endif %}
                     </td>
                     <td>
                         <div class="acciones">
-                            <a href="{% url 'producto_detalles' producto.pk %}">Detalles</a>
-                            <a href="{% url 'producto_editar' producto.pk %}">Editar</a>
+                            <a href="{% url 'materia_prima_detalles' mp.pk %}">Detalles</a>
+                            <a href="{% url 'materia_prima_editar' mp.pk %}">Editar</a>
                         </div>
                     </td>
                 </tr>

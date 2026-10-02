@@ -11,19 +11,20 @@
 
     <header class="inventario-cabecera">
         <div>
-            {% if producto %}
-                <h1>EDITAR PRODUCTO</h1>
-                <p>Actualiza la Información de {{ producto.nombre }}.</p>
+            {% if materia_prima %}
+                <h1>EDITAR MATERIA PRIMA</h1>
+                <p>Actualiza la Información de {{ materia_prima.nombre }}.</p>
             {% else %}
-                <h1>CREAR PRODUCTO</h1>
-                <p>Completa la Información para Registrar un Producto.</p>
+                <h1>CREAR MATERIA PRIMA</h1>
+                <p>Completa la Información para Registrar una Materia Prima.</p>
             {% endif %}
         </div>
     </header>
 
     <section class="inventario-panel">
         <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios.</p>
-        <form class="formulario" method="post" enctype="multipart/form-data">
+
+        <form class="formulario" method="post">
             {% csrf_token %}
             {% for campo in form.hidden_fields %}
                 {{ campo }}
@@ -40,9 +41,9 @@
 
             <div class="formulario-grid">
                 {% for campo in form.visible_fields %}
-                    <div class="formulario-campo{% if campo.name == 'descripcion' or campo.name == 'imagen' %} formulario-campo-completo{% endif %}">
+                    <div class="formulario-campo{% if campo.name == 'nombre' %} formulario-campo-completo{% endif %}">
                         {% if campo.field.widget.input_type == 'checkbox' %}
-                            <label class="formulario-checkbox" for="{{ campo.id_for_label }}" style="margin-top: 1.55rem;">
+                            <label class="formulario-checkbox" for="{{ campo.id_for_label }}">
                                 {{ campo }}
                                 <span>{{ campo.label }}</span>
                             </label>
@@ -71,18 +72,16 @@
 
             <div class="formulario-acciones">
                 <button class="formulario-boton formulario-boton-principal" type="submit">
-                    {% if producto %}
-                        Actualizar producto
+                    {% if materia_prima %}
+                        Actualizar Materia Prima
                     {% else %}
-                        Guardar producto
+                        Guardar Materia Prima
                     {% endif %}
                 </button>
-
-                <a class="formulario-boton formulario-boton-secundario" href="{% url 'producto_listar' %}">Cancelar</a>
+                <a class="formulario-boton formulario-boton-secundario" href="{% url 'materia_prima_listar' %}">Cancelar</a>
             </div>
-
         </form>
-    </section>
 
+    </section>
 </main>
 {% endblock %}

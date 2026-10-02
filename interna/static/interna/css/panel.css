@@ -1,0 +1,167 @@
+.panel-layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.panel-sidebar {
+    width: 245px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    padding: 28px 16px;
+    background: #3f3554;
+    color: #fff;
+}
+
+.panel-marca {
+    display: block;
+    padding: 0 8px 24px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ffffff26;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.5;
+    text-decoration: none;
+}
+
+.panel-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.panel-menu a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.panel-menu a:hover,
+.panel-menu a.activo {
+    background: #ffffff1f;
+}
+
+.panel-menu a.activo {
+    box-shadow: inset 3px 0 #f38a6a;
+}
+
+.panel-menu i {
+    width: 22px;
+    font-size: 19px;
+    text-align: center;
+}
+
+.panel-principal {
+    flex: 1;
+    min-width: 0;
+}
+
+.panel-encabezado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 18px 26px;
+    background: #fff;
+    border-bottom: 1px solid #ede3de;
+}
+
+.panel-cuenta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.panel-salir {
+    padding: 8px 12px;
+    border: 1px solid #d9cfdb;
+    border-radius: 8px;
+    background: #fff;
+    color: #3b3446;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.panel-salir:hover {
+    background: #fff0e9;
+}
+
+.panel-accesos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.panel-acceso {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    border: 1px solid #ede3de;
+    border-top: 4px solid #f38a6a;
+    border-radius: 14px;
+    background: #fff;
+    color: #3b3446;
+    text-decoration: none;
+}
+
+.panel-acceso:hover {
+    border-color: #f38a6a;
+    background: #fffaf7;
+}
+
+.panel-acceso i {
+    font-size: 28px;
+}
+
+.panel-acceso strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.panel-acceso p {
+    margin: 0;
+    color: #726b7c;
+}
+
+.panel-layout a:focus-visible,
+.panel-layout button:focus-visible {
+    outline: 3px solid #f38a6a;
+    outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+    .panel-layout {
+        flex-direction: column;
+    }
+
+    .panel-sidebar {
+        width: 100%;
+        padding: 16px;
+    }
+
+    .panel-marca {
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+    }
+
+    .panel-menu {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .panel-encabezado {
+        padding: 16px;
+    }
+
+    .panel-accesos {
+        grid-template-columns: 1fr;
+    }
+}

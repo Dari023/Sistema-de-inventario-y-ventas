@@ -1,0 +1,22 @@
+<h1>Materias primas de {{ producto.nombre }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Guardar materia prima</button>
+</form>
+
+<h2>Materias primas asociadas</h2>
+
+<ul>
+    {% for relacion in materiales %}
+        <li>
+            {{ relacion.materia_prima.nombre }}:
+            {{ relacion.cantidad_requerida }}
+            {{ relacion.materia_prima.get_unidad_medida_display }}
+            por producto
+        </li>
+    {% empty %}
+        <li>Este producto todavía no tiene materias primas asociadas.</li>
+    {% endfor %}
+</ul>

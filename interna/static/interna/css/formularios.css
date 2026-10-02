@@ -1,0 +1,206 @@
+.formulario-contenedor {
+    max-width: 56rem;
+}
+
+.formulario-aviso {
+    margin: 0 0 1.5rem;
+    color: #726B7C;
+    font-size: 0.875rem;
+}
+
+.formulario-aviso span,
+.formulario-obligatorio {
+    color: #A33F50;
+    font-weight: 700;
+}
+
+.formulario-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem 1.5rem;
+}
+
+.formulario-campo {
+    min-width: 0;
+}
+
+.formulario-campo-completo {
+    grid-column: 1 / -1;
+}
+
+.formulario-campo > label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #3B3446;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.formulario-campo input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.formulario-campo select,
+.formulario-campo textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem 0.875rem;
+    border: 0.0625rem solid #D9CFDB;
+    border-radius: 0.625rem;
+    background: white;
+    color: #3B3446;
+    font: inherit;
+    transition: border-color 0.15s ease,
+                box-shadow 0.15s ease;
+}
+
+.formulario-campo input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus,
+.formulario-campo select:focus,
+.formulario-campo textarea:focus {
+    border-color: #F38A6A;
+    outline: none;
+    box-shadow: 0 0 0 0.1875rem rgba(243, 138, 106, 0.2);
+}
+
+.formulario-campo textarea {
+    min-height: 8rem;
+    resize: vertical;
+}
+
+.formulario-campo input[type="file"] {
+    background: #FFF8F4;
+    font-size: 0.875rem;
+}
+
+.formulario-campo input[type="file"]::file-selector-button {
+    margin-right: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: #3B3446;
+    color: white;
+    font: inherit;
+    cursor: pointer;
+}
+
+.formulario-campo input[type="checkbox"],
+.formulario-campo input[type="radio"] {
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: #3B3446;
+}
+
+.formulario-campo > .formulario-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 0;
+    padding: 0.875rem;
+    border: 0.0625rem solid #EDE3DE;
+    border-radius: 0.625rem;
+    background: #FFF8F4;
+    cursor: pointer;
+}
+
+.formulario-ayuda {
+    margin: 0.5rem 0 0;
+    color: #726B7C;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.formulario-errores {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border: 0.0625rem solid #E6B7BE;
+    border-radius: 0.625rem;
+    background: #FFF1F3;
+    color: #8A3445;
+}
+
+.formulario-errores ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.formulario-error-campo {
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: #A33F50;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.formulario-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 0.0625rem solid #EDE3DE;
+}
+
+.formulario-boton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 0.75rem 1.125rem;
+    border: 0.0625rem solid transparent;
+    border-radius: 0.625rem;
+    font: inherit;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.formulario-boton-principal {
+    background: #3B3446;
+    color: white;
+}
+
+.formulario-boton-principal:hover {
+    background: #55485F;
+}
+
+.formulario-boton-secundario {
+    border-color: #D9CFDB;
+    background: white;
+    color: #3B3446;
+}
+
+.formulario-boton-secundario:hover {
+    border-color: #F38A6A;
+    background: #FFF0E9;
+}
+
+.formulario-boton:focus-visible {
+    outline: 0.1875rem solid #F38A6A;
+    outline-offset: 0.1875rem;
+}
+
+@media (max-width: 37.5rem) {
+    .formulario-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .formulario-acciones {
+        flex-direction: column;
+    }
+
+    .formulario-boton {
+        width: 100%;
+    }
+}
+
+
+/* para mensahe del deleteee*/
+.formulario-boton-peligro {
+    gap: 8px;
+    background: #b83b45;
+    color: #fff;
+}
+
+.formulario-boton-peligro:hover {
+    background: #96313a;
+}
