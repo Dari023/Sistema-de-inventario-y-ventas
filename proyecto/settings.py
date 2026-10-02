@@ -40,11 +40,15 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "interna",
     "usuarios",
+    "corsheaders",
+    "rest_framework",
+    "api",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -133,3 +137,9 @@ MAILERS = {
 }
 
 LOGIN_URL = 'login'
+
+
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:3000'
+]
+
