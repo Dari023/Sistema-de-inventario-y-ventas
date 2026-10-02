@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.contrib.auth.models import User
 # Create your models here.
 
 class CategoriaProducto(models.Model):
@@ -59,3 +59,31 @@ class ProductoMateriaPrima(models.Model):
                 name = "producto_materia_prima_unica"
             )
         ]
+
+
+class Pedido(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    fecha_pedido = models.DateTimeField(auto_now_add=True)
+    estado = models.CharField(
+        max_length=20, 
+        choices=[('pendiente', 'Pendiente'), ('pagado', 'Pagado')], 
+        default='pendiente'
+    )
+
+    @property
+    def total(self):
+        return sum(item.subtotal for item in self.detallepedido_set.all())
+
+    def __str__(self):
+        return f"Pedido {self.id} - {self.usuario.username}"
+
+class DetallePedido(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+    cantidad = models.PositiveIntegerField(default=1)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True)
+
+    @property
+    def subtotal(self):
+        precio = self.precio_unitario or self.producto.precio
+        return precio * self.cantidad
