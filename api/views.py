@@ -53,7 +53,7 @@ class CarritoAPIView(APIView):
                 return Response({"mensaje": "producto eliminado"}, status=status.HTTP_200_OK)
             else:
                 pedido.delete()
-        return Response({"mensaje": "se cancelo la compra"}, status=status.HTTP_200_OK)
+        return Response({"mensaje": "se vacio el carrito"}, status=status.HTTP_200_OK)
 
 class PagarCarritoAPIView(APIView):
     def post(self, request):
