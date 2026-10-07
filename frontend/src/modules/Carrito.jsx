@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-
+import { toast } from 'react-toastify';
 export const Carrito = () => {
   const [carrito, setCarrito] = useState(null);
 
@@ -27,24 +27,22 @@ export const Carrito = () => {
   const actualizarCantidad = (producto_id, cantidad) => {
     axios.post("/api/carrito/", { producto_id: producto_id, cantidad: cantidad })
       .then(() => cargarCarrito())
-      .catch((error) => alert(error.response?.data?.error || "Error al actualizar cantidad"));
+      .catch((error) => toast.error(error.response?.data?.error || "Error al actualizar cantidad"));
   };
 
   const eliminarProducto = (producto_id) => {
     axios.delete("/api/carrito/", { data: { producto_id: producto_id } })
       .then(() => cargarCarrito())
-      .catch((error) => console.log(error));
+      .catch((error) => toast.error(error.response?.data?.error || "Error al eliminar producto"));
   };
 
-  const cancelarCompra = () => {
-    if (window.confirm("¿Estás seguro de vaciar el carrito?")) {
-      axios.delete("/api/carrito/")
-        .then((response) => {
-          alert(response.data.mensaje);
-          cargarCarrito();
-        })
-        .catch((error) => console.log(error));
-    }
+ const cancelarCompra = () => {
+  axios.delete("/api/carrito/")
+    .then((response) => {
+      toast.success(response.data.mensaje);
+      cargarCarrito();
+    })
+    .catch((error) => console.log(error));
   };
 
   if (!carrito) return <div>Cargando carrito...</div>;
@@ -70,7 +68,7 @@ export const Carrito = () => {
           <h3>Total a Pagar: ${carrito.total}</h3>
           
           <button onClick={pagar}>Pagar Ahora</button>
-          <button onClick={cancelarCompra}>Cancelar Compra</button>
+          <button onClick={cancelarCompra}>vaciar Carrito</button>
         </div>
       ) : (
         <p>Tu carrito está vacío.</p>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { toast } from 'react-toastify';
 
 export const ProductoListar = () => {
   const [productos, setProductos] = useState([]);
@@ -13,8 +14,8 @@ export const ProductoListar = () => {
 
   const agregarAlCarrito = (id) => {
     axios.post("/api/carrito/", { producto_id: id, cantidad: 1 })
-      .then(() => alert("producto se añadio al carrito"))
-      .catch((error) => alert(error.response?.data?.error || "Error al agregar"));
+      .then(() => toast.success("producto se añadio al carrito"))
+      .catch((error) => toast.error(error.response?.data?.error || "Error al agregar"));
   };
 
   return (
