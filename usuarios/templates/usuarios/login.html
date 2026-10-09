@@ -1,13 +1,53 @@
 {% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/login.css' %}">
+{% endblock %}
 
 {% block content %}
-<div>
-    <h2>Iniciar Sesión</h2>
+<main class="login-pagina">
+    <section class="login-tarjeta" aria-labelledby="login-titulo">
 
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Ingresar</button>
-    </form>
-</div>
+        <header class="login-cabecera">
+            <h1 id="login-titulo">Iniciar sesióon</h1>
+            <p>Acceso al sistema de administración</p>
+        </header>
+
+        <form method="post" class="login-formulario">
+            {% csrf_token %}
+
+            {% for campo in form.hidden_fields %}
+                {{ campo }}
+            {% endfor %}
+
+            {% if form.non_field_errors %}
+                <div class="login-errores" role="alert">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            {% for campo in form.visible_fields %}
+                <div class="login-campo">
+                    <label for="{{ campo.id_for_label }}">
+                        {{ campo.label }}
+                    </label>
+
+                    {{ campo }}
+
+                    {% if campo.errors %}
+                        <div class="login-errores" role="alert">
+                            {{ campo.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            <button type="submit" class="login-boton">
+                Iniciar sesión
+            </button>
+        </form>
+
+    </section>
+</main>
 {% endblock %}
