@@ -1,0 +1,280 @@
+:root {
+  color-scheme: light;
+
+  --tienda-fondo: #fffaf2;
+  --tienda-superficie: #fffefb;
+  --tienda-texto: #35332f;
+  --tienda-texto-suave: #756b5e;
+
+  --tienda-naranjo: #ff982f;
+  --tienda-naranjo-hover: #ffad52;
+  --tienda-naranjo-oscuro: #9b430b;
+  --tienda-naranjo-suave: #fff0d6;
+
+  --tienda-arena: #ffe1a6;
+  --tienda-borde: #eddfca;
+
+  --estado-verde-fondo: #e2efdc;
+  --estado-verde-texto: #2d632c;
+  --estado-rojo-fondo: #fbe1df;
+  --estado-rojo-texto: #a12f2a;
+}
+
+body {
+  margin: 0;
+  display: block;
+  min-width: 20rem;
+  background-color: var(--tienda-fondo);
+  color: var(--tienda-texto);
+  font-family: system-ui, sans-serif;
+}
+
+#root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.tienda-cabecera {
+  background-color: var(--tienda-superficie);
+  border-bottom: 0.1875rem solid var(--tienda-naranjo);
+}
+
+.tienda-marca {
+  color: var(--tienda-texto);
+  font-size: clamp(1.25rem, 3vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: -0.04rem;
+  text-decoration: none;
+}
+
+.tienda-marca:hover {
+  color: var(--tienda-naranjo-oscuro);
+}
+
+.tienda-enlace {
+  padding: 0.65rem 1.1rem;
+  border-radius: 2rem;
+  color: var(--tienda-texto);
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.tienda-enlace:hover {
+  background-color: var(--tienda-naranjo-suave);
+  color: var(--tienda-naranjo-oscuro);
+}
+
+.tienda-enlace.active {
+  background-color: var(--tienda-naranjo);
+  color: var(--tienda-texto);
+}
+
+.catalogo-presentacion {
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 0.0625rem solid #f4d6a1;
+  border-radius: 1.75rem;
+
+  background:
+    radial-gradient(
+      circle at top right,
+      var(--tienda-arena),
+      transparent 65%
+    ),
+
+}
+
+.catalogo-presentacion h1 {
+  max-width: 40rem;
+  color: var(--tienda-texto);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.06rem;
+}
+
+.catalogo-presentacion p {
+  max-width: 36rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.catalogo-etiqueta {
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  border-radius: 2rem;
+  background-color: var(--tienda-naranjo);
+  color: var(--tienda-texto);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.catalogo-vacio {
+  border: 0.0625rem dashed #d9bd91;
+  border-radius: 1.5rem;
+  background-color: var(--tienda-superficie);
+}
+
+.producto-tarjeta {
+  overflow: hidden;
+  border: 0.0625rem solid var(--tienda-borde);
+  border-radius: 1.4rem;
+  background-color: var(--tienda-superficie);
+
+  box-shadow: 0 0.35rem 1.2rem rgb(87 60 24 / 5%);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.producto-tarjeta:hover {
+  transform: translateY(-0.25rem);
+  border-color: var(--tienda-naranjo);
+  box-shadow: 0 0.75rem 1.75rem rgb(87 60 24 / 10%);
+}
+
+.producto-imagen-contenedor {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background-color: #f7efdf;
+  border-bottom: 0.0625rem solid var(--tienda-borde);
+}
+
+.producto-imagen {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.producto-sin-imagen {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--tienda-texto-suave);
+  font-size: 0.95rem;
+}
+
+.producto-nombre {
+  margin-bottom: 0.75rem;
+  color: var(--tienda-texto);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.producto-precio {
+  color: var(--tienda-naranjo-oscuro);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.producto-disponible,
+.producto-agotado {
+  padding: 0.45rem 0.8rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.producto-disponible {
+  background-color: var(--estado-verde-fondo);
+  color: var(--estado-verde-texto);
+}
+
+.producto-agotado {
+  background-color: var(--estado-rojo-fondo);
+  color: var(--estado-rojo-texto);
+}
+
+.boton-principal {
+  --bs-btn-color: var(--tienda-texto);
+  --bs-btn-bg: var(--tienda-naranjo);
+  --bs-btn-border-color: var(--tienda-naranjo);
+
+  --bs-btn-hover-color: var(--tienda-texto);
+  --bs-btn-hover-bg: var(--tienda-naranjo-hover);
+  --bs-btn-hover-border-color: var(--tienda-naranjo-hover);
+
+  --bs-btn-active-color: var(--tienda-texto);
+  --bs-btn-active-bg: var(--tienda-naranjo-hover);
+  --bs-btn-active-border-color: var(--tienda-naranjo-hover);
+
+  --bs-btn-disabled-color: var(--tienda-texto-suave);
+  --bs-btn-disabled-bg: #efe7db;
+  --bs-btn-disabled-border-color: #efe7db;
+  --bs-btn-disabled-opacity: 1;
+
+  --bs-btn-focus-shadow-rgb: 255, 152, 47;
+}
+
+.boton-secundario {
+  --bs-btn-color: var(--tienda-texto);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: #d7c8b3;
+
+  --bs-btn-hover-color: var(--tienda-naranjo-oscuro);
+  --bs-btn-hover-bg: var(--tienda-naranjo-suave);
+  --bs-btn-hover-border-color: var(--tienda-naranjo);
+
+  --bs-btn-active-color: var(--tienda-naranjo-oscuro);
+  --bs-btn-active-bg: var(--tienda-naranjo-suave);
+  --bs-btn-active-border-color: var(--tienda-naranjo);
+
+  --bs-btn-focus-shadow-rgb: 255, 152, 47;
+}
+
+.boton-principal,
+.boton-secundario {
+  padding: 0.75rem 1.1rem;
+  border-radius: 2rem;
+  font-weight: 700;
+}
+
+.tienda-pie {
+  border-top: 0.0625rem solid var(--tienda-borde);
+  background-color: #fff3df;
+  color: var(--tienda-texto-suave);
+  font-size: 0.9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .producto-tarjeta,
+  .tienda-enlace {
+    transition: none;
+  }
+
+  .producto-tarjeta:hover {
+    transform: none;
+  }
+}
+
+.catalogo-banner {
+  overflow: hidden;
+  border: 0.0625rem solid var(--tienda-borde);
+  border-radius: 1.75rem;
+  background-color: var(--tienda-superficie);
+}
+
+.catalogo-banner-imagen {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.catalogo-banner-contenido {
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.catalogo-banner-contenido h1 {
+  color: var(--tienda-texto);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800;
+}

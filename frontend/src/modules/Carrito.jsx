@@ -57,7 +57,7 @@ export const Carrito = () => {
           <button onClick={cancelarCompra}>Cancelar Compra</button>
         </div>
       ) : (
-        <p>Tu carrito está vacío.</p>
+        <p>Tu Carrito Está Vacío.</p>
       )}
     </div>
   );
