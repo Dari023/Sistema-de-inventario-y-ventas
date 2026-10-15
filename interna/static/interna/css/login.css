@@ -1,0 +1,127 @@
+.login-pagina {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 24px;
+    background: #f7f5f2;
+}
+
+.login-tarjeta {
+    width: 100%;
+    max-width: 420px;
+    box-sizing: border-box;
+    padding: 40px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 8px 30px rgba(59, 52, 70, 0.09);
+}
+
+.login-cabecera {
+    margin-bottom: 32px;
+    text-align: center;
+}
+
+.login-cabecera h1 {
+    margin: 0 0 8px;
+    color: #3b3446;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.login-cabecera p {
+    margin: 0;
+    color: #726b7c;
+    font-size: 15px;
+}
+
+.login-formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.login-campo label {
+    display: block;
+    margin-bottom: 8px;
+    color: #3b3446;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.login-campo input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 13px 14px;
+    border: 1px solid #d9cfdb;
+    border-radius: 7px;
+    background: #fff;
+    color: #3b3446;
+    font: inherit;
+}
+
+.login-campo input:focus {
+    border-color: #3f3554;
+    outline: 2px solid #3f355433;
+    outline-offset: 1px;
+}
+
+
+.login-boton {
+    width: 100%;
+    margin-top: 6px;
+    padding: 13px 16px;
+    border: none;
+    border-radius: 7px;
+    background: #3f3554;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.login-boton:hover {
+    background: #55485f;
+}
+
+.login-boton:focus-visible {
+    outline: 3px solid #f38a6a;
+    outline-offset: 3px;
+}
+
+.login-errores {
+    padding: 12px;
+    border: 1px solid #e6b7be;
+    border-radius: 7px;
+    background: #fff1f3;
+    color: #8a3445;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.login-campo .login-errores {
+    margin-top: 8px;
+}
+
+.login-errores ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+@media (max-width: 480px) {
+    .login-pagina {
+        padding: 16px;
+    }
+
+    .login-tarjeta {
+        padding: 28px 24px;
+    }
+
+    .login-cabecera h1 {
+        font-size: 25px;
+    }
+}
+
+

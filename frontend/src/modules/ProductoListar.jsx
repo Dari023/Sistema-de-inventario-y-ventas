@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import bannerTienda from "../assets/Portada.png";
+import { toast } from "react-toastify";
 
 const formatoPrecio = new Intl.NumberFormat("es-CL", {
   style: "currency",
@@ -30,19 +31,9 @@ export const ProductoListar = () => {
   }, []);
 
   const agregarAlCarrito = (id) => {
-    axios
-      .post("/api/carrito/", {
-        producto_id: id,
-        cantidad: 1,
-      })
-      .then(() => {
-        alert("Producto Añadido al Carrito.");
-      })
-      .catch((error) => {
-        alert(
-          error.response?.data?.error || "Error al Agregar al Carrito."
-        );
-      });
+    axios.post("/api/carrito/", { producto_id: id, cantidad: 1 })
+      .then(() => toast.success("producto se añadio al carrito"))
+      .catch((error) => toast.error(error.response?.data?.error || "Error al agregar"));
   };
 
   return (

@@ -2,10 +2,13 @@ import { Routes, Route, Link, NavLink } from "react-router-dom";
 import { ProductoListar } from "./modules/ProductoListar";
 import { ProductoDetalles } from "./modules/ProductoDetalles";
 import { Carrito } from "./modules/Carrito";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export const App = () => {
   return (
     <div className="d-flex flex-column min-vh-100">
+      <ToastContainer position="top-right" autoClose={2000} />
       <header className="tienda-cabecera">
         <div className="container py-3">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">

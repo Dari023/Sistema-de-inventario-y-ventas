@@ -8,35 +8,128 @@
     <title>Sistema de Inventario y Ventas</title>
     <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/3.1.2/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'interna/css/panel.css' %}">
+
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
-    {% block content %}
-        <h1>Inicio</h1>
-        <nav>
-            <li>
-                <a href="{% url 'producto_listar' %}">Productos</a>
-            </li>
-            <li>   
-                <a href="{% url 'materia_prima_listar' %}">Materia Prima</a>
-            </li> 
-            <li>
-                <a href="{% url 'usuario-list' %}">Usuarios</a>
-            </li>
-            <li>
-                <a href="{% url 'categoria_listar' %}">Categorías</a>
-            </li>
-        </nav>
-        {% if user.is_authenticated %}
-            <span>Hola, {{ user.username }}</span>
-            <a href="{% url 'logout' %}">Cerrar Sesión</a>
-        {% else %}
-            <a href="{% url 'login' %}">Iniciar Sesión</a>
-        {% endif %}
-    {% endblock %}
+    {% if user.is_authenticated %}
+    <div class="panel-layout">
+
+        <aside class="panel-sidebar">
+            <a class="panel-marca" href="{% url 'home' %}">
+                INVENTORY<br>SYSTEM..
+            </a>
+
+            {% with ruta=request.resolver_match.url_name %}
+            <nav class="panel-menu" aria-label="Menú de administración">
+
+                <a href="{% url 'home' %}"
+                    class="{% if ruta == 'home' %}activo{% endif %}">
+                    <i class="bi bi-house-door" aria-hidden="true"></i>
+                    Inicio
+                </a>
+
+                <a href="{% url 'producto_listar' %}"
+                    class="{% if ruta == 'producto_listar' or ruta == 'producto_crear' or ruta == 'producto_editar' or ruta == 'producto_detalles' %}activo{% endif %}">
+                    <i class="bi bi-box-seam" aria-hidden="true"></i>
+                    Productos
+                </a>
+
+                <a href="{% url 'materia_prima_listar' %}"
+                    class="{% if ruta == 'materia_prima_listar' or ruta == 'materia_prima_crear' or ruta == 'materia_prima_editar' or ruta == 'materia_prima_detalles' %}activo{% endif %}">
+                    <i class="bi bi-layers" aria-hidden="true"></i>
+                    Materias primas
+                </a>
+
+                <a href="{% url 'categoria_listar' %}"
+                    class="{% if ruta == 'categoria_listar' or ruta == 'categoria_crear' or ruta == 'categoria_editar' %}activo{% endif %}">
+                    <i class="bi bi-tags" aria-hidden="true"></i>
+                    Categorías
+                </a>
+
+                <a href="{% url 'usuario-list' %}"
+                    class="{% if ruta == 'usuario-list' %}activo{% endif %}">
+                    <i class="bi bi-people" aria-hidden="true"></i>
+                    Usuarios
+                </a>
+
+            </nav>
+            {% endwith %}
+            <div class="panel-cuenta">
+                <span>Hola, {{ user.username }}</span>
+
+                <a class="panel-salir" href="{% url 'logout' %}">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                    Cerrar sesión
+                </a>
+            </div>
+        </aside>
+
+        <div class="panel-principal">
+            <header class="panel-encabezado">
+                <strong>Panel de administración</strong>
+            </header>
+    {% endif %}
+
+            {% block content %}
+            <main class="inventario">
+
+                <header class="inventario-cabecera">
+                    <div>
+                        <h1>Inicio</h1>
+                        <p>Administra los productos y materiales del negocio.</p>
+                    </div>
+                </header>
+
+                <section class="panel-accesos" aria-label="Accesos rápidos">
+
+                    <a class="panel-acceso" href="{% url 'producto_listar' %}">
+                        <i class="bi bi-box-seam" aria-hidden="true"></i>
+                        <div>
+                            <strong>Productos</strong>
+                            <p>Consulta y administra tus productos.</p>
+                        </div>
+                    </a>
+
+                    <a class="panel-acceso" href="{% url 'materia_prima_listar' %}">
+                        <i class="bi bi-layers" aria-hidden="true"></i>
+                        <div>
+                            <strong>Materias primas</strong>
+                            <p>Consulta las existencias de materiales.</p>
+                        </div>
+                    </a>
+
+                    <a class="panel-acceso" href="{% url 'categoria_listar' %}">
+                        <i class="bi bi-tags" aria-hidden="true"></i>
+                        <div>
+                            <strong>Categorías</strong>
+                            <p>Organiza las categorías de productos.</p>
+                        </div>
+                    </a>
+
+                    <a class="panel-acceso" href="{% url 'usuario-list' %}">
+                        <i class="bi bi-people" aria-hidden="true"></i>
+                        <div>
+                            <strong>Usuarios</strong>
+                            <p>Consulta y administra los usuarios.</p>
+                        </div>
+                    </a>
+
+                </section>
+            </main>
+            {% endblock %}
+
+    {% if user.is_authenticated %}
+        </div>
+    </div>
+    {% endif %}
+
     <script src="https://cdn.datatables.net/3.1.2/js/dataTables.min.js"></script>
     <script src="{% static 'interna/js/tablas.js' %}"></script>
+
     {% block extra_js %}{% endblock %}
 </body>
 
