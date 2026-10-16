@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import { api } from "../api/Api";
 import { toast } from 'react-toastify';
 export const Carrito = () => {
   const [carrito, setCarrito] = useState(null);
 
   const cargarCarrito = () => {
-    axios.get("/api/carrito/")
+    api.get("carrito/")
       .then((response) => setCarrito(response.data))
       .catch((error) => console.log(error));
   };
@@ -16,7 +16,7 @@ export const Carrito = () => {
   }, []);
 
   const pagar = () => {
-    axios.post("/api/carrito/pagar/")
+    api.post("carrito/pagar/")
       .then((response) => {
         alert(response.data.mensaje);
         cargarCarrito();
@@ -25,19 +25,19 @@ export const Carrito = () => {
   };
 
   const actualizarCantidad = (producto_id, cantidad) => {
-    axios.post("/api/carrito/", { producto_id: producto_id, cantidad: cantidad })
+    api.post("carrito/", { producto_id: producto_id, cantidad: cantidad })
       .then(() => cargarCarrito())
       .catch((error) => toast.error(error.response?.data?.error || "Error al actualizar cantidad"));
   };
 
   const eliminarProducto = (producto_id) => {
-    axios.delete("/api/carrito/", { data: { producto_id: producto_id } })
+    api.delete("carrito/", { data: { producto_id: producto_id } })
       .then(() => cargarCarrito())
       .catch((error) => toast.error(error.response?.data?.error || "Error al eliminar producto"));
   };
 
  const cancelarCompra = () => {
-  axios.delete("/api/carrito/")
+  api.delete("carrito/")
     .then((response) => {
       toast.success(response.data.mensaje);
       cargarCarrito();
