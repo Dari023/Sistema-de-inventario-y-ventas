@@ -5,6 +5,8 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from interna.models import Producto, DetallePedido, Pedido
 from .serializers import ProductoSerializer, PedidoSerializer, DetallePedidoSerializer
+from rest_framework import generics
+from .serializers import RegistroClienteSerializer
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
@@ -73,4 +75,8 @@ class PagarCarritoAPIView(APIView):
         pedido.save()
 
         return Response({"mensaje": "pago realizado con éxito"}, status=status.HTTP_200_OK)
+
+class RegistroClienteView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = RegistroClienteSerializer
 
