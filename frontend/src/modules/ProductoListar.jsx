@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import { api } from "../api/Api";
 import bannerTienda from "../assets/Portada.png";
 import { toast } from "react-toastify";
 
@@ -19,8 +19,8 @@ export const ProductoListar = () => {
   const [errorCategorias, setErrorCategorias] = useState("");
 
   useEffect(() => {
-    axios
-      .get("/api/productos/")
+    api
+      .get("productos/")
       .then((response) => {
         setProductos(response.data);
       })
@@ -51,7 +51,7 @@ export const ProductoListar = () => {
     ): productos;
 
   const agregarAlCarrito = (id) => {
-    axios.post("/api/carrito/", { producto_id: id, cantidad: 1 })
+    api.post("carrito/", { producto_id: id, cantidad: 1 })
       .then(() => toast.success("producto se añadio al carrito"))
       .catch((error) => toast.error(error.response?.data?.error || "Error al agregar"));
   };

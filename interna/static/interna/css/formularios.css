@@ -178,6 +178,88 @@
     outline-offset: 0.1875rem;
 }
 
+/*para formulari de agreegar materia prima */
+#lista-materiales {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.fila-material {
+    padding: 20px;
+    border: 1px solid #ede3de;
+    border-left: 4px solid #f38a6a;
+    border-radius: 12px;
+    background: #fffaf7;
+}
+
+.fila-material > p {
+    margin: 0 0 16px;
+}
+
+.fila-material > p > label {
+    display: block;
+    margin-bottom: 8px;
+    color: #3b3446;
+    font-weight: 600;
+}
+
+.fila-material .errorlist {
+    color: #a33f50;
+    font-size: 14px;
+}
+
+.fila-material .ts-wrapper {
+    width: 100%;
+}
+
+.fila-material .ts-control {
+    padding: 12px 14px;
+    border: 1px solid #d9cfdb;
+    border-radius: 10px;
+    background: #fff;
+    color: #3b3446;
+    font: inherit;
+    box-shadow: none;
+}
+/*prueb para limpiar iputs materia prima*/
+.fila-material .ts-control > input {
+    width: auto;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0;
+    background: transparent !important;
+    box-shadow: none !important;
+    height: auto;
+    font: inherit;
+}
+
+.fila-material .ts-wrapper.focus .ts-control {
+    border-color: #f38a6a;
+    box-shadow: 0 0 0 3px rgba(243, 138, 106, 0.2);
+}
+
+.fila-material .ts-dropdown {
+    border: 1px solid #d9cfdb;
+    border-radius: 8px;
+    background: #fff;
+    color: #3b3446;
+    font: inherit;
+    overflow: hidden;
+}
+
+
+
+.fila-material .ts-dropdown .option {
+    padding: 10px 14px;
+}
+
+.fila-material .ts-dropdown .active {
+    background: #fff0e9;
+    color: #3b3446;
+}
+
 @media (max-width: 37.5rem) {
     .formulario-grid {
         grid-template-columns: minmax(0, 1fr);
