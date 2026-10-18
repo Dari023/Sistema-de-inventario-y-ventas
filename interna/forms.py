@@ -75,13 +75,15 @@ class MateriaPrimaForm(forms.ModelForm):
 class CategoriaProductoForm(forms.ModelForm):
     class Meta:
         model = CategoriaProducto
-        fields = ['nombre', 'activo']
+        fields = ['nombre', 'imagen', 'activo']
         labels = {
             'nombre': 'Nombre',
+            'imagen':'Imagen de la Categoría',
             'activo': 'Activa',
         }
         widgets = {
             'nombre': forms.TextInput(),
+            'imagen': forms.ClearableFileInput(attrs={'accept':'image/*'})
         }    
 
 class ProductoMateriaPrimaForm(forms.ModelForm):

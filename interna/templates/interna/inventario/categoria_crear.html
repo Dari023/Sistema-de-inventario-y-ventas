@@ -22,7 +22,7 @@
 
     <section class="inventario-panel">
         <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios.</p>
-        <form class="formulario" method="post">
+        <form class="formulario" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {% for campo in form.hidden_fields %}
                 {{ campo }}

@@ -1,10 +1,17 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
-from interna.models import Producto, DetallePedido, Pedido
-from .serializers import ProductoSerializer, PedidoSerializer, DetallePedidoSerializer
+from rest_framework import viewsets, status, generics
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
+from .serializers import ProductoSerializer, PedidoSerializer, DetallePedidoSerializer, CategoriaProductoSerializer, RegistroClienteSerializer
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
@@ -74,3 +81,12 @@ class PagarCarritoAPIView(APIView):
 
         return Response({"mensaje": "pago realizado con éxito"}, status=status.HTTP_200_OK)
 
+class RegistroClienteView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    serializer_class = RegistroClienteSerializer
+
+class CategoriaProductoViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = CategoriaProductoSerializer
+    queryset = CategoriaProducto.objects.filter(activo=True).order_by("nombre")
+    permission_classes = [AllowAny]
+    pagination_class = None

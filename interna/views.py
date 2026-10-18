@@ -159,7 +159,7 @@ def categoria_listar(request):
 
 def categoria_crear(request):
     if request.method == 'POST':
-        form = CategoriaProductoForm(request.POST)
+        form = CategoriaProductoForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             return redirect('categoria_listar')
@@ -170,7 +170,7 @@ def categoria_crear(request):
 def categoria_editar(request, pk):
     categoria = get_object_or_404(CategoriaProducto, pk=pk)
     if request.method == 'POST':
-        form = CategoriaProductoForm(request.POST, instance=categoria)
+        form = CategoriaProductoForm(request.POST, request.FILES, instance=categoria)
         if form.is_valid():
             form.save()
             return redirect('categoria_listar')
