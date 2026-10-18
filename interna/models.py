@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 class CategoriaProducto(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.CharField(max_length=300, blank=True, null=True)
+    imagen = models.ImageField(upload_to="media/productos", blank=True)
     activo = models.BooleanField(default=True)
 
     def __str__(self):
