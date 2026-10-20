@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Link, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { Inicio } from "./modules/Inicio";
 import { ProductoListar } from "./modules/ProductoListar";
 import { ProductoDetalles } from "./modules/ProductoDetalles";
 import { Carrito } from "./modules/Carrito";
@@ -30,16 +31,16 @@ export const App = () => {
       <header className="tienda-cabecera">
         <div className="container py-3">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <Link to="/" className="tienda-marca">
-              Amigos del Vuelo
-            </Link>
+            <Link to="/" className="tienda-marca">Amigos del Vuelo</Link>
             <nav className="nav gap-2 align-items-center">
-              <NavLink to="/" end className="nav-link tienda-enlace">Productos</NavLink>
+              <NavLink to="/" end className="nav-link tienda-enlace">Inicio</NavLink>
+              <Link to="/catalogo" className="nav-link tienda-enlace">Catálogo</Link>
               <NavLink to="/carrito" className="nav-link tienda-enlace">Mi carrito</NavLink>
               {!isAuthenticated ? (
                 <>
                   <Link to="/login" className="nav-link tienda-enlace">Iniciar Sesión</Link>
                   <Link to="/registro" className="nav-link tienda-enlace">Registrarse</Link>
+                  
                 </>
               ) : (
                 <button onClick={cerrarSesion} className="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</button>
@@ -51,7 +52,8 @@ export const App = () => {
 
       <main className="container py-4 py-md-5 flex-grow-1">
         <Routes>
-          <Route path="/" element={<ProductoListar />} />
+          <Route path="/" element={<Inicio />} />
+          <Route path="/catalogo" element={<ProductoListar />} />
           <Route path="/producto/:id" element={<ProductoDetalles />} />
           <Route path="/carrito" element={<Carrito />} />
           <Route path="/login" element={<Login />} />
