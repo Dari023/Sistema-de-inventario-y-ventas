@@ -2,6 +2,7 @@ from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
@@ -11,6 +12,7 @@ from .serializers import (
     DetallePedidoSerializer,
     CategoriaProductoSerializer,
     RegistroClienteSerializer,
+    LoginCorreoSerializer,
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -90,3 +92,6 @@ class CategoriaProductoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CategoriaProducto.objects.filter(activo=True).order_by("nombre")
     permission_classes = [AllowAny]
     pagination_class = None
+
+class LoginCorreoView(TokenObtainPairView):
+    serializer_class = LoginCorreoSerializer    

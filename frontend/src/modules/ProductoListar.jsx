@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/Api";
-import bannerTienda from "../assets/Portada.png";
 import { toast } from "react-toastify";
 
 const formatoPrecio = new Intl.NumberFormat("es-CL", {
@@ -58,13 +57,13 @@ export const ProductoListar = () => {
 
   return (
     <section>
-      <div className="catalogo-banner mb-4 mb-md-5">
-        <img
-          src={bannerTienda}
-          alt="Conejos tejidos, muñeco Freddie y llaveros de cactus"
-          className="catalogo-banner-imagen"
-        />
-      </div>
+      <header className="mb-4">
+        <h1 className="mb-2">CATÁLOGO DE PRODUCTOS</h1>
+
+        <p className="text-secondary mb-0">
+          Explora nuestras categorías y encuentra tus favoritos.
+        </p>
+      </header>
       <div className="mb-4 mb-md-5">
         <h2 className="h5 fw-bold text-center mb-4">Explora por categoría</h2>
         {errorCategorias ? (
