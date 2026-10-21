@@ -206,29 +206,3 @@ class RegistroClienteSerializer(serializers.ModelSerializer):
 
         Cliente.objects.create(usuario=user, **datos_cliente)
         return user
-
-class LoginCorreoSerializer(TokenObtainPairSerializer):
-    default_error_messages = {
-        "no_active_account": "Correo o Contraseña Incorrectos."
-    }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.fields.pop(self.username_field)
-        self.fields["email"] = serializers.EmailField(write_only=True)
-
-    def validate(self, attrs):
-        try:
-            usuario = User.objects.get(
-                email__iexact=attrs["email"].strip()
-            )
-        except (User.DoesNotExist, User.MultipleObjectsReturned):
-            raise AuthenticationFailed(
-                "Correo o Contraseña Incorrectos."
-            )
-
-        return super().validate({
-            self.username_field: usuario.get_username(),
-            "password": attrs["password"],
-        })    

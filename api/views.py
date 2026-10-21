@@ -6,13 +6,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from .serializers import (
     ProductoSerializer,
     PedidoSerializer,
     DetallePedidoSerializer,
     CategoriaProductoSerializer,
     RegistroClienteSerializer,
-    LoginCorreoSerializer,
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -93,5 +94,15 @@ class CategoriaProductoViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
     pagination_class = None
 
-class LoginCorreoView(TokenObtainPairView):
-    serializer_class = LoginCorreoSerializer    
+class LoginView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        password = request.data.get("password")
+        usuario = User.objects.filter(email__iexact=email).first()
+        if usuario and usuario.check_password(password):
+            refresh = RefreshToken.for_user(usuario)
+            return Response({
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+        return Response({"error": "Correo o contraseña incorrectos."}, status=status.HTTP_401_UNAUTHORIZED)

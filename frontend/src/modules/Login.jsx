@@ -4,13 +4,13 @@ import { toast } from 'react-toastify';
 import { api } from "../api/Api";
 
 export const Login = () => {
-    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        api.post("login/", { username, password })
+        api.post("login/", { email, password })
             .then((response) => {
                 localStorage.setItem("access_token", response.data.access);
                 localStorage.setItem("refresh_token", response.data.refresh);
@@ -25,10 +25,22 @@ export const Login = () => {
             <h2>Iniciar Sesión</h2>
             <form onSubmit={handleSubmit}>
                 <div>
-                    <input type="text" placeholder="Usuario" onChange={(e) => setUsername(e.target.value)} required />
+                    <input
+                        type="email"
+                        placeholder="Correo electrónico"
+                        autoComplete="email"
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
                 </div>
                 <div style={{ margin: "10px 0" }}>
-                    <input type="password" placeholder="Contraseña" onChange={(e) => setPassword(e.target.value)} required />
+                    <input
+                        type="password"
+                        placeholder="Contraseña"
+                        autoComplete="current-password"
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
                 </div>
                 <button type="submit">Ingresar</button>
             </form>
