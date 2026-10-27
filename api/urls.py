@@ -12,6 +12,7 @@ urlpatterns = [
     path('carrito/', views.CarritoAPIView.as_view(), name='api_carrito'),
     path('carrito/pagar/', views.PagarCarritoAPIView.as_view(), name='api_pagar_carrito'),
     path('registro/', views.RegistroClienteView.as_view(), name='api_registro'),
+    path('mi-cuenta/', views.MiCuentaView.as_view(), name='api_mi_cuenta'),
     path('login/', views.LoginCorreoView.as_view(), name='api_login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
 ]

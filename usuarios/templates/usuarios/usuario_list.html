@@ -1,18 +1,90 @@
 {% extends 'interna/base.html' %}
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+<link rel="stylesheet" href="{% static 'interna/css/detalles.css' %}">
+{% endblock %}
 
 {% block content %}
-<h1>Lista de usuarios</h1>
-<a href="{% url 'usuario-create' %}">Crear Nuevo Usuario</a>
+<main class="inventario">
 
-<ul>
-    {% for usuario in usuarios %}
-    <li>
-        {{ usuario.user.username }} - {{ usuario.rol }}
-        <a href="{% url 'usuario-update' usuario.pk %}">Editar</a>
-        <a href="{% url 'usuario-delete' usuario.pk %}">Eliminar</a>
-    </li>
-    {% empty %}
-    <li>No hay usuarios registrados</li>
-    {% endfor %}
-</ul>
+    <header class="inventario-cabecera">
+        <div>
+            <h1>USUARIOS</h1>
+            <p>Consulta y Administra las Cuentas del Sistema</p>
+        </div>
+            <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}" style="margin-left: 26rem;">Volver atrás</a>
+            <a class="boton-crear" href="{% url 'usuario-create' %}">Crear Colaborador</a>
+    </header>
+
+    <section class="inventario-panel">
+
+        <div class="filtro-estado">
+            <label for="filtro-usuarios-estado">Estado:</label>
+            <select id="filtro-usuarios-estado">
+                <option value="">Todos</option>
+                <option value="Activo">Activos</option>
+                <option value="Deshabilitado">Deshabilitados</option>
+            </select>
+        </div>
+
+        <table id="tabla-usuarios"
+                class="js-datatable"
+                data-filtro-estado="filtro-usuarios-estado"
+                data-columna-estado="4"
+                data-columna-acciones="5">
+            <thead>
+                <tr>
+                    <th scope="col">Cuenta</th>
+                    <th scope="col">Nombre Completo</th>
+                    <th scope="col">RUT</th>
+                    <th scope="col">Rol</th>
+                    <th scope="col">Estado</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>{{ usuario.user.email|default:usuario.user.username }}</td>
+                    <td>{{ usuario.nombre_completo }}</td>
+                    <td>{{ usuario.rut }}</td>
+                    <td>{{ usuario.rol }}</td>
+                    <td data-search="{% if usuario.user.is_active %}Activo{% else %}Deshabilitado{% endif %}">
+                        {% if usuario.user.is_active %}
+                            <span class="estado estado-activo">Activo</span>
+                        {% else %}
+                            <span class="estado estado-deshabilitado">Deshabilitado</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="acciones">
+                            <a href="{% url 'usuario-update' usuario.pk %}">Editar</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% for cliente in clientes %}
+                <tr>
+                    <td>{{ cliente.correo }}</td>
+                    <td>{{ cliente.nombre }} {{ cliente.apellido }}</td>
+                    <td>{{ cliente.rut }}</td>
+                    <td>Cliente</td>
+                    <td data-search="{% if cliente.usuario.is_active %}Activo{% else %}Deshabilitado{% endif %}">
+                        {% if cliente.usuario.is_active %}
+                            <span class="estado estado-activo">Activo</span>
+                        {% else %}
+                            <span class="estado estado-deshabilitado">Deshabilitado</span>
+                        {% endif %}
+                    </td>
+                    <td>—</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</main>
 {% endblock %}

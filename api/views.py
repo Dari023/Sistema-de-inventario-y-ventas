@@ -1,11 +1,13 @@
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
+from .models import Cliente
+
 from .serializers import (
     ProductoSerializer,
     PedidoSerializer,
@@ -13,6 +15,7 @@ from .serializers import (
     CategoriaProductoSerializer,
     RegistroClienteSerializer,
     LoginCorreoSerializer,
+    MiCuentaSerializer,
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -86,6 +89,16 @@ class PagarCarritoAPIView(APIView):
 class RegistroClienteView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegistroClienteSerializer
+
+class MiCuentaView(generics.RetrieveUpdateAPIView):
+    serializer_class = MiCuentaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return get_object_or_404(
+            Cliente,
+            usuario=self.request.user,
+        )
 
 class CategoriaProductoViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategoriaProductoSerializer
