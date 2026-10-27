@@ -1,4 +1,9 @@
 {% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
 
 {% block content %}
 <main class="inventario formulario-contenedor">

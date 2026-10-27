@@ -107,4 +107,4 @@ class CategoriaProductoViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None
 
 class LoginCorreoView(TokenObtainPairView):
-    serializer_class = LoginCorreoSerializer    
+    serializer_class = LoginCorreoSerializer

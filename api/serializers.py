@@ -244,7 +244,7 @@ class MiCuentaSerializer(serializers.ModelSerializer):
     )
     email = serializers.EmailField(
         source="usuario.email",
-        max_length = 250,
+        max_length = 254,
     )
 
     class Meta:
