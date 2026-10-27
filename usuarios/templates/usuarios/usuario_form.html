@@ -10,19 +10,16 @@
 
     <header class="inventario-cabecera">
         <div>
-            <h1>{{ action }} usuario</h1>
-            <p>Completa los datos de la cuenta y su rol.</p>
+            <h1>{{ action }} Colaborador</h1>
+            <p>Completa los Datos de la Cuenta.</p>
         </div>
     </header>
 
     <section class="inventario-panel">
-        <p class="formulario-aviso">
-            Los campos con <span>*</span> son obligatorios.
-        </p>
+        <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios.</p>
 
         <form class="formulario" method="post">
             {% csrf_token %}
-
             {% for campo in form.hidden_fields %}
                 {{ campo }}
             {% endfor %}
@@ -72,15 +69,8 @@
             </div>
 
             <div class="formulario-acciones">
-                <button class="formulario-boton formulario-boton-principal"
-                        type="submit">
-                    Guardar usuario
-                </button>
-
-                <a class="formulario-boton formulario-boton-secundario"
-                    href="{% url 'usuario-list' %}">
-                    Cancelar
-                </a>
+                <button class="formulario-boton formulario-boton-principal" type="submit">Guardar Colaborador</button>
+                <a class="formulario-boton formulario-boton-secundario" href="{% url 'usuario-list' %}">Cancelar</a>
             </div>
         </form>
     </section>

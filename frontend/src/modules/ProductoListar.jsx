@@ -51,8 +51,8 @@ export const ProductoListar = () => {
 
   const agregarAlCarrito = (id) => {
     api.post("carrito/", { producto_id: id, cantidad: 1 })
-      .then(() => toast.success("producto se añadio al carrito"))
-      .catch((error) => toast.error(error.response?.data?.error || "Error al agregar"));
+      .then(() => toast.success("Producto se Añadio al Carrito"))
+      .catch((error) => toast.error(error.response?.data?.error || "Error al Agregar"));
   };
 
   return (

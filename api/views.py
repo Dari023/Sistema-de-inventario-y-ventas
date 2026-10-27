@@ -1,12 +1,12 @@
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
-from rest_framework_simplejwt.tokens import RefreshToken
+from .models import Cliente
 
 from .serializers import (
     ProductoSerializer,
@@ -14,6 +14,8 @@ from .serializers import (
     DetallePedidoSerializer,
     CategoriaProductoSerializer,
     RegistroClienteSerializer,
+    LoginCorreoSerializer,
+    MiCuentaSerializer,
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -88,21 +90,21 @@ class RegistroClienteView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegistroClienteSerializer
 
+class MiCuentaView(generics.RetrieveUpdateAPIView):
+    serializer_class = MiCuentaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return get_object_or_404(
+            Cliente,
+            usuario=self.request.user,
+        )
+
 class CategoriaProductoViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategoriaProductoSerializer
     queryset = CategoriaProducto.objects.filter(activo=True).order_by("nombre")
     permission_classes = [AllowAny]
     pagination_class = None
 
-class LoginView(APIView):
-    def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
-        usuario = User.objects.filter(email__iexact=email).first()
-        if usuario and usuario.check_password(password):
-            refresh = RefreshToken.for_user(usuario)
-            return Response({
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-            }, status=status.HTTP_200_OK)
-        return Response({"error": "Correo o contraseña incorrectos."}, status=status.HTTP_401_UNAUTHORIZED)
+class LoginCorreoView(TokenObtainPairView):
+    serializer_class = LoginCorreoSerializer

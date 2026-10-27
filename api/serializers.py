@@ -10,6 +10,23 @@ from .models import Cliente
 from uuid import uuid4
 import re
 
+def validar_telefono_chileno(value):
+    if not value.strip():
+        return ""
+
+    telefono = re.sub(r"[\s()-]", "", value)
+
+    if telefono.startswith("+56"):
+        telefono = telefono[3:]
+    elif re.fullmatch(r"56[0-9]{9}", telefono):
+        telefono = telefono[2:]
+
+    if not re.fullmatch(r"[0-9]{9}", telefono):
+        raise serializers.ValidationError(
+            "Ingresa un Teléfono de 9 dígitos")
+
+    return f"+56{telefono}"
+
 class ProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Producto
@@ -119,23 +136,7 @@ class RegistroClienteSerializer(serializers.ModelSerializer):
         return correo
 
     def validate_telefono(self, value):
-        if not value.strip():
-            return ""
-
-        telefono = re.sub(r"[\s()-]", "", value)
-
-        if telefono.startswith("+56"):
-            telefono = telefono[3:]
-        elif re.fullmatch(r"56[0-9]{9}", telefono):
-            telefono = telefono[2:]
-
-        if not re.fullmatch(r"[0-9]{9}", telefono):
-            raise serializers.ValidationError(
-                "Ingresa un Número de 9 dígitos, "
-                "Por Ejemplo: 912345678."
-            )
-
-        return f"+56{telefono}"
+        return validar_telefono_chileno(value)
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirmacion"]:
@@ -206,3 +207,88 @@ class RegistroClienteSerializer(serializers.ModelSerializer):
 
         Cliente.objects.create(usuario=user, **datos_cliente)
         return user
+
+class LoginCorreoSerializer(TokenObtainPairSerializer):
+    default_error_messages = {
+        "no_active_account": "Correo o Contraseña Incorrectos."
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields.pop(self.username_field)
+        self.fields["email"] = serializers.EmailField(write_only=True)
+
+    def validate(self, attrs):
+        try:
+            usuario = User.objects.get(
+                email__iexact=attrs["email"].strip()
+            )
+        except (User.DoesNotExist, User.MultipleObjectsReturned):
+            raise AuthenticationFailed(
+                "Correo o Contraseña Incorrectos."
+            )
+
+        return super().validate({
+            self.username_field: usuario.get_username(),
+            "password": attrs["password"],
+        })    
+class MiCuentaSerializer(serializers.ModelSerializer):
+    nombre = serializers.CharField(
+        source="usuario.first_name",
+        max_length=150,
+    )
+    apellido = serializers.CharField(
+        source="usuario.last_name",
+        max_length=150,
+    )
+    email = serializers.EmailField(
+        source="usuario.email",
+        max_length = 254,
+    )
+
+    class Meta:
+        model = Cliente
+        fields = [
+            "nombre",
+            "apellido",
+            "email",
+            "rut",
+            "telefono",
+            "direccion",
+        ]
+        read_only_fields = ["rut"]
+
+    def validate_telefono(self, value):
+        return validar_telefono_chileno(value)
+
+    def validate_email(self, value):
+        correo = value.strip().lower()
+
+        if User.objects.filter(
+            email__iexact=correo
+        ).exclude(
+            pk=self.instance.usuario_id
+        ).exists():
+            raise serializers.ValidationError(
+                "Ya Existe un Usuario con este Correo."
+            )
+        return correo
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        datos_usuario = validated_data.pop("usuario", {})
+        usuario = instance.usuario
+
+        usuario.first_name = datos_usuario.get(
+            "first_name", usuario.first_name
+        )
+        usuario.last_name = datos_usuario.get(
+            "last_name", usuario.last_name
+        )
+        usuario.email = datos_usuario.get(
+            "email", usuario.email
+        )
+        usuario.save(update_fields=["first_name", "last_name", "email"])
+
+        return super().update(instance, validated_data)

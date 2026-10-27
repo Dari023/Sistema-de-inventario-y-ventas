@@ -1,6 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Usuario
+from .models import Usuario, Rol
 from .forms import UsuarioForm
+from api.models import Cliente
 from django.db.models import Q
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import AuthenticationForm
@@ -8,16 +9,35 @@ from django.contrib.auth import login, logout
 
 def UsuarioListView(request):
     query = request.GET.get('q', '').strip()
-    usuarios = Usuario.objects.all()
+    usuarios = Usuario.objects.select_related(
+        'user',
+        'rol'
+    ).all()
+
+    clientes = Cliente.objects.select_related(
+        'usuario',
+    ).filter(
+        usuario__usuarios__isnull = True,
+    )
     
     if query:
         usuarios = usuarios.filter(
             Q(user__username__icontains=query) | 
-            Q(nombre_completo__icontains=query)
+            Q(user__email__incontains = query) |
+            Q(nombre_completo__icontains=query) |
+            Q(rut__incontains=query)
+        )
+
+        clientes = clientes.filter(
+            Q(usuario__email__icontains=query) | 
+            Q(usuario__first_name__incontains = query) |
+            Q(usuario__last_name__icontains=query) |
+            Q(rut__incontains=query)
         )
             
     contexto = {
         'usuarios': usuarios,
+        'clientes': clientes,
         'query': query
     }
     return render(request, 'usuarios/usuario_list.html', contexto)
@@ -34,6 +54,7 @@ def UsuarioCreateView(request):
             user.save()
             usuario = form.save(commit=False)
             usuario.user = user
+            usuario.rol = Rol.objects.get(nombre="Colaborador")
             usuario.save()
             return redirect('usuario-list')
     else:
@@ -62,13 +83,6 @@ def UsuarioUpdateView(request, id):
             }
         )
     return render(request, 'usuarios/usuario_form.html', {'form': form, 'action': 'Modificar'})
-
-def UsuarioDeleteView(request, id):
-    usuario = get_object_or_404(Usuario, pk=id)
-    if request.method == "POST":
-        usuario.user.delete()
-        return redirect('usuario-list')
-    return render(request, 'usuarios/usuario_delete.html', {'usuario': usuario})
 
 def login_view(request):
     if request.user.is_authenticated:
