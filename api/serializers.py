@@ -51,7 +51,7 @@ class PedidoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pedido
-        fields = ['id', 'usuario', 'fecha_pedido', 'estado', 'detalles', 'total']
+        fields = ['id', 'cliente', 'fecha_pedido', 'estado', 'detalles', 'total']
 
 class RegistroClienteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
@@ -233,6 +233,7 @@ class LoginCorreoSerializer(TokenObtainPairSerializer):
             self.username_field: usuario.get_username(),
             "password": attrs["password"],
         })    
+    
 class MiCuentaSerializer(serializers.ModelSerializer):
     nombre = serializers.CharField(
         source="usuario.first_name",
