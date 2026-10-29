@@ -1,5 +1,6 @@
 from django.db import models
-from django.contrib.auth.models import User
+import uuid
+from api.models import Cliente
 # Create your models here.
 
 class CategoriaProducto(models.Model):
@@ -63,7 +64,8 @@ class ProductoMateriaPrima(models.Model):
 
 
 class Pedido(models.Model):
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    id_compra = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='pedidos', null=True)
     fecha_pedido = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(
         max_length=20, 
@@ -76,7 +78,7 @@ class Pedido(models.Model):
         return sum(item.subtotal for item in self.detallepedido_set.all())
 
     def __str__(self):
-        return f"Pedido {self.id} - {self.usuario.username}"
+        return f"Pedido {self.id} - {self.cliente}"
 
 class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
