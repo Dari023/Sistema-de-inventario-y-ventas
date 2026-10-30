@@ -6,6 +6,7 @@ import { ProductoDetalles } from "./modules/ProductoDetalles";
 import { Carrito } from "./modules/Carrito";
 import { Login } from "./modules/Login";
 import { Registro } from "./modules/Registro";
+import { MiCuenta } from "./modules/MiCuenta";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -43,7 +44,10 @@ export const App = () => {
                   
                 </>
               ) : (
-                <button onClick={cerrarSesion} className="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</button>
+                <>
+                  <NavLink to="/mi-cuenta" className="nav-link tienda-enlace">Mi cuenta</NavLink>
+                  <button onClick={cerrarSesion} className="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</button>
+                </>
               )}
             </nav>
           </div>
@@ -58,6 +62,7 @@ export const App = () => {
           <Route path="/carrito" element={<Carrito />} />
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/mi-cuenta" element={<MiCuenta />} />
         </Routes>
       </main>
 

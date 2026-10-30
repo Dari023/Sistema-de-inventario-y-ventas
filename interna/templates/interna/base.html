@@ -19,9 +19,7 @@
     <div class="panel-layout">
 
         <aside class="panel-sidebar">
-            <a class="panel-marca" href="{% url 'home' %}">
-                SISTEMA DE <br>INVETARIO
-            </a>
+            <a class="panel-marca" href="{% url 'home' %}">INVENTARIO</a>
 
             {% with ruta=request.resolver_match.url_name %}
             <nav class="panel-menu" aria-label="Menú de administración">
@@ -35,7 +33,25 @@
                 <a href="{% url 'inventario' %}"
                     class="{% if ruta == 'inventario' or ruta == 'gestionar_materias_producto' or 'producto_' in ruta or 'materia_prima_' in ruta or 'categoria_' in ruta %}activo{% endif %}">
                     <i class="bi bi-box-seam" aria-hidden="true"></i>
-                    Inventario
+                    Productos
+                </a>
+
+                <a href="{% url 'materia_prima_listar' %}"
+                    class="{% if ruta == 'materia_prima_listar' or ruta == 'materia_prima_crear' or ruta == 'materia_prima_editar' or ruta == 'materia_prima_detalles' %}activo{% endif %}">
+                    <i class="bi bi-layers" aria-hidden="true"></i>
+                    Materias primas
+                </a>
+
+                <a href="{% url 'movimientos_listar' %}"
+                    class="{% if ruta == 'movimientos_listar' %}activo{% endif %}">
+                    <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                    Movimientos
+                </a>
+
+                <a href="{% url 'categoria_listar' %}"
+                    class="{% if ruta == 'categoria_listar' or ruta == 'categoria_crear' or ruta == 'categoria_editar' %}activo{% endif %}">
+                    <i class="bi bi-tags" aria-hidden="true"></i>
+                    Categorías
                 </a>
 
                 <a href="{% url 'usuario-list' %}"

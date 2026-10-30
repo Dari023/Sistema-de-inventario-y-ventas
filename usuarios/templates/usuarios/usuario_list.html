@@ -1,4 +1,10 @@
 {% extends 'interna/base.html' %}
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+<link rel="stylesheet" href="{% static 'interna/css/detalles.css' %}">
+{% endblock %}
 
 {% block content %}
 <main class="inventario">
@@ -6,13 +12,10 @@
     <header class="inventario-cabecera">
         <div>
             <h1>USUARIOS</h1>
-            <p>Consulta y administra las cuentas del sistema.</p>
+            <p>Consulta y Administra las Cuentas del Sistema</p>
         </div>
-
-        <a class="boton-crear" href="{% url 'usuario-create' %}">
-            <i class="bi bi-person-plus" aria-hidden="true"></i>
-            Crear usuario
-        </a>
+            <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}" style="margin-left: 26rem;">Volver atrás</a>
+            <a class="boton-crear" href="{% url 'usuario-create' %}">Crear Colaborador</a>
     </header>
 
     <section class="inventario-panel">
@@ -33,8 +36,8 @@
                 data-columna-acciones="5">
             <thead>
                 <tr>
-                    <th scope="col">Usuario</th>
-                    <th scope="col">Nombre completo</th>
+                    <th scope="col">Cuenta</th>
+                    <th scope="col">Nombre Completo</th>
                     <th scope="col">RUT</th>
                     <th scope="col">Rol</th>
                     <th scope="col">Estado</th>
@@ -45,45 +48,43 @@
             <tbody>
                 {% for usuario in usuarios %}
                 <tr>
-                    <td>{{ usuario.user.username }}</td>
+                    <td>{{ usuario.user.email|default:usuario.user.username }}</td>
                     <td>{{ usuario.nombre_completo }}</td>
                     <td>{{ usuario.rut }}</td>
                     <td>{{ usuario.rol }}</td>
-
                     <td data-search="{% if usuario.user.is_active %}Activo{% else %}Deshabilitado{% endif %}">
                         {% if usuario.user.is_active %}
-                            <span class="estado estado-activo">
-                                Activo
-                            </span>
+                            <span class="estado estado-activo">Activo</span>
                         {% else %}
-                            <span class="estado estado-deshabilitado">
-                                Deshabilitado
-                            </span>
+                            <span class="estado estado-deshabilitado">Deshabilitado</span>
                         {% endif %}
                     </td>
-
                     <td>
                         <div class="acciones">
-                            <a href="{% url 'usuario-update' usuario.pk %}"
-                                aria-label="Editar a {{ usuario.user.username }}">
-                                <i class="bi bi-pencil-square"
-                                    aria-hidden="true"></i>
-                                Editar
-                            </a>
-
-                            <a href="{% url 'usuario-delete' usuario.pk %}"
-                                aria-label="Eliminar a {{ usuario.user.username }}">
-                                <i class="bi bi-trash"
-                                    aria-hidden="true"></i>
-                                Eliminar
-                            </a>
+                            <a href="{% url 'usuario-update' usuario.pk %}">Editar</a>
                         </div>
                     </td>
                 </tr>
                 {% endfor %}
+
+                {% for cliente in clientes %}
+                <tr>
+                    <td>{{ cliente.correo }}</td>
+                    <td>{{ cliente.nombre }} {{ cliente.apellido }}</td>
+                    <td>{{ cliente.rut }}</td>
+                    <td>Cliente</td>
+                    <td data-search="{% if cliente.usuario.is_active %}Activo{% else %}Deshabilitado{% endif %}">
+                        {% if cliente.usuario.is_active %}
+                            <span class="estado estado-activo">Activo</span>
+                        {% else %}
+                            <span class="estado estado-deshabilitado">Deshabilitado</span>
+                        {% endif %}
+                    </td>
+                    <td>—</td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
-
     </section>
 </main>
 {% endblock %}

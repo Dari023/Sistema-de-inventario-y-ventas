@@ -12,12 +12,11 @@ class UsuarioForm(forms.ModelForm):
 
     class Meta:
         model = Usuario
-        fields = ['nombre_completo', 'rut', 'telefono', 'rol']
+        fields = ['nombre_completo', 'rut', 'telefono']
         widgets = {
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre y Apellido'}),
             'rut': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '12345678-9'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
-            'rol': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def clean_rut(self):
