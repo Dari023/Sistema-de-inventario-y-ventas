@@ -1,0 +1,76 @@
+{% extends 'interna/base.html' %}
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="inventario">
+
+    <header class="inventario-cabecera">
+        <div>
+            <h1>MOVIMIENTOS</h1>
+            <p>Consulta las Entradas y Salidas de Materias Primas.</p>
+        </div>
+    </header>
+
+    <section class="inventario-panel">
+        <div class="filtro-estado">
+            <label for="filtro-movimientos-tipo">Tipo:</label>
+            <select id="filtro-movimientos-tipo">
+                <option value="">Todos</option>
+                <option value="Entrada">Entradas</option>
+                <option value="Salida">Salidas</option>
+            </select>
+        </div>
+
+        <table id="tabla-movimientos"
+               class="js-datatable"
+               data-orden="desc"
+               data-filtro-estado="filtro-movimientos-tipo"
+               data-columna-estado="2">
+
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Materia Prima</th>
+                    <th>Tipo</th>
+                    <th>Motivo</th>
+                    <th>Cantidad</th>
+                    <th>Saldo Resultante</th>
+                    <th>Responsable</th>
+                    <th>Observación</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for movimiento in movimientos %}
+                <tr>
+                    <td data-order="{{ movimiento.fecha|date:'YmdHis' }}">{{ movimiento.fecha|date:"d/m/Y H:i" }}</td>
+                    <td>{{ movimiento.materia_prima.nombre }}</td>
+                    <td data-search="{{ movimiento.get_tipo_display }}">
+                        {% if movimiento.tipo == "ENTRADA" %}
+                            <span class="estado estado-activo">Entrada</span>
+                        {% else %}
+                            <span class="estado estado-deshabilitado">Salida</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ movimiento.get_motivo_display }}</td>
+                    <td data-order="{{ movimiento.cantidad|unlocalize }}">
+                        {{ movimiento.cantidad|floatformat:"-3" }}
+                        {{ movimiento.materia_prima.unidad_de_medida }}
+                    </td>
+                    <td data-order="{{ movimiento.saldo_resultante|unlocalize }}">
+                        {{ movimiento.saldo_resultante|floatformat:"-3" }}
+                        {{ movimiento.materia_prima.unidad_de_medida }}
+                    </td>
+                    <td>{{ movimiento.responsable.username|default:"Sin responsable" }}</td>
+                    <td>{{ movimiento.observacion|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>    
+    </section>
+</main>
+{% endblock %}

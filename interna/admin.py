@@ -8,6 +8,8 @@ from usuarios.models import Usuario, Rol
 admin.site.register(Producto)
 admin.site.register(MateriaPrima)
 admin.site.register(CategoriaProducto)
+admin.site.register(Pedido)
+admin.site.register(DetallePedido)
 admin.site.register(Usuario)
 admin.site.register(Rol)
 admin.site.register(Pedido)

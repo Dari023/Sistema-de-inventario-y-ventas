@@ -42,6 +42,12 @@
                     Materias primas
                 </a>
 
+                <a href="{% url 'movimientos_listar' %}"
+                    class="{% if ruta == 'movimientos_listar' %}activo{% endif %}">
+                    <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                    Movimientos
+                </a>
+
                 <a href="{% url 'categoria_listar' %}"
                     class="{% if ruta == 'categoria_listar' or ruta == 'categoria_crear' or ruta == 'categoria_editar' %}activo{% endif %}">
                     <i class="bi bi-tags" aria-hidden="true"></i>

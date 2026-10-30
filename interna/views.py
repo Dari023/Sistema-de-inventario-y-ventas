@@ -1,11 +1,15 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.decorators.http import require_POST
-from django.contrib import messages
 from django.db import transaction
-from django.contrib.auth.decorators import (login_required, permission_required)
-from .models import Producto, ProductoMateriaPrima, MateriaPrima, CategoriaProducto
-from .forms import ProductoForm, MateriaPrimaForm, ProductoMateriaPrimaForm, CategoriaProductoForm, ProductoMateriaPrimaFormSet, FabricacionForm
+from django.contrib.auth.decorators import login_required, permission_required
+from .models import Producto, ProductoMateriaPrima, MateriaPrima, CategoriaProducto, MovimientoMateriaPrima
+from .forms import (
+    ProductoForm, 
+    MateriaPrimaForm, 
+    ProductoMateriaPrimaForm, 
+    CategoriaProductoForm, 
+    ProductoMateriaPrimaFormSet, 
+    FabricacionForm,)
 
 @login_required
 def home(request):
@@ -70,6 +74,8 @@ def producto_editar(request, pk):
     ["interna.change_producto", "interna.change_materiaprima"],
     raise_exception=True,
 )
+
+@login_required
 def producto_fabricar(request, pk):
     producto = get_object_or_404(Producto, pk=pk)
     datos = request.POST if request.method == "POST" else None
@@ -87,20 +93,20 @@ def producto_fabricar(request, pk):
                 .order_by("materia_prima_id")
             )
             if not materiales:
-                form.add_error(None, "El producto no tiene materiales asociados.")
+                form.add_error(None, "El Producto no Tiene Materiales Asociados.")
             elif any(
                 not material.materia_prima.estado
                 or material.cantidad_requerida <= 0
                 for material in materiales
             ):
-                form.add_error(None, "Revisa los materiales de la receta.")
+                form.add_error(None, "Revisa los Materiales de la Receta.")
 
             elif any(
                 material.materia_prima.cantidad_actual
                 < material.cantidad_requerida * cantidad
                 for material in materiales
             ):
-                form.add_error(None, "No hay suficientes materias primas.")
+                form.add_error(None, "No hay Suficientes Materias Primas.")
 
             else:
                 for material in materiales:
@@ -108,6 +114,19 @@ def producto_fabricar(request, pk):
                     consumo = material.cantidad_requerida * cantidad
                     materia_prima.cantidad_actual -= consumo
                     materia_prima.save(update_fields=["cantidad_actual"])
+
+                    MovimientoMateriaPrima.objects.create(
+                        materia_prima=materia_prima,
+                        tipo="SALIDA",
+                        motivo="FABRICACION",
+                        cantidad=consumo,
+                        saldo_resultante=materia_prima.cantidad_actual,
+                        responsable=request.user,
+                        observacion=(
+                            f"Fabricación de {cantidad} Unidad(es) "
+                            f"de {producto.nombre} (ID {producto.pk})."
+                        ),
+                    )
                 producto.stock_actual += cantidad
                 producto.save(update_fields=["stock_actual"])
 
@@ -131,15 +150,32 @@ def materia_prima_detalles(request, pk):
     materia_prima = get_object_or_404(MateriaPrima, pk=pk)
     return render(request, 'interna/inventario/materia_prima_detalles.html', {'materia_prima': materia_prima})
 
+@login_required
 def materia_prima_crear(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MateriaPrimaForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('materia_prima_listar')
+            with transaction.atomic():
+                materia_prima = form.save()
+                if materia_prima.cantidad_actual > 0:
+                    MovimientoMateriaPrima.objects.create(
+                        materia_prima=materia_prima,
+                        tipo="ENTRADA",
+                        motivo="INICIAL",
+                        cantidad=materia_prima.cantidad_actual,
+                        saldo_resultante=materia_prima.cantidad_actual,
+                        responsable=request.user,
+                    )
+
+            return redirect("materia_prima_listar")
     else:
         form = MateriaPrimaForm()
-    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form})
+
+    return render(
+        request,
+        "interna/inventario/materia_prima_crear.html",
+        {"form": form},
+    )
 
 def materia_prima_editar(request, pk):
     materia_prima = get_object_or_404(MateriaPrima, pk=pk)
@@ -151,6 +187,20 @@ def materia_prima_editar(request, pk):
     else:
         form = MateriaPrimaForm(instance=materia_prima)
     return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
+
+@login_required
+def movimientos_listar(request):
+    movimientos = (
+        MovimientoMateriaPrima.objects
+        .select_related("materia_prima", "responsable")
+        .all()
+    )
+
+    return render(
+        request,
+        "interna/inventario/movimientos_listar.html",
+        {"movimientos": movimientos},
+    )
 
 @login_required
 def categoria_listar(request):
