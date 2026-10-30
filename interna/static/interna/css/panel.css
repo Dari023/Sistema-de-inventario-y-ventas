@@ -168,6 +168,9 @@
     outline: 3px solid #f38a6a;
     outline-offset: 3px;
 }
+.panel-accesos-inventario {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+}
 
 @media (max-width: 768px) {
     .panel-layout {
