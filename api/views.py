@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
 from .models import Cliente
+from django.db import transaction
 
 from .serializers import (
     ProductoSerializer,
@@ -23,20 +24,24 @@ class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.all()
 
 class CarritoAPIView(APIView):
-    def get(self, request):
+    def _get_cliente(self, request):
         user = request.user if request.user.is_authenticated else User.objects.first()
-        pedido, _ = Pedido.objects.get_or_create(usuario=user, estado='pendiente')
+        return get_object_or_404(Cliente, usuario=user)
+
+    def get(self, request):
+        cliente = self._get_cliente(request)
+        pedido, _ = Pedido.objects.get_or_create(cliente=cliente, estado='pendiente')
         serializer = PedidoSerializer(pedido)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request):
-        user = request.user if request.user.is_authenticated else User.objects.first()
+        cliente = self._get_cliente(request)
         producto_id = request.data.get('producto_id')
         cantidad = int(request.data.get('cantidad', 1))
         producto = get_object_or_404(Producto, id=producto_id)
         if producto.stock_actual < cantidad:
             return Response({"error": "poco stock disponible"}, status=status.HTTP_400_BAD_REQUEST)
-        pedido, _ = Pedido.objects.get_or_create(usuario=user, estado='pendiente')
+        pedido, _ = Pedido.objects.get_or_create(cliente=cliente, estado='pendiente')
         
         detalle, creado = DetallePedido.objects.get_or_create(
             pedido=pedido,
@@ -54,8 +59,8 @@ class CarritoAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def delete(self, request):
-        user = request.user if request.user.is_authenticated else User.objects.first()
-        pedido = Pedido.objects.filter(usuario=user, estado='pendiente').first()
+        cliente = self._get_cliente(request)
+        pedido = Pedido.objects.filter(cliente=cliente, estado='pendiente').first()
         if pedido:
             producto_id = request.data.get('producto_id')
             if producto_id:
@@ -68,24 +73,34 @@ class CarritoAPIView(APIView):
         return Response({"mensaje": "se vacio el carrito"}, status=status.HTTP_200_OK)
 
 class PagarCarritoAPIView(APIView):
+    permission_classes = [IsAuthenticated]
     def post(self, request):
-        user = request.user if request.user.is_authenticated else User.objects.first()
-        pedido = get_object_or_404(Pedido, usuario=user, estado='pendiente')
+        cliente = get_object_or_404(Cliente, usuario=request.user)
+        pedido = get_object_or_404(Pedido, cliente=cliente, estado='pendiente')
         detalles = pedido.detallepedido_set.all()
         if not detalles.exists():
-            return Response({"error": "el carrito está vacio"}, status=status.HTTP_400_BAD_REQUEST)
-        for detalle in detalles:
-            producto = detalle.producto
-            if producto.stock_actual < detalle.cantidad:
-                return Response({"error": f"poco stock disponible para {producto.nombre}."}, status=status.HTTP_400_BAD_REQUEST)
-            producto.stock_actual -= detalle.cantidad
-            producto.save()
-
-        pedido.estado = 'pagado'
-        pedido.save()
-
-        return Response({"mensaje": "pago realizado con éxito"}, status=status.HTTP_200_OK)
-
+            return Response(
+                {"error": "el carrito está vacio"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        with transaction.atomic():
+            for detalle in detalles:
+                producto = detalle.producto
+                if producto.stock_actual < detalle.cantidad:
+                    return Response(
+                        {"error": f"poco stock disponible para {producto.nombre}."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                producto.stock_actual -= detalle.cantidad
+                producto.save()
+            pedido.estado = 'pagado'
+            pedido.save()
+        return Response({
+            "mensaje": "pago realizado con éxito",
+            "id_compra": str(pedido.id_compra),
+            "estado": pedido.estado
+        }, status=status.HTTP_200_OK)
+    
 class RegistroClienteView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegistroClienteSerializer
