@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const opciones = {
             pageLength: 10,
             lengthMenu: [10, 25, 50],
-            order: [[0, "asc"]],
+            order: [[0, elemento.dataset.orden || "asc"]],
 
             language: {
                 search: "Buscar:",
