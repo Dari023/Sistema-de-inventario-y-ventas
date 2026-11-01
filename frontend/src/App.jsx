@@ -7,6 +7,8 @@ import { Carrito } from "./modules/Carrito";
 import { Login } from "./modules/Login";
 import { Registro } from "./modules/Registro";
 import { MiCuenta } from "./modules/MiCuenta";
+import { Checkout } from "./modules/Checkout";
+import { CompraDetail } from "./modules/CompraDetail";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -63,6 +65,9 @@ export const App = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
           <Route path="/mi-cuenta" element={<MiCuenta />} />
+          <Route path="/carrito" element={<Carrito />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/compra/:id_compra" element={<CompraDetail />} />
         </Routes>
       </main>
 
