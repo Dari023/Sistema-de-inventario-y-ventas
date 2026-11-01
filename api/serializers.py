@@ -51,7 +51,8 @@ class PedidoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pedido
-        fields = ['id', 'cliente', 'fecha_pedido', 'estado', 'detalles', 'total']
+        exclude = ['session_key']
+        read_only_fields = ['id_compra', 'fecha_pedido', 'estado', 'cliente']
 
 class RegistroClienteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)

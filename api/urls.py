@@ -15,4 +15,5 @@ urlpatterns = [
     path('mi-cuenta/', views.MiCuentaView.as_view(), name='api_mi_cuenta'),
     path('login/', views.LoginCorreoView.as_view(), name='api_login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
+    path('compras/<uuid:id_compra>/', views.CompraDetailView.as_view(), name='compra-detail'),
 ]

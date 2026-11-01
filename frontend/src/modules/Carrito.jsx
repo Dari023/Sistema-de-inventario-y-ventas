@@ -15,15 +15,6 @@ export const Carrito = () => {
     cargarCarrito();
   }, []);
 
-  const pagar = () => {
-    api.post("carrito/pagar/")
-      .then((response) => {
-        alert(response.data.mensaje);
-        cargarCarrito();
-      })
-      .catch((error) => alert(error.response?.data?.error || "Error al pagar"));
-  };
-
   const actualizarCantidad = (producto_id, cantidad) => {
     api.post("carrito/", { producto_id: producto_id, cantidad: cantidad })
       .then(() => cargarCarrito())
@@ -50,24 +41,22 @@ export const Carrito = () => {
   return (
     <div>
       <h2>Mi Carrito</h2>
-      
       {carrito.detalles && carrito.detalles.length > 0 ? (
         <div>
           <ul>
             {carrito.detalles.map((item) => (
               <li key={item.id} style={{ marginBottom: "10px" }}>
-                <button  onClick={() => actualizarCantidad(item.producto, -1)}disabled={item.cantidad <= 1}> - </button>
+                <button onClick={() => actualizarCantidad(item.producto, -1)} disabled={item.cantidad <= 1}> - </button>
                 <span style={{ margin: "0 10px" }}>{item.cantidad}</span>
-                <button onClick={() => actualizarCantidad(item.producto, 1)}style={{ marginRight: "10px" }}> + </button>
-                <button onClick={() => eliminarProducto(item.producto)}style={{ marginLeft: "15px", color: "red", cursor: "pointer" }}>x</button>
+                <button onClick={() => actualizarCantidad(item.producto, 1)} style={{ marginRight: "10px" }}> + </button>
+                <button onClick={() => eliminarProducto(item.producto)} style={{ marginLeft: "15px", color: "red", cursor: "pointer" }}>x</button>
                 {item.producto_nombre} - Subtotal: ${item.subtotal}
               </li>
             ))}
           </ul>
 
           <h3>Total a Pagar: ${carrito.total}</h3>
-          
-          <button onClick={pagar}>Pagar Ahora</button>
+          <Link to="/checkout">Ir a pagar</Link>
           <button onClick={cancelarCompra}>vaciar Carrito</button>
         </div>
       ) : (
