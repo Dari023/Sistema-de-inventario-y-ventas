@@ -27,11 +27,11 @@
                 <a href="{% url 'home' %}"
                     class="{% if ruta == 'home' %}activo{% endif %}">
                     <i class="bi bi-house-door" aria-hidden="true"></i>
-                    Inicio
+                    Dashboard
                 </a>
 
-                <a href="{% url 'producto_listar' %}"
-                    class="{% if ruta == 'producto_listar' or ruta == 'producto_crear' or ruta == 'producto_editar' or ruta == 'producto_detalles' %}activo{% endif %}">
+                <a href="{% url 'inventario' %}"
+                    class="{% if ruta == 'inventario' or ruta == 'gestionar_materias_producto' or 'producto_' in ruta or 'materia_prima_' in ruta or 'categoria_' in ruta %}activo{% endif %}">
                     <i class="bi bi-box-seam" aria-hidden="true"></i>
                     Productos
                 </a>
@@ -55,11 +55,10 @@
                 </a>
 
                 <a href="{% url 'usuario-list' %}"
-                    class="{% if ruta == 'usuario-list' %}activo{% endif %}">
+                    class="{% if ruta == 'usuario-list' or ruta == 'usuario-create' or ruta == 'usuario-update' or ruta == 'usuario-delete' %}activo{% endif %}">
                     <i class="bi bi-people" aria-hidden="true"></i>
                     Usuarios
                 </a>
-
             </nav>
             {% endwith %}
             <div class="panel-cuenta">
@@ -79,51 +78,6 @@
     {% endif %}
 
             {% block content %}
-            <main class="inventario">
-
-                <header class="inventario-cabecera">
-                    <div>
-                        <h1>Inicio</h1>
-                        <p>Administra los productos y materiales del negocio.</p>
-                    </div>
-                </header>
-
-                <section class="panel-accesos" aria-label="Accesos rápidos">
-
-                    <a class="panel-acceso" href="{% url 'producto_listar' %}">
-                        <i class="bi bi-box-seam" aria-hidden="true"></i>
-                        <div>
-                            <strong>Productos</strong>
-                            <p>Consulta y administra tus productos.</p>
-                        </div>
-                    </a>
-
-                    <a class="panel-acceso" href="{% url 'materia_prima_listar' %}">
-                        <i class="bi bi-layers" aria-hidden="true"></i>
-                        <div>
-                            <strong>Materias primas</strong>
-                            <p>Consulta las existencias de materiales.</p>
-                        </div>
-                    </a>
-
-                    <a class="panel-acceso" href="{% url 'categoria_listar' %}">
-                        <i class="bi bi-tags" aria-hidden="true"></i>
-                        <div>
-                            <strong>Categorías</strong>
-                            <p>Organiza las categorías de productos.</p>
-                        </div>
-                    </a>
-
-                    <a class="panel-acceso" href="{% url 'usuario-list' %}">
-                        <i class="bi bi-people" aria-hidden="true"></i>
-                        <div>
-                            <strong>Usuarios</strong>
-                            <p>Consulta y administra los usuarios.</p>
-                        </div>
-                    </a>
-
-                </section>
-            </main>
             {% endblock %}
 
     {% if user.is_authenticated %}

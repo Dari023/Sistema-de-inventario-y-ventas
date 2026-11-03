@@ -1,5 +1,42 @@
 {% extends 'interna/base.html' %}
 
 {% block content %}
+<main class="inventario">
+    <header class="inventario-cabecera">
+        <div>
+            <h1>Inventario</h1>
+            <p>Administra los productos y materiales del negocio.</p>
+        </div>
+    </header>
+
+    <section class="panel-accesos panel-accesos-inventario" aria-label="Accesos de inventario">
+
+        <a class="panel-acceso" href="{% url 'producto_listar' %}">
+            <i class="bi bi-box-seam" aria-hidden="true"></i>
+            <div>
+                <strong>Productos</strong>
+                <p>Consulta y administra productos.</p>
+            </div>
+        </a>
+
+        <a class="panel-acceso" href="{% url 'materia_prima_listar' %}">
+            <i class="bi bi-layers" aria-hidden="true"></i>
+            <div>
+                <strong>Materias primas</strong>
+                <p>Consulta las existencias de materiales.</p>
+            </div>
+        </a>
+
+        <a class="panel-acceso" href="{% url 'categoria_listar' %}">
+            <i class="bi bi-tags" aria-hidden="true"></i>
+            <div>
+                <strong>Categorías</strong>
+                <p>Organiza las categorías de productos.</p>
+            </div>
+        </a>
+
+    </section>
+
+</main>
 
 {% endblock %}

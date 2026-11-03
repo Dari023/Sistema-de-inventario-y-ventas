@@ -115,12 +115,19 @@ class Pedido(models.Model):
         default='pendiente'
     )
 
+    session_key = models.CharField(max_length=40, null=True, blank=True, db_index=True)
+    nombre_invitado = models.CharField(max_length=150, null=True, blank=True)
+    rut_invitado = models.CharField(max_length=12, null=True, blank=True)
+    email_invitado = models.EmailField(null=True, blank=True)
+    telefono_invitado = models.CharField(max_length=20, null=True, blank=True)
+    direccion_invitado = models.CharField(max_length=200, null=True, blank=True)
+
     @property
     def total(self):
         return sum(item.subtotal for item in self.detallepedido_set.all())
 
     def __str__(self):
-        return f"Pedido {self.id} - {self.cliente}"
+        return f"Pedido {self.id} - {self.cliente or self.nombre_invitado or 'Invitado'}"
 
 class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)

@@ -51,8 +51,10 @@ class PedidoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pedido
-        fields = ["id", "cliente", "fecha_pedido", "estado", "detalles", "total"]
-
+        fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado",
+                  "telefono_invitado", "direccion_invitado"]
+        read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente",]
+    
 class RegistroClienteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True)
