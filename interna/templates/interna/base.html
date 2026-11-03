@@ -24,39 +24,37 @@
             {% with ruta=request.resolver_match.url_name %}
             <nav class="panel-menu" aria-label="Menú de administración">
 
-                <a href="{% url 'home' %}"
-                    class="{% if ruta == 'home' %}activo{% endif %}">
-                    <i class="bi bi-house-door" aria-hidden="true"></i>
-                    Dashboard
+                <a href="{% url 'inventario' %}"
+                    class="{% if ruta == 'inventario' %}activo{% endif %}"><i class="bi bi-house-door"></i>Inicio
                 </a>
 
-                <a href="{% url 'inventario' %}"
-                    class="{% if ruta == 'inventario' or ruta == 'gestionar_materias_producto' or 'producto_' in ruta or 'materia_prima_' in ruta or 'categoria_' in ruta %}activo{% endif %}">
-                    <i class="bi bi-box-seam" aria-hidden="true"></i>
+                <a href="{% url 'producto_listar' %}"
+                    class="{% if ruta == 'producto_listar' or ruta == 'producto_crear' or ruta == 'producti_detalles' %}activo{% endif %}">
+                    <i class="bi bi-box-seam"></i>
                     Productos
                 </a>
 
                 <a href="{% url 'materia_prima_listar' %}"
                     class="{% if ruta == 'materia_prima_listar' or ruta == 'materia_prima_crear' or ruta == 'materia_prima_editar' or ruta == 'materia_prima_detalles' %}activo{% endif %}">
-                    <i class="bi bi-layers" aria-hidden="true"></i>
-                    Materias primas
+                    <i class="bi bi-layers"></i>
+                    Materias Primas
                 </a>
 
                 <a href="{% url 'movimientos_listar' %}"
                     class="{% if ruta == 'movimientos_listar' or ruta == 'movimiento_observacion_editar' %}activo{% endif %}">
-                    <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                    <i class="bi bi-arrow-left-right"></i>
                     Movimientos
                 </a>
 
                 <a href="{% url 'categoria_listar' %}"
                     class="{% if ruta == 'categoria_listar' or ruta == 'categoria_crear' or ruta == 'categoria_editar' %}activo{% endif %}">
-                    <i class="bi bi-tags" aria-hidden="true"></i>
+                    <i class="bi bi-tags"></i>
                     Categorías
                 </a>
 
                 <a href="{% url 'usuario-list' %}"
                     class="{% if ruta == 'usuario-list' or ruta == 'usuario-create' or ruta == 'usuario-update' or ruta == 'usuario-delete' %}activo{% endif %}">
-                    <i class="bi bi-people" aria-hidden="true"></i>
+                    <i class="bi bi-people"></i>
                     Usuarios
                 </a>
             </nav>
@@ -65,15 +63,15 @@
                 <span>Hola, {{ user.username }}</span>
 
                 <a class="panel-salir" href="{% url 'logout' %}">
-                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
-                    Cerrar sesión
+                    <i class="bi bi-box-arrow-right"></i>
+                    Cerrar Sesión
                 </a>
             </div>
         </aside>
 
         <div class="panel-principal">
             <header class="panel-encabezado">
-                <strong>Panel de administración</strong>
+                <strong>Panel de Administración</strong>
             </header>
     {% endif %}
 
