@@ -2,6 +2,8 @@
 {% load static %}
 
 {% block extra_css %}
+{{ block.super }}
+<script src="{% static 'interna/js/materia_prima_editar.js' %}"></script>
 <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
 <link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
 {% endblock %}
@@ -41,7 +43,8 @@
 
             <div class="formulario-grid">
                 {% for campo in form.visible_fields %}
-                    <div class="formulario-campo{% if campo.name == 'nombre' %} formulario-campo-completo{% endif %}">
+                    <div class="formulario-campo{% if campo.name == 'nombre' or campo.name == 'observacion' %} 
+                                formulario-campo-completo{% endif %}" data-campo="{{ campo.name }}">
                         {% if campo.field.widget.input_type == 'checkbox' %}
                             <label class="formulario-checkbox" for="{{ campo.id_for_label }}">
                                 {{ campo }}
@@ -73,7 +76,7 @@
             <div class="formulario-acciones">
                 <button class="formulario-boton formulario-boton-principal" type="submit">
                     {% if materia_prima %}
-                        Actualizar Materia Prima
+                        Guardar
                     {% else %}
                         Guardar Materia Prima
                     {% endif %}

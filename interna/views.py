@@ -9,7 +9,8 @@ from .forms import (
     ProductoMateriaPrimaForm, 
     CategoriaProductoForm, 
     ProductoMateriaPrimaFormSet, 
-    FabricacionForm,)
+    FabricacionForm,
+    MovimientoObservacionForm)
 
 @login_required
 def home(request):
@@ -158,6 +159,7 @@ def materia_prima_detalles(request, pk):
 def materia_prima_crear(request):
     if request.method == "POST":
         form = MateriaPrimaForm(request.POST)
+        form.fields.pop('observacion')
         if form.is_valid():
             with transaction.atomic():
                 materia_prima = form.save()
@@ -174,6 +176,7 @@ def materia_prima_crear(request):
             return redirect("materia_prima_listar")
     else:
         form = MateriaPrimaForm()
+        form.fields.pop("observacion")
 
     return render(
         request,
@@ -181,15 +184,38 @@ def materia_prima_crear(request):
         {"form": form},
     )
 
+@login_required
+@permission_required('interna.change_materiaprima', raise_exception=True,)
+@transaction.atomic
 def materia_prima_editar(request, pk):
-    materia_prima = get_object_or_404(MateriaPrima, pk=pk)
+    consulta = MateriaPrima.objects.all()
     if request.method == 'POST':
-        form = MateriaPrimaForm(request.POST, instance=materia_prima)
-        if form.is_valid():
-            form.save()
-            return redirect('materia_prima_listar')
-    else:
-        form = MateriaPrimaForm(instance=materia_prima)
+        consulta = consulta.select_for_update()
+    materia_prima = get_object_or_404(MateriaPrima, pk=pk)
+    cantidad_anterior = materia_prima.cantidad_actual
+    datos = request.POST if request.method == 'POST' else None
+    form = MateriaPrimaForm(datos, instance=materia_prima)
+
+    form.fields['cantidad_actual'].widget.attrs.update({'data-cantidad-inicial': str(cantidad_anterior),})
+
+    if materia_prima.movimientos.exists():
+        form.fields['unidad_de_medida'].disabled = True
+
+    if request.method == 'POST' and form.is_valid():
+        materia_prima = form.save()
+        diferencia = (materia_prima.cantidad_actual - cantidad_anterior)
+
+        if diferencia !=0:
+            MovimientoMateriaPrima.objects.create(
+                materia_prima=materia_prima,
+                tipo='ENTRADA' if diferencia > 0 else 'SALIDA',
+                motivo='AJUSTE',
+                cantidad=abs(diferencia),
+                saldo_resultante=materia_prima.cantidad_actual,
+                responsable=request.user,
+                observacion=form.cleaned_data['observacion'],
+            )
+            return redirect ('materia_prima_listar')
     return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
 
 @login_required
@@ -204,6 +230,28 @@ def movimientos_listar(request):
         request,
         "interna/inventario/movimientos_listar.html",
         {"movimientos": movimientos},
+    )
+
+@login_required
+@permission_required("interna.change_movimientomateriaprima", raise_exception=True,)
+def movimiento_observacion_editar(request, pk):
+    movimiento = get_object_or_404(MovimientoMateriaPrima, pk=pk,)
+    datos = request.POST if request.method == "POST" else None
+    form = MovimientoObservacionForm(datos, instance=movimiento,)
+
+    if request.method == "POST" and form.is_valid():
+        movimiento = form.save(commit=False)
+        movimiento.save(update_fields=["observacion"])
+
+        return redirect("movimientos_listar")
+
+    return render(
+        request,
+        "interna/inventario/movimiento_observacion.html",
+        {
+            "form": form,
+            "movimiento": movimiento,
+        },
     )
 
 @login_required

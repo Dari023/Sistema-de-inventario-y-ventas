@@ -38,22 +38,23 @@ class CategoriaProductoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'imagen']        
 
 class DetallePedidoSerializer(serializers.ModelSerializer):
-    producto_nombre = serializers.ReadOnlyField(source='producto.nombre')
+    producto_nombre = serializers.ReadOnlyField(source="producto.nombre")
     subtotal = serializers.ReadOnlyField()
 
     class Meta:
         model = DetallePedido
-        fields = ['id', 'producto', 'producto_nombre', 'cantidad', 'precio_unitario', 'subtotal']
+        fields = ["id", "producto", "producto_nombre", "cantidad", "precio_unitario", "subtotal"]
 
 class PedidoSerializer(serializers.ModelSerializer):
-    detalles = DetallePedidoSerializer(source='detallepedido_set', many=True, read_only=True)
+    detalles = DetallePedidoSerializer(source="detallepedido_set", many=True, read_only=True,)
     total = serializers.ReadOnlyField()
 
     class Meta:
         model = Pedido
-        exclude = ['session_key']
-        read_only_fields = ['id_compra', 'fecha_pedido', 'estado', 'cliente']
-
+        fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado",
+                  "telefono_invitado", "direccion_invitado"]
+        read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente",]
+    
 class RegistroClienteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True)

@@ -66,7 +66,20 @@
                         {{ movimiento.materia_prima.unidad_de_medida }}
                     </td>
                     <td>{{ movimiento.responsable.username|default:"Sin responsable" }}</td>
-                    <td>{{ movimiento.observacion|default:"—" }}</td>
+                    <td data-search="{{ movimiento.observacion }}">
+                        <p class="movimiento-observacion-texto">{{ movimiento.observacion|default:"—" }}</p>
+                        {% if perms.interna.change_movimientomateriaprima %}
+                            <div class="acciones">
+                                <a href="{% url 'movimiento_observacion_editar' movimiento.pk %}">
+                                    {% if movimiento.observacion %}
+                                        Editar
+                                    {% else %}
+                                        Agregar
+                                    {% endif %}
+                                </a>
+                            </div>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

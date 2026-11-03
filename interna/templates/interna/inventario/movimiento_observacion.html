@@ -1,0 +1,45 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="inventario formulario-contenedor">
+
+    <header class="inventario-cabecera">
+        <div>
+            <h1>EDITAR OBSERVACIÓN</h1>
+            <p>
+                {{ movimiento.materia_prima.nombre }}
+                · {{ movimiento.fecha|date:"d/m/Y H:i" }}
+                · {{ movimiento.get_tipo_display }}
+            </p>
+        </div>
+    </header>
+
+    <section class="inventario-panel">
+        <form class="formulario" method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="formulario-errores">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="formulario-campo">
+                <label for="{{ form.observacion.id_for_label }}">{{ form.observacion.label }}</label>
+                {{ form.observacion }}
+                {% if form.observacion.errors %}
+                    <div class="formulario-error-campo">{{ form.observacion.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="formulario-acciones">
+                <button type="submit" class="formulario-boton formulario-boton-principal">Guardar</button>
+                <a class="formulario-boton formulario-boton-secundario" href="{% url 'movimientos_listar' %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+
+</main>
+{% endblock %}
