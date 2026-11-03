@@ -192,3 +192,8 @@ body {
 .inventario .estado {
     vertical-align: middle;
 }
+
+.movimiento-observacion-texto {
+    margin: 0 0 0.5rem;
+    overflow-wrap: anywhere;
+}

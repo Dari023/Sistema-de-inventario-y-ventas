@@ -1,8 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
     const lista = document.getElementById("lista-materiales");
-
     if (!lista) return;
-
     const plantilla = document.getElementById("material-vacio");
     const total = document.getElementById("id_materiales-TOTAL_FORMS");
     const botonAgregar = document.getElementById("agregar-material");

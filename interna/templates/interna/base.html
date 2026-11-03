@@ -43,7 +43,7 @@
                 </a>
 
                 <a href="{% url 'movimientos_listar' %}"
-                    class="{% if ruta == 'movimientos_listar' %}activo{% endif %}">
+                    class="{% if ruta == 'movimientos_listar' or ruta == 'movimiento_observacion_editar' %}activo{% endif %}">
                     <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
                     Movimientos
                 </a>

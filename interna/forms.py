@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.forms import BaseInlineFormSet, inlineformset_factory
-from .models import Producto, MateriaPrima, ProductoMateriaPrima, CategoriaProducto
+from .models import Producto, MateriaPrima, ProductoMateriaPrima, CategoriaProducto, MovimientoMateriaPrima
 
 class ProductoForm(forms.ModelForm):
     class Meta:
@@ -33,6 +33,14 @@ class ProductoForm(forms.ModelForm):
             self.fields["activo"].initial = False
 
 class MateriaPrimaForm(forms.ModelForm):
+    observacion = forms.CharField(
+        label = 'Observación',
+        required = False,
+        max_length = 300,
+        help_text = 'Obligatorio cuando Modificas la Cantidad Actual',
+        widget = forms.Textarea(attrs={"rows":3})
+    )
+
     class Meta:
         model = MateriaPrima
         fields = [
@@ -41,7 +49,8 @@ class MateriaPrimaForm(forms.ModelForm):
             "cantidad_critica",
             "unidad_de_medida",
             "costo_unitario",
-            "estado"
+            "estado",
+            "observacion"
         ]
         labels = {
             "nombre": "Nombre",
@@ -65,10 +74,16 @@ class MateriaPrimaForm(forms.ModelForm):
             valor = datos.get(campo)
 
             if valor is not None and valor < 0:
-                self.add_error(
-                    campo,
-                    "El Valor no Puede ser Negativo.",
-                )
+                self.add_error(campo, 'El Valor no Puede ser Negativo')
+
+        cantidad_nueva = datos.get('cantidad_actual')
+        if (
+            self.instance.pk
+            and cantidad_nueva is not None
+            and cantidad_nueva != self.instance.cantidad_actual
+            and not datos.get('observacion')
+        ):
+            self.add_error('observacion', 'Explica Por Qué Estas Modificando el Stock')
 
         return datos
 
@@ -163,3 +178,23 @@ class FabricacionForm(forms.Form):
         label="Unidades fabricadas",
         min_value=1,
     )
+
+class MovimientoObservacionForm(forms.ModelForm):
+    class Meta:
+        model = MovimientoMateriaPrima
+        fields = ["observacion"]
+        labels = {"observacion": "Observación",}
+        widgets = {
+            "observacion": forms.Textarea(
+                attrs={"rows": 4}
+            ),
+        }
+
+    def clean_observacion(self):
+        observacion = self.cleaned_data["observacion"]
+
+        if self.instance.motivo == "AJUSTE" and not observacion:
+            raise forms.ValidationError(
+                "Los Ajustes deben Conservar una Explicación."
+            )
+        return observacion
