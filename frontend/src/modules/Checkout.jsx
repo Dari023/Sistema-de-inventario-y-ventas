@@ -53,9 +53,17 @@ export const Checkout = () => {
 
     setEnviando(true);
     try {
-      const { data } = await api.post("carrito/pagar/", payload);
-      toast.success("Compra confirmada");
-      navigate(`/compra/${data.id_compra}`);
+      const { data } = await api.post("webpay/iniciar/", payload);
+      const formWebpay = document.createElement("form");
+      formWebpay.method = "POST";
+      formWebpay.action = data.url;
+      const inputToken = document.createElement("input");
+      inputToken.type = "hidden";
+      inputToken.name = "token_ws";
+      inputToken.value = data.token;
+      formWebpay.appendChild(inputToken);
+      document.body.appendChild(formWebpay);
+      formWebpay.submit();
     } catch (error) {
       toast.error(error.response?.data?.error || "Error al pagar");
       setEnviando(false);
@@ -110,7 +118,7 @@ export const Checkout = () => {
       </section>
 
       <button type="submit" disabled={enviando}>
-        {enviando ? "Procesando..." : "Confirmar pago"}
+        {enviando ? "Redirigiendo a Webpay..." : "Pagar con Webpay"}
       </button>
     </form>
   );

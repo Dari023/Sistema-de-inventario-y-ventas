@@ -10,10 +10,11 @@ router.register(r'categorias', views.CategoriaProductoViewSet, basename='categor
 urlpatterns = [
     path('', include(router.urls)),
     path('carrito/', views.CarritoAPIView.as_view(), name='api_carrito'),
-    path('carrito/pagar/', views.PagarCarritoAPIView.as_view(), name='api_pagar_carrito'),
     path('registro/', views.RegistroClienteView.as_view(), name='api_registro'),
     path('mi-cuenta/', views.MiCuentaView.as_view(), name='api_mi_cuenta'),
     path('login/', views.LoginCorreoView.as_view(), name='api_login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='api_token_refresh'),
     path('compras/<uuid:id_compra>/', views.CompraDetailView.as_view(), name='compra-detail'),
+    path('webpay/iniciar/', views.WebpayIniciarView.as_view(), name='api_webpay_iniciar'),
+    path('webpay/retorno/', views.WebpayRetornoView.as_view(), name='api_webpay_retorno'),
 ]

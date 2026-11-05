@@ -3,9 +3,13 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.conf import settings
+from transbank.webpay.webpay_plus.transaction import Transaction as WpTx
+from transbank.common.integration_commerce_codes import IntegrationCommerceCodes
+from transbank.common.integration_api_keys import IntegrationApiKeys
 
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
 
@@ -48,6 +52,15 @@ def obtener_carrito(request, crear=False):
 
     return Pedido.objects.filter(**filtros).first()
 
+def _webpay_tx():
+    cc = getattr(settings, 'WEBPAY_COMMERCE_CODE', '')
+    key = getattr(settings, 'WEBPAY_API_KEY', '')
+    if getattr(settings, 'WEBPAY_ENV', 'integration') == 'production' and cc and key:
+        return WpTx.build_for_production(cc, key)
+    return WpTx.build_for_integration(
+        IntegrationCommerceCodes.WEBPAY_PLUS,
+        IntegrationApiKeys.WEBPAY,
+    )
 
 class CarritoAPIView(APIView):
     permission_classes = [AllowAny]
@@ -131,108 +144,83 @@ class CarritoAPIView(APIView):
         pedido.detallepedido_set.all().delete()
         return Response({"mensaje": "Se Vació el Carrito."})
 
-class PagarCarritoAPIView(APIView):
+class WebpayIniciarView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
         pedido = obtener_carrito(request)
-
-        if pedido is None:
-            return Response(
-                {"error": "El Carrito Está Vacío."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        datos_invitado = {}
-
+        if not pedido.detallepedido_set.exists():
+            return Response({"error": "el carrito está vacío"}, status=status.HTTP_400_BAD_REQUEST)
         if not request.user.is_authenticated:
             campos = {
-                "nombre_invitado": "nombre",
-                "rut_invitado": "RUT",
-                "email_invitado": "correo",
-                "telefono_invitado": "teléfono",
-                "direccion_invitado": "dirección",
+                'nombre_invitado': 'nombre', 'rut_invitado': 'RUT',
+                'email_invitado': 'email', 'telefono_invitado': 'teléfono',
+                'direccion_invitado': 'dirección',
             }
-
-            faltantes = []
-
-            for campo, etiqueta in campos.items():
-                valor = request.data.get(campo)
-
-                if not isinstance(valor, str) or not valor.strip():
-                    faltantes.append(etiqueta)
-                else:
-                    datos_invitado[campo] = valor.strip()
-
+            faltantes = [label for campo, label in campos.items() if not str(request.data.get(campo) or '').strip()]
             if faltantes:
-                return Response(
-                    {"error": f"Faltan campos: {', '.join(faltantes)}."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return Response({"error": f"Faltan campos: {', '.join(faltantes)}"}, status=status.HTTP_400_BAD_REQUEST)
+            for campo in campos:
+                setattr(pedido, campo, str(request.data[campo]).strip())
+            pedido.save()
+
+        return_url = getattr(settings, 'WEBPAY_RETURN_URL', 'http://localhost:8000/api/webpay/retorno/')
+        try:
+            resp = _webpay_tx().create(
+                buy_order=f"pedido-{pedido.id}",
+                session_id=str(pedido.id_compra),
+                amount=int(pedido.total),
+                return_url=return_url,
+            )
+            return Response({"url": resp['url'], "token": resp['token']})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class WebpayRetornoView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = [] 
+
+    def post(self, request):
+        return self._procesar_retorno(request)
+
+    def get(self, request):
+        return self._procesar_retorno(request)
+
+    def _procesar_retorno(self, request):
+        frontend = getattr(settings, 'WEBPAY_FRONTEND_URL', 'http://localhost:5173')
+        params = request.POST if request.method == 'POST' else request.GET
+        token = params.get('token_ws')
+        if not token:
+            return redirect(f"{frontend}/carrito?pago=cancelado")
+        try:
+            resp = _webpay_tx().commit(token)
+        except Exception:
+            return redirect(f"{frontend}/carrito?pago=error")
+        if resp.get('response_code') != 0:
+            return redirect(f"{frontend}/carrito?pago=rechazado")
+        buy_order = str(resp.get('buy_order') or '')
+        try:
+            pedido = Pedido.objects.get(
+                pk=int(buy_order.replace('pedido-', '')),
+            )
+        except (TypeError, ValueError, Pedido.DoesNotExist):
+            return redirect(f"{frontend}/carrito?pago=error")
+        if pedido.estado == 'pagado':
+            return redirect(f"{frontend}/compra/{pedido.id_compra}")
+        if pedido.estado != 'pendiente':
+            return redirect(f"{frontend}/carrito?pago=error")
 
         with transaction.atomic():
-            pedido = get_object_or_404(
-                Pedido.objects.select_for_update(),
-                pk=pedido.pk,
-            )
-
-            if pedido.estado != "pendiente":
-                return Response(
-                    {"error": "Este Pedido ya fue Procesado."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            detalles = list(
-                pedido.detallepedido_set
-                .select_related("producto")
-                .select_for_update()
-                .order_by("producto_id")
-            )
-
-            if not detalles:
-                return Response(
-                    {"error": "El Carrito Está Vacío."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            for detalle in detalles:
-                if detalle.cantidad <= 0:
-                    return Response(
-                        {"error": "El carrito contiene una cantidad inválida."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-                if detalle.producto.stock_actual < detalle.cantidad:
-                    return Response(
-                        {
-                            "error": (
-                                f"No hay Suficiente Stock para "
-                                f"{detalle.producto.nombre}."
-                            )
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-            for detalle in detalles:
-                producto = detalle.producto
-                producto.stock_actual -= detalle.cantidad
-                producto.save(update_fields=["stock_actual"])
-
-            pedido.estado = "pagado"
-
-            for campo, valor in datos_invitado.items():
-                setattr(pedido, campo, valor)
-
-            pedido.save(
-                update_fields=["estado"] + list(datos_invitado)
-            )
-
-        return Response({
-            "mensaje": "Pago Realizado con Éxito.",
-            "id_compra": str(pedido.id_compra),
-            "id_pedido": pedido.pk,
-            "estado": pedido.estado,
-        })
+            for detalle in pedido.detallepedido_set.select_related('producto'):
+                prod = detalle.producto
+                if prod.stock_actual < detalle.cantidad:
+                    return redirect(f"{frontend}/carrito?pago=sin-stock")
+                prod.stock_actual -= detalle.cantidad
+                prod.save(update_fields=['stock_actual'])
+            pedido.estado = 'pagado'
+            pedido.save()
+        return redirect(f"{frontend}/compra/{pedido.id_compra}")    
 
 class CompraDetailView(APIView):
     permission_classes = [AllowAny]
