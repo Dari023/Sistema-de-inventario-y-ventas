@@ -14,7 +14,7 @@
             <h1>MATERIAS PRIMAS</h1>
             <p>Consulta y Administra las Materias Primas de la Tienda.</p>
         </div>
-        <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}" style="margin-right:-26rem;">Volver Atrás</a>
+        <a class="detalle-boton detalle-boton-secundario" href="{% url 'inventario' %}" style="margin-right:-26rem;">Volver Atrás</a>
         <a class="boton-crear" href="{% url 'materia_prima_crear' %}">Crear MP </a>
     </header>
 
@@ -29,7 +29,7 @@
         </div>
 
         <table id="tabla-productos"
-               class="js-datatable"
+            class="js-datatable"
                data-filtro-estado="filtro-estado"
                data-columna-estado="4"
                data-columna-acciones="5">
