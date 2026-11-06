@@ -17,4 +17,5 @@ urlpatterns = [
     path('compras/<uuid:id_compra>/', views.CompraDetailView.as_view(), name='compra-detail'),
     path('webpay/iniciar/', views.WebpayIniciarView.as_view(), name='api_webpay_iniciar'),
     path('webpay/retorno/', views.WebpayRetornoView.as_view(), name='api_webpay_retorno'),
+    path('mi-cuenta/pedidos/', views.HistorialPedidosView.as_view(), name='api_historial_pedidos'),
 ]

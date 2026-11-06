@@ -268,3 +268,18 @@ class CategoriaProductoViewSet(viewsets.ReadOnlyModelViewSet):
 
 class LoginCorreoView(TokenObtainPairView):
     serializer_class = LoginCorreoSerializer
+
+class HistorialPedidosView(generics.ListAPIView):
+    serializer_class = PedidoSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            Pedido.objects
+            .filter(
+                cliente__usuario=self.request.user,
+                estado="pagado",
+            )
+            .prefetch_related("detallepedido_set__producto")
+            .order_by("-fecha_pedido")
+        )
