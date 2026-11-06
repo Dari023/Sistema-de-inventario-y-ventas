@@ -14,7 +14,7 @@ from .forms import (
 
 @login_required
 def home(request):
-    return render(request, 'interna/base.html')
+    return redirect('inventario')
 
 @login_required
 def inventario(request):
