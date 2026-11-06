@@ -11,6 +11,7 @@ import { Checkout } from "./modules/Checkout";
 import { CompraDetail } from "./modules/CompraDetail";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Logo from "./assets/Logo.jpeg";
 
 export const App = () => {
   const navigate = useNavigate();
@@ -34,7 +35,14 @@ export const App = () => {
       <header className="tienda-cabecera">
         <div className="container py-3">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <Link to="/" className="tienda-marca">Amigos del Vuelo</Link>
+            <Link to="/" className="tienda-marca">
+              <img
+                src={Logo}
+                alt="Logo Amigos del Vuelo"
+                className="tienda-logo"
+              />
+              <span>Amigos del Vuelo</span>
+            </Link>
             <nav className="nav gap-2 align-items-center">
               <NavLink to="/" end className="nav-link tienda-enlace">Inicio</NavLink>
               <Link to="/catalogo" className="nav-link tienda-enlace">Catálogo</Link>
