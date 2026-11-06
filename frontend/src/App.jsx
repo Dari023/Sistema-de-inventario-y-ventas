@@ -12,6 +12,7 @@ import { CompraDetail } from "./modules/CompraDetail";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Logo from "./assets/Logo.jpeg";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export const App = () => {
   const navigate = useNavigate();
@@ -29,6 +30,23 @@ export const App = () => {
     setIsAuthenticated(false);
     navigate("/login");
   };
+
+
+  const numeroWhatsApp  = "56968571198";
+  const correoContacto = "apatadiego1@gmail.com";
+
+  const enlaceWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(
+  "Hola, quisiera consultar por sus productos artesanales."
+)}`;
+
+
+  const redesSociales = [
+    { nombre: "Instagram", icono: "bi-instagram", enlace: "" },
+    { nombre: "Facebook", icono: "bi-facebook", enlace: "" },
+    { nombre: "WhatsApp", icono: "bi-whatsapp", enlace: "enlaceWhatsApp" },
+];
+
+
   return (
     <div className="d-flex flex-column min-vh-100">
       <ToastContainer position="top-right" autoClose={2000} />
@@ -79,11 +97,88 @@ export const App = () => {
         </Routes>
       </main>
 
-      <footer className="tienda-pie py-3">
-        <div className="container text-center">
-          Amigos del Vuelo
+
+      <footer className="tienda-pie tienda-footer">
+        <div className="container">
+          <div className="tienda-footer-grid">
+
+            <div className="tienda-footer-columna">
+              <h2>Amigos del Vuelo</h2>
+              <p>
+                Artesanías hechas a mano, creadas con
+                cariño y dedicación.
+              </p>
+
+              <div className="tienda-footer-redes">
+                {redesSociales.map((red) =>
+                  red.enlace ? (
+                    <a
+                      key={red.nombre}
+                      href={red.enlace}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={red.nombre}
+                      title={red.nombre}
+                    >
+                      <i className={`bi ${red.icono}`}></i>
+                    </a>
+                  ) : (
+                    <span key={red.nombre} title={`${red.nombre}: próximamente`}>
+                      <i className={`bi ${red.icono}`}></i>
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="tienda-footer-columna">
+              <h2>Información</h2>
+
+              <div className="tienda-footer-enlaces">
+                <Link to="/catalogo">Catálogo</Link>
+                <span>Preguntas frecuentes</span>
+                <span>Envíos y retiros</span>
+                <span>Términos y condiciones</span>
+              </div>
+            </div>
+
+            <div className="tienda-footer-columna">
+              <h2>Contacto</h2>
+
+              <div className="tienda-footer-enlaces">
+                {enlaceWhatsApp ? (
+                  <a href={enlaceWhatsApp} target="_blank" rel="noopener noreferrer">
+                    <i className="bi bi-whatsapp"></i> WhatsApp
+                  </a>
+                ) : (
+                  <span><i className="bi bi-whatsapp"></i> WhatsApp</span>
+                )}
+
+                {correoContacto ? (
+                  <a href={`mailto:${correoContacto}`}>
+                    <i className="bi bi-envelope"></i> Correo electrónico
+                  </a>
+                ) : (
+                  <span><i className="bi bi-envelope"></i> Correo electrónico</span>
+                )}
+
+                <span>
+                  <i className="bi bi-geo-alt"></i> Arica, Chile
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="tienda-footer-inferior">
+            <p>
+              © {new Date().getFullYear()} Amigos del Vuelo.
+              Todos los derechos reservados.
+            </p>
+          </div>
         </div>
       </footer>
+
     </div>
   );
 };
