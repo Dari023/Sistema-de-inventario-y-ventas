@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 import { api } from "../api/Api";
 
@@ -21,29 +21,59 @@ export const Login = () => {
     };
 
     return (
-        <div>
-            <h2>Iniciar Sesión</h2>
+        <section className="registro login-tienda py-4 py-md-5">
+            <header className="mb-5">
+                <p className="registro-sobretitulo mb-2">Tu Cuenta</p>
+                <h1 className="registro-titulo mb-3">INICIA SESIÓN</h1>
+                <p className="registro-texto mb-0">
+                    Accede a tu cuenta para continuar con tus compras.
+                </p>
+            </header>
+
             <form onSubmit={handleSubmit}>
-                <div>
+                <div className="mb-4">
+                    <label htmlFor="login-email" className="form-label">
+                        Correo Electrónico
+                    </label>
                     <input
+                        id="login-email"
                         type="email"
-                        placeholder="Correo electrónico"
+                        className="form-control"
+                        placeholder="nombre@gmail.com"
                         autoComplete="email"
+                        value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
                     />
                 </div>
-                <div style={{ margin: "10px 0" }}>
+
+                <div className="mb-4">
+                    <label htmlFor="login-password" className="form-label">
+                        Contraseña
+                    </label>
                     <input
+                        id="login-password"
                         type="password"
-                        placeholder="Contraseña"
+                        className="form-control"
+                        placeholder="Ingresa tu Contraseña"
                         autoComplete="current-password"
+                        value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
                     />
                 </div>
-                <button type="submit">Ingresar</button>
+
+                <div className="registro-pie mt-5">
+                    <button type="submit" className="btn registro-boton">
+                        Iniciar Sesión
+                    </button>
+
+                    <p className="registro-texto small mb-0">
+                        ¿No tienes una Cuenta?{" "}
+                        <Link to="/registro">Regístrate</Link>
+                    </p>
+                </div>
             </form>
-        </div>
+        </section>
     );
 };
