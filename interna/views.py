@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.contrib.auth.decorators import login_required, permission_required
 from .models import Producto, ProductoMateriaPrima, MateriaPrima, CategoriaProducto, MovimientoMateriaPrima
+from django.db.models import F
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -12,9 +13,30 @@ from .forms import (
     FabricacionForm,
     MovimientoObservacionForm)
 
+
 @login_required
 def home(request):
-    return render(request, 'interna/base.html')
+    materias_criticas = list(
+        MateriaPrima.objects.filter(
+            estado=True,
+            cantidad_actual__lte=F("cantidad_critica")
+        ).order_by("nombre")
+    )
+
+    productos_criticos = list(
+        Producto.objects.filter(
+            activo=True,
+            stock_actual__lte=F("stock_critico")
+        ).order_by("nombre")
+    )
+
+    return render(request, "interna/dashboard.html", {
+        "materias_criticas": materias_criticas,
+        "productos_criticos": productos_criticos,
+        "total_alertas": len(materias_criticas) + len(productos_criticos),
+    })
+
+
 
 @login_required
 def inventario(request):

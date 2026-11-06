@@ -197,3 +197,35 @@ body {
     margin: 0 0 0.5rem;
     overflow-wrap: anywhere;
 }
+
+
+
+.inventario-panel.alertas-panel {
+    border-top-color: #dc3545;
+}
+
+.alertas-panel h2 {
+    font-size: 1.25rem;
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.alertas-panel h2 i {
+    color: #dc3545;
+    margin-right: 0.5rem;
+}
+
+.alertas-panel > p {
+    color: #726b7c;
+    margin-bottom: 1.5rem;
+}
+
+.estado-critico {
+    background: #fff0e6;
+    color: #a84816;
+}
+
+.estado-agotado {
+    background: #dc3545;
+    color: white;
+}
