@@ -4,12 +4,12 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
 <link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
+<link rel="stylesheet" href="{% static 'interna/css/precios.css' %}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/css/tom-select.css">
 {% endblock %}
 
 {% block content %}
 <main class="inventario formulario-contenedor">
-
     <header class="inventario-cabecera">
         <div>
             {% if producto %}
@@ -17,13 +17,13 @@
                 <p>Actualiza la Información de {{ producto.nombre }}.</p>
             {% else %}
                 <h1>CREAR PRODUCTO</h1>
-                <p>Completa la Información para Registrar un Producto.</p>
+                <p>Completa la Información para Registrar un Producto</p>
             {% endif %}
         </div>
     </header>
 
     <section class="inventario-panel">
-        <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios.</p>
+        <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios</p>
         <form class="formulario" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {% for campo in form.hidden_fields %}
@@ -41,6 +41,50 @@
 
             <div class="formulario-grid">
                 {% for campo in form.visible_fields %}
+                    {% if campo.name == 'precio' %}
+                        <section id='precio-sugerido' class='precio-sugerido formulario-campo-completo'
+                                data-url="{% url 'producto_precio_sugerido' %}"
+                                aria-labelledby='titulo-precio-sugerido'>
+                            <h2 id='titulo-precio-sugerido'>Precio Sugerido</h2>
+                            <p data-mensaje-precio>Completa el Tiempo de Trabajo y la Receta para Calcular la Sugerencia</p>
+                            <div data-resultado-precio hidden>
+                                <strong class='precio-sugerido-importe' data-importe='precio_sugerido'></strong>
+                                <p class='precio-nota'>
+                                    Margen: <span data-margen></span>
+                                    IVA: <span data-iva></span>
+                                </p>
+                                <details>
+                                    <summary>Ver Desglose por Unidad</summary>
+                                    <dl class='precio-desglose'>
+                                        <div><dt>Materias Primas</dt><dd data-importe='materiales'></dd></div>
+                                        <div><dt>Mano de Obra</dt><dd data-importe='mano_obra'></dd></div>
+                                        <div><dt>Bolsa</dt><dd data-importe='bolsa'></dd></div>
+                                        <div><dt>Stickers</dt><dd data-importe='stickers'></dd></div>
+                                        <div><dt>Costo Total</dt><dd data-importe='costo_total'></dd></div>
+                                        <div><dt>Precio sin IVA</dt><dd data-importe='precio_sin_iva'></dd></div>
+                                        <div><dt>Comisión Estimada</dt><dd data-importe='comision'></dd></div>
+                                    </dl>
+                                    <p class='precio-nota'>
+                                        El margen se calcula antes de descontar la comisión.
+                                        La comisión se informa por separado y no se suma al precio sugerido.
+                                        Los cálculos conservan decimales y los importes se muestran redondeados al peso.
+                                    </p>
+                                </details>
+                                <button type='button' data-usar-precio disabled 
+                                class='formulario-boton formulario-boton-secundario'>
+                                    Usar Precio Sugerido
+                                </button>
+                            </div>
+                            {% if perms.interna.change_configuracionprecio %}
+                                <a class='precio-configuracion-enlace' href="{% url 'configuracion_precio_editar' %}"
+                                    target='_blank' rel='noopener'>
+                                    Configurar Fórmula de Precios
+                                </a>
+                                <span class='precio-nota'>Abre otra Pestaña</span>
+                            {% endif %}
+                        </section>
+                    {% endif %}
+
                     <div class="formulario-campo{% if campo.name == 'descripcion' or campo.name == 'imagen' %} formulario-campo-completo{% endif %}">
                         {% if campo.field.widget.input_type == 'checkbox' %}
                             <label class="formulario-checkbox" for="{{ campo.id_for_label }}" style="margin-top: 1.55rem;">
@@ -107,6 +151,7 @@
 
     {% block extra_js %}
         <script src="https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/js/tom-select.complete.min.js"></script>
+        <script src="{% static 'interna/js/producto_precios.js' %}"></script>
         <script src="{% static 'interna/js/producto_materiales.js' %}"></script>
     {% endblock %}
 
