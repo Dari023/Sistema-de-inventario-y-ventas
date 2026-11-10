@@ -13,7 +13,7 @@ from transbank.webpay.webpay_plus.transaction import Transaction as WpTx
 from transbank.common.integration_commerce_codes import IntegrationCommerceCodes
 from transbank.common.integration_api_keys import IntegrationApiKeys
 from uuid import UUID
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente
 from .models import Cliente
 from .serializers import (
     ProductoSerializer,
@@ -23,7 +23,8 @@ from .serializers import (
     LoginCorreoSerializer,
     MiCuentaSerializer,
     ResenaCrearSerializer,
-    ResenaPublicaSerializer
+    ResenaPublicaSerializer,
+    PreguntaFrecuenteSerializer
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -374,3 +375,15 @@ class ResenasProductoView(APIView):
             'promedio': promedio,
             'resenas': serializer.data,
         })
+
+class PreguntasFrecuentesView(generics.ListAPIView):
+    serializer_class = PreguntaFrecuenteSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    pagination_class = None
+
+    queryset = (
+        PreguntaFrecuente.objects
+        .filter(activo=True)
+        .order_by('orden', 'pk')
+    )

@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseBadRequest
 from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
@@ -12,7 +12,9 @@ from .models import (Producto,
     MateriaPrima, 
     CategoriaProducto, 
     MovimientoMateriaPrima, 
-    ConfiguracionPrecio)
+    ConfiguracionPrecio,
+    Resena,
+    PreguntaFrecuente)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -23,7 +25,8 @@ from .forms import (
     MovimientoObservacionForm,
     ConfiguracionPrecioForm,
     PrecioMaterialesFormSet,
-    TiempoPrecioForm)
+    TiempoPrecioForm,
+    PreguntaFrecuenteForm)
 
 @login_required
 def home(request):
@@ -457,3 +460,100 @@ def calcular_sugerencia(minutos, materiales, configuracion):
         'margen': margen,
         'iva': iva,
     }
+
+@login_required
+@permission_required('interna.view_resena', raise_exception=True)
+def resenas_listar(request):
+    resenas = (Resena.objects
+        .select_related('producto', 'pedido')
+        .order_by('-fecha_creacion', '-pk')
+    )
+
+    return render(request, 'interna/inventario/resenas_listar.html',{'resenas': resenas})
+
+@login_required
+@permission_required(('interna.view_resena', 'interna.change_resena'),raise_exception=True)
+
+@require_POST
+def resena_estado_cambiar(request, pk):
+    resena = get_object_or_404(Resena, pk=pk)
+    accion = request.POST.get('accion')
+
+    if accion == 'deshabilitar':
+        resena.activo = False
+    elif accion == 'reactivar':
+        resena.activo = True
+    else:
+        return HttpResponseBadRequest('La Acción no es Válida')
+
+    resena.save(update_fields=['activo'])
+
+    return redirect('resenas_listar')
+
+@login_required
+@permission_required('interna.view_preguntafrecuente', raise_exception=True)
+def preguntas_frecuentes_listar(request):
+    preguntas = PreguntaFrecuente.objects.all()
+    estado = request.GET.get('estado', '')
+
+    if estado == 'activas':
+        preguntas = preguntas.filter(activo=True)
+    elif estado == 'deshabilitadas':
+        preguntas = preguntas.filter(activo=False)
+
+    return render(
+        request,
+        'interna/inventario/preguntas_listar.html',
+        {
+            'preguntas': preguntas,
+            'estado': estado,
+        },
+    )
+
+@login_required
+@permission_required('interna.add_preguntafrecuente', raise_exception=True)
+def pregunta_frecuente_crear(request):
+    if request.method == 'POST':
+        form = PreguntaFrecuenteForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect('preguntas_frecuentes_listar')
+    else:
+        form = PreguntaFrecuenteForm()
+
+    return render(request, 'interna/inventario/pregunta_formulario.html', {"form": form})
+
+@login_required
+@permission_required('interna.change_preguntafrecuente', raise_exception=True)
+def pregunta_frecuente_editar(request, pk):
+    pregunta = get_object_or_404(PreguntaFrecuente, pk=pk)
+
+    if request.method == 'POST':
+        form = PreguntaFrecuenteForm(request.POST, instance=pregunta)
+
+        if form.is_valid():
+            form.save()
+            return redirect('preguntas_frecuentes_listar')
+    else:
+        form = PreguntaFrecuenteForm(instance=pregunta)
+
+    return render(request, 'interna/inventario/pregunta_formulario.html',{'form': form, 'pregunta': pregunta,})
+
+@login_required
+@permission_required('interna.change_preguntafrecuente',raise_exception=True)
+@require_POST
+def pregunta_frecuente_estado(request, pk):
+    pregunta = get_object_or_404(PreguntaFrecuente, pk=pk)
+    accion = request.POST.get('accion')
+
+    if accion == 'deshabilitar':
+        pregunta.activo = False
+    elif accion == 'reactivar':
+        pregunta.activo = True
+    else:
+        return HttpResponseBadRequest('La Acción no es Válida')
+
+    pregunta.save(update_fields=['activo'])
+
+    return redirect('preguntas_frecuentes_listar')

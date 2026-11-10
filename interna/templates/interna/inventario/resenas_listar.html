@@ -1,0 +1,110 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+<link rel='stylesheet' href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>RESEÑAS</h1>
+            <p>Consulta las valoraciones y administra su visibilidad en la tienda</p>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+
+        <div class='filtro-estado'>
+            <label for='filtro-resenas-estado'>Estado:</label>
+
+            <select id='filtro-resenas-estado'>
+                <option value=''>Todos</option>
+                <option value='Activa'>Activas</option>
+                <option value='Deshabilitada'>Deshabilitadas</option>
+            </select>
+        </div>
+
+        <table id='tabla-resenas' class='js-datatable'
+               data-orden='desc'
+               data-filtro-estado='filtro-resenas-estado'
+               data-columna-estado='5'>
+
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Producto</th>
+                    <th>Pedido</th>
+                    <th>Calificación</th>
+                    <th>Comentario</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for resena in resenas %}
+                    <tr>
+                        <td data-order="{{ resena.fecha_creacion|date:'YmdHis' }}">
+                            {{ resena.fecha_creacion|date:'d/m/Y H:i' }}
+                        </td>
+                        <td>{{ resena.producto.nombre }}</td>
+                        <td>{{ resena.pedido_id }}</td>
+                        <td data-order='{{ resena.calificacion }}'>
+                            {{ resena.calificacion }} / 5
+                        </td>
+                        <td style='max-width: 24rem; white-space: pre-wrap; overflow-wrap: anywhere;'>{{ resena.comentario }}</td>
+
+                        {% if resena.activo %}
+                            <td data-search='Activa'>
+                                <span class='estado estado-activo'>
+                                    Activa
+                                </span>
+                            </td>
+                        {% else %}
+                            <td data-search='Deshabilitada'>
+                                <span class='estado estado-deshabilitado'>
+                                    Deshabilitada
+                                </span>
+                            </td>
+                        {% endif %}
+
+                        <td>
+                            {% if perms.interna.change_resena %}
+                                <form method='post' action="{% url 'resena_estado_cambiar' resena.pk %}">
+                                    {% csrf_token %}
+                                    {% if resena.activo %}
+                                        <button type='submit'
+                                                name='accion'
+                                                value='deshabilitar'
+                                                class='formulario-boton formulario-boton-secundario'>
+                                            Deshabilitar
+                                        </button>
+                                    {% else %}
+                                        <button type='submit'
+                                                name='accion'
+                                                value='reactivar'
+                                                class='formulario-boton formulario-boton-secundario'>
+                                            Reactivar
+                                        </button>
+                                    {% endif %}
+                                </form>
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if not resenas %}
+            <p>Todavía no hay Reseñas Registradas</p>
+        {% endif %}
+
+    </section>
+</main>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>PREGUNTAS FRECUENTES</h1>
+            <p>Administra las preguntas y respuestas que aparecen en Inicio</p>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+
+        <div class='faq-admin-herramientas'>
+            {% if perms.interna.add_preguntafrecuente %}
+                <a href="{% url 'pregunta_frecuente_crear' %}" class='formulario-boton formulario-boton-principal'>
+                    Agregar pregunta frecuente
+                </a>
+            {% endif %}
+
+            <form method='get' class='faq-admin-filtro'>
+                <label for='estado-faq'>Estado:</label>
+
+                <select name='estado' id='estado-faq'>
+                    <option value=''>Todas</option>
+
+                    <option value='activas' {% if estado == 'activas' %}selected{% endif %}>
+                        Activas
+                    </option>
+
+                    <option value='deshabilitadas' {% if estado == 'deshabilitadas' %}selected{% endif %}>
+                        Deshabilitadas
+                    </option>
+                </select>
+
+                <button type='submit' class='formulario-boton formulario-boton-secundario'>
+                    Filtrar
+                </button>
+            </form>
+        </div>
+
+        <div class='faq-admin-lista'>
+            {% for pregunta in preguntas %}
+                <article class='faq-admin-tarjeta'>
+
+                    <details>
+                        <summary>
+                            {{ pregunta.pregunta }}
+
+                            {% if pregunta.activo %}
+                                <span class='estado estado-activo'>
+                                    Activa
+                                </span>
+                            {% else %}
+                                <span class='estado estado-deshabilitado'>
+                                    Deshabilitada
+                                </span>
+                            {% endif %}
+                        </summary>
+
+                        <div class='faq-admin-respuesta'>
+                            {{ pregunta.respuesta|linebreaksbr }}
+                        </div>
+                    </details>
+
+                    <div class='faq-admin-pie'>
+                        <span>Orden: {{ pregunta.orden }}</span>
+
+                        {% if perms.interna.change_preguntafrecuente %}
+                            <div class='faq-admin-acciones'>
+                                <a href="{% url 'pregunta_frecuente_editar' pregunta.pk %}"
+                                   class='formulario-boton formulario-boton-secundario'>
+                                    Editar
+                                </a>
+
+                                <form method='post'
+                                      action="{% url 'pregunta_frecuente_estado' pregunta.pk %}">
+                                    {% csrf_token %}
+
+                                    {% if pregunta.activo %}
+                                        <button type='submit'
+                                                name='accion'
+                                                value='deshabilitar'
+                                                class='formulario-boton formulario-boton-secundario'>
+                                            Deshabilitar
+                                        </button>
+                                    {% else %}
+                                        <button type='submit'
+                                                name='accion'
+                                                value='reactivar'
+                                                class='formulario-boton formulario-boton-secundario'>
+                                            Reactivar
+                                        </button>
+                                    {% endif %}
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                </article>
+            {% empty %}
+                <p>No hay Preguntas Frecuentes para Mostrar</p>
+            {% endfor %}
+        </div>
+
+    </section>
+</main>
+{% endblock %}

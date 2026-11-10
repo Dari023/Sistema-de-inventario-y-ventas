@@ -19,5 +19,6 @@ urlpatterns = [
     path('webpay/retorno/', views.WebpayRetornoView.as_view(), name='api_webpay_retorno'),
     path('mi-cuenta/pedidos/', views.HistorialPedidosView.as_view(), name='api_historial_pedidos'),
     path('resenas/<str:token>/', views.ResenaCompraView.as_view(), name='api_resena_compra'),
-    path('productos/<int:pk>/resenas/', views.ResenasProductoView.as_view(), name='api_resenas_producto')
+    path('productos/<int:pk>/resenas/', views.ResenasProductoView.as_view(), name='api_resenas_producto'),
+    path('preguntas-frecuentes/', views.PreguntasFrecuentesView.as_view(), name='api_preguntas_frecuentes')
 ]

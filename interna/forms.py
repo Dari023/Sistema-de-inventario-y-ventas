@@ -9,7 +9,8 @@ from .models import (Producto,
     ProductoMateriaPrima, 
     CategoriaProducto, 
     MovimientoMateriaPrima, 
-    ConfiguracionPrecio)
+    ConfiguracionPrecio,
+    PreguntaFrecuente)
 
 class ProductoForm(forms.ModelForm):
     tiempo_fabricacion_minutos = forms.IntegerField(
@@ -289,4 +290,30 @@ class ConfiguracionPrecioForm(forms.ModelForm):
             'costo_bolsa': 'Usa 0 si este costo ya está incluido en la receta',
             'costo_stickers': 'Usa 0 si este costo ya está incluido en la receta',
             'porcentaje_comision': 'Ingresa la comisión real de tu medio de pago'
+        }
+
+class PreguntaFrecuenteForm(forms.ModelForm):
+    class Meta:
+        model = PreguntaFrecuente
+
+        fields = [
+            'pregunta',
+            'respuesta',
+            'orden',
+            'activo',
+        ]
+
+        labels = {
+            'pregunta': 'Pregunta',
+            'respuesta': 'Respuesta',
+            'orden': 'Orden de aparición',
+            'activo': 'Activa'
+        }
+
+        help_texts = {
+            'orden': 'Los números menores aparecen primero'
+        }
+
+        widgets = {
+            'respuesta': forms.Textarea(attrs={'rows': 6})
         }
