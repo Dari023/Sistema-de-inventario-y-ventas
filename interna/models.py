@@ -162,8 +162,6 @@ class ConfiguracionPrecio(models.Model):
     comision_afecta_iva = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = 'Configuración de Precios'
-        verbose_name_plural = 'Configuración de Precios'
         constraints = [
             models.CheckConstraint(condition=models.Q(id=1), name='configuracion_precio_unica')
         ]
@@ -181,8 +179,6 @@ class Resena(models.Model):
 
     class Meta:
         ordering = ['-fecha_creacion', '-pk']
-        verbose_name = 'Reseña'
-        verbose_name_plural = 'Reseñas'
         constraints = [
             models.UniqueConstraint(fields=['pedido', 'producto'], name='resena_unica_producto_pedido'),
             models.CheckConstraint(
@@ -199,3 +195,15 @@ class Resena(models.Model):
             f"{self.producto.nombre} — "
             f"{self.calificacion}/5 — Pedido {self.pedido_id}"
         )
+
+class PreguntaFrecuente(models.Model):
+    pregunta = models.CharField(max_length=250)
+    respuesta = models.TextField(max_length=3000)
+    orden = models.PositiveIntegerField(default=1)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['orden', 'pk']
+
+    def __str__(self):
+        return self.pregunta
