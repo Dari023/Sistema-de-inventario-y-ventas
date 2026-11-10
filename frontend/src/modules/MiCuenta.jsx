@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api } from "../api/Api";
+import { Pedidos } from "./Pedidos";
 
 export const MiCuenta = () => {
   const [cuenta, setCuenta] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const navigate = useNavigate();
-  const [pedidos, setPedidos] = useState(null);
+  const [seccion, setSeccion] = useState("cuenta");
 
   useEffect(() => {
     api.get("mi-cuenta/")
@@ -28,12 +29,6 @@ export const MiCuenta = () => {
         setCargando(false);
       });
   }, [navigate]);
-
-  useEffect(() => {
-  api.get("mi-cuenta/pedidos/")
-    .then((response) => setPedidos(response.data))
-    .catch(() => setPedidos([]));
-  }, []);
 
   const cambiarCampo = (e) => {
     setCuenta({
@@ -92,6 +87,21 @@ export const MiCuenta = () => {
         <p className="registro-texto mb-0">Consulta y Actualiza tus Datos.</p>
       </header>
 
+      <div className="row">
+        <aside className="col-md-3">
+          <div className="list-group">
+            <button type="button" className={`list-group-item list-group-item-action ${seccion === "cuenta" ? "active" : ""}`} onClick={() => setSeccion("cuenta")}>
+              Mi Cuenta
+            </button>
+            <button type="button" className={`list-group-item list-group-item-action ${seccion === "pedidos" ? "active" : ""}`} onClick={() => setSeccion("pedidos")}>
+              Pedidos
+            </button>
+          </div>
+        </aside>
+        
+      <div className="col-md-9">
+      {seccion === "cuenta" && (
+      <>
       <dl className="row g-3 mb-5">
         <div className="col-md-6">
           <dt className="small registro-texto">RUT</dt>
@@ -195,33 +205,12 @@ export const MiCuenta = () => {
           <Link to="/catalogo">Volver al Catálogo</Link>
         </div>
       </form>
-      <section className="mt-5">
-        <h2 className="h4 mb-3">Mis Pedidos</h2>
-        {pedidos === null && (<p className="text-muted">Cargando Pedidos...</p>)}
-        {pedidos && pedidos.length === 0 && (<p className="text-muted">Aún no Tienes Pedidos.</p>)}
-        {pedidos && pedidos.length > 0 && (
-          <div className="list-group">
-            {pedidos.map((p) => (
-              <Link key={p.id} to={`/compra/${p.id_compra}`}className="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
-                <div>
-                  <strong>Pedido #{p.id}</strong>
-                  <br />
-                  <small className="text-muted">
-                    {new Date(p.fecha_pedido).toLocaleString("es-CL")}
-                  </small>
-                </div>
-                <div className="text-end">
-                  <strong>${Number(p.total).toLocaleString("es-CL")}</strong>
-                  <br />
-                  <small className="text-muted">
-                    {p.detalles.length} producto{p.detalles.length === 1 ? "" : "s"}
-                  </small>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+      </>
+      )}
+
+      {seccion === "pedidos" && <Pedidos />}
+        </div>
+      </div>
     </section>
   );
 };
