@@ -18,4 +18,6 @@ urlpatterns = [
     path('webpay/iniciar/', views.WebpayIniciarView.as_view(), name='api_webpay_iniciar'),
     path('webpay/retorno/', views.WebpayRetornoView.as_view(), name='api_webpay_retorno'),
     path('mi-cuenta/pedidos/', views.HistorialPedidosView.as_view(), name='api_historial_pedidos'),
+    path('resenas/<str:token>/', views.ResenaCompraView.as_view(), name='api_resena_compra'),
+    path('productos/<int:pk>/resenas/', views.ResenasProductoView.as_view(), name='api_resenas_producto')
 ]

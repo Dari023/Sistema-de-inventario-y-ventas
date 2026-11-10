@@ -163,6 +163,13 @@ export const CompraDetail = () => {
       )}
 
       <footer className = 'comprobante-pie'>
+
+        {compra.token_resenas && (
+          <Link to={`/resenas/${encodeURIComponent(compra.token_resenas)}`} className='comprobante-boton'>
+            Valorar mis Productos
+          </Link>
+        )}
+
         <Link to="/catalogo" className="comprobante-boton">
           Seguir comprando
         </Link>

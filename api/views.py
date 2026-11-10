@@ -5,14 +5,15 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.models import User
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.conf import settings
+from django.core import signing
+from django.http import Http404
 from transbank.webpay.webpay_plus.transaction import Transaction as WpTx
 from transbank.common.integration_commerce_codes import IntegrationCommerceCodes
 from transbank.common.integration_api_keys import IntegrationApiKeys
-
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
-
+from uuid import UUID
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena
 from .models import Cliente
 from .serializers import (
     ProductoSerializer,
@@ -21,13 +22,13 @@ from .serializers import (
     RegistroClienteSerializer,
     LoginCorreoSerializer,
     MiCuentaSerializer,
+    ResenaCrearSerializer,
+    ResenaPublicaSerializer
 )
-
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
     queryset = Producto.objects.all()
-
 
 def obtener_carrito(request, crear=False):
     filtros = {"estado": "pendiente"}
@@ -176,7 +177,6 @@ class WebpayIniciarView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class WebpayRetornoView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = [] 
@@ -242,7 +242,13 @@ class CompraDetailView(APIView):
                 pedidos = pedidos.none()
 
         pedido = get_object_or_404(pedidos, id_compra=id_compra)
-        return Response(PedidoSerializer(pedido).data)
+        datos = PedidoSerializer(pedido).data
+        firmador = signing.Signer(salt='resenas-pedido')
+        datos['token_resenas'] = firmador.sign(str(pedido.id_compra))
+
+        respuesta = Response(datos)
+        respuesta["Cache-Control"] = "no-store"
+        return respuesta
 
 class RegistroClienteView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -283,3 +289,88 @@ class HistorialPedidosView(generics.ListAPIView):
             .prefetch_related("detallepedido_set__producto")
             .order_by("-fecha_pedido")
         )
+
+def obtener_pedido_resena(token):
+    firmador = signing.Signer(salt='resenas-pedido')
+
+    try:
+        codigo_compra = firmador.unsign(token)
+        codigo_compra = UUID(codigo_compra)
+    except (signing.BadSignature, ValueError):
+        raise Http404('El Enlace de Reseñas no es Válido')
+
+    pedido = get_object_or_404(Pedido, id_compra=codigo_compra, estado='pagado')
+
+    return pedido
+
+class ResenaCompraView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, token):
+        pedido = obtener_pedido_resena(token)
+        productos = Producto.objects.filter(detallepedido__pedido=pedido, detallepedido__cantidad__gt=0,).distinct()
+        lista_productos = []
+
+        for producto in productos:
+            resena = Resena.objects.filter(pedido=pedido, producto=producto).first()
+            datos_resena = None
+
+            if resena is not None:
+                datos_resena = ResenaPublicaSerializer(resena).data
+
+            lista_productos.append({
+                'id': producto.id,
+                'nombre': producto.nombre,
+                'resena': datos_resena
+            })
+
+        respuesta = Response({'productos': lista_productos})
+        respuesta['Cache-Control'] = 'no-store'
+        return respuesta
+
+    def post(self, request, token):
+        pedido = obtener_pedido_resena(token)
+        serializer = ResenaCrearSerializer(data=request.data, context={'pedido': pedido})
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            with transaction.atomic():
+                serializer.save(pedido=pedido)
+        except IntegrityError:
+            return Response(
+                {
+                    'error': ('Ya Existe una Reseña para este Producto en esta Compra')
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        respuesta = Response(serializer.data, status=status.HTTP_201_CREATED)
+        respuesta['Cache-Control'] = 'no-store'
+        return respuesta
+
+class ResenasProductoView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, pk):
+        producto = get_object_or_404(Producto, pk=pk, activo=True)
+        resenas = list(Resena.objects.filter(producto=producto, activo=True))
+        suma = 0
+
+        for resena in resenas:
+            suma = suma + resena.calificacion
+
+        cantidad = len(resenas)
+        promedio = 0
+
+        if cantidad > 0:
+            promedio = round(suma / cantidad, 1)
+
+        serializer = ResenaPublicaSerializer(resenas, many=True)
+
+        return Response({
+            'cantidad': cantidad,
+            'promedio': promedio,
+            'resenas': serializer.data,
+        })

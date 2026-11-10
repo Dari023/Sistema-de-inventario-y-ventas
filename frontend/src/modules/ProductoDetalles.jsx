@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api/Api";
 import { toast } from 'react-toastify';
+import { ResenasProducto } from "./Resenas";
 export const ProductoDetalles = () => {
   const { id } = useParams();
   const [producto, setProducto] = useState(null);
@@ -35,17 +36,16 @@ export const ProductoDetalles = () => {
           <p><strong>Precio:</strong> ${producto.precio}</p>
           <p><strong>Stock Disponible:</strong> {producto.stock_actual}</p>
           <p><strong>Modalidad de Venta:</strong> {producto.modalidad_de_venta}</p>
-          
           <div>
             <strong>Descripción:</strong>
             <p>{producto.descripcion}</p>
           </div>
-          
           <button onClick={agregarAlCarrito} disabled={producto.stock_actual <= 0}>
             {producto.stock_actual > 0 ? "Agregar al Carrito" : "Agotado"}
           </button>
         </div>
       </div>
+      <ResenasProducto productoId={producto.id} />
     </div>
   );
 };
