@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -295,3 +295,36 @@ class MiCuentaSerializer(serializers.ModelSerializer):
         usuario.save(update_fields=["first_name", "last_name", "email"])
 
         return super().update(instance, validated_data)
+
+class ResenaCrearSerializer(serializers.ModelSerializer):
+    calificacion = serializers.IntegerField(min_value=1, max_value=5)
+    comentario = serializers.CharField(max_length=500)
+
+    class Meta:
+        model = Resena
+        fields = ['producto', 'calificacion', 'comentario']
+
+    def validate(self, datos):
+        pedido = self.context['pedido']
+        producto = datos['producto']
+        pertenece_al_pedido = DetallePedido.objects.filter(pedido=pedido, producto=producto, cantidad__gt=0,).exists()
+
+        if not pertenece_al_pedido:
+            raise serializers.ValidationError('Este Producto no Pertenece a Esta Compra')
+        
+        ya_existe = Resena.objects.filter(pedido=pedido, producto=producto,).exists()
+
+        if ya_existe:
+            raise serializers.ValidationError('Ya Dejaste una Reseña para este Producto en esta Compra')
+
+        return datos
+
+class ResenaPublicaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resena
+        fields = [
+            'id',
+            'calificacion',
+            'comentario',
+            'fecha_creacion',
+        ]

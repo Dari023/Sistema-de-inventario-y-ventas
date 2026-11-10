@@ -170,3 +170,32 @@ class ConfiguracionPrecio(models.Model):
 
     def __str__(self):
         return 'Configuración General de Precios'
+
+class Resena(models.Model):
+    pedido = models.ForeignKey('Pedido', on_delete=models.PROTECT, related_name='resenas')
+    producto = models.ForeignKey('Producto', on_delete=models.PROTECT, related_name='resenas')
+    calificacion = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comentario = models.CharField(max_length=500)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-fecha_creacion', '-pk']
+        verbose_name = 'Reseña'
+        verbose_name_plural = 'Reseñas'
+        constraints = [
+            models.UniqueConstraint(fields=['pedido', 'producto'], name='resena_unica_producto_pedido'),
+            models.CheckConstraint(
+                condition=models.Q(
+                    calificacion__gte=1,
+                    calificacion__lte=5,
+                ),
+                name='resena_calificacion_1_a_5'
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.producto.nombre} — "
+            f"{self.calificacion}/5 — Pedido {self.pedido_id}"
+        )
