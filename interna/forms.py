@@ -3,9 +3,26 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.forms import BaseInlineFormSet, inlineformset_factory
-from .models import Producto, MateriaPrima, ProductoMateriaPrima, CategoriaProducto, MovimientoMateriaPrima
+from django.forms import BaseFormSet, formset_factory
+from .models import (Producto, 
+    MateriaPrima, 
+    ProductoMateriaPrima, 
+    CategoriaProducto, 
+    MovimientoMateriaPrima, 
+    ConfiguracionPrecio)
 
 class ProductoForm(forms.ModelForm):
+    tiempo_fabricacion_minutos = forms.IntegerField(
+        label='Tiempo de Trabajo por Unidad (Minutos)',
+        min_value=1,
+        help_text='Por Ejemplo: 90 Minutos Equivalen a una Hora y Media',
+        widget=forms.NumberInput(attrs={
+            'class':'form-control',
+            'min':'1',
+            'step':'1'
+        })
+    )
+
     class Meta:
         model = Producto
         exclude = ["stock_actual"]
@@ -198,3 +215,78 @@ class MovimientoObservacionForm(forms.ModelForm):
                 "Los Ajustes deben Conservar una Explicación."
             )
         return observacion
+
+class TiempoPrecioForm(forms.Form):
+    tiempo_fabricacion_minutos = forms.IntegerField(
+        min_value=1,
+        label='Tiempo de Trabajo por Unidad'
+    )
+
+class MaterialPrecioForm(forms.Form):
+    materia_prima = forms.ModelChoiceField(
+        queryset=MateriaPrima.objects.filter(estado=True),
+        label='Materia prima',
+        error_messages={
+            'invalid_choice': 'Selecciona una Materia Prima que se Encuentre Activa'
+        }
+    )
+    cantidad_requerida = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=Decimal('0.01'),
+        label='Cantidad Requerida'
+    )
+
+class BasePrecioMaterialesFormSet(BaseFormSet):
+    default_error_messages = {
+        'too_few_forms': (
+            'Agrega al menos una materia prima para calcular el precio sugerido'
+        ),
+    }
+
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+        identificadores = set()
+        for formulario in self.forms:
+            datos = formulario.cleaned_data
+            if not datos or datos.get("DELETE"):
+                continue
+            materia = datos.get("materia_prima")
+            if materia is None:
+                continue
+            if materia.pk in identificadores:
+                raise forms.ValidationError('No Repitas una Materia Prima en la Receta')
+            identificadores.add(materia.pk)
+
+PrecioMaterialesFormSet = formset_factory(
+    MaterialPrecioForm,
+    formset=BasePrecioMaterialesFormSet,
+    extra=0,
+    can_delete=True,
+    min_num=1,
+    validate_min=True,
+)
+
+class ConfiguracionPrecioForm(forms.ModelForm):
+    class Meta:
+        model = ConfiguracionPrecio
+        fields = [
+            'costo_hora', 'costo_bolsa', 'costo_stickers', 'margen_ganancia',
+            'porcentaje_iva', 'porcentaje_comision', 'comision_afecta_iva'
+        ]
+        labels = {
+            'costo_hora': 'Costo por hora de trabajo',
+            'costo_bolsa': 'Bolsa por producto',
+            'costo_stickers': 'Stickers por producto',
+            'margen_ganancia': 'Margen sobre el precio sin IVA',
+            'porcentaje_iva': 'IVA',
+            'porcentaje_comision': 'Comisión del medio de pago',
+            'comision_afecta_iva': 'La comisión está afecta a IVA'
+        }
+        help_texts = {
+            'costo_bolsa': 'Usa 0 si este costo ya está incluido en la receta',
+            'costo_stickers': 'Usa 0 si este costo ya está incluido en la receta',
+            'porcentaje_comision': 'Ingresa la comisión real de tu medio de pago'
+        }

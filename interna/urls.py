@@ -19,5 +19,7 @@ urlpatterns = [
     path('materia_prima/editar/<int:pk>/', views.materia_prima_editar, name='materia_prima_editar'),
     path('productos/<int:producto_id>/materias-primas/', views.gestionar_materias_producto, name='gestionar_materias_producto'),
     path('movimientos/', views.movimientos_listar, name='movimientos_listar'),
-    path('movimientos/<int:pk>/observacion/', views.movimiento_observacion_editar, name='movimiento_observacion_editar')
+    path('movimientos/<int:pk>/observacion/', views.movimiento_observacion_editar, name='movimiento_observacion_editar'),
+    path('productos/precio-sugerido/', views.producto_precio_sugerido, name='producto_precio_sugerido'),
+    path('configuracion/precios/', views.configuracion_precio_editar, name='configuracion_precio_editar')
 ]

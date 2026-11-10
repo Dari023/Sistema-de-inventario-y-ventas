@@ -1,8 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.conf import settings
-import uuid
+from django.core.validators import MinValueValidator, MaxValueValidator
 from api.models import Cliente
+from decimal import Decimal
+import uuid
 # Create your models here.
 
 class CategoriaProducto(models.Model):
@@ -86,6 +88,9 @@ class Producto(models.Model):
     stock_critico = models.IntegerField()
     modalidad_de_venta = models.CharField(max_length=20)
 
+    tiempo_fabricacion_minutos = models.PositiveIntegerField(null=True, blank=True, verbose_name='Tiempo de Trabajo por Unidad' \
+    '(Minutos)')
+
     def __str__(self):
         return self.nombre
 
@@ -139,3 +144,29 @@ class DetallePedido(models.Model):
     def subtotal(self):
         precio = self.precio_unitario or self.producto.precio
         return precio * self.cantidad
+
+class ConfiguracionPrecio(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    costo_hora = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('3500.00'), 
+                                    validators=[MinValueValidator(Decimal('0'))])
+    costo_bolsa = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'), 
+                                    validators=[MinValueValidator(Decimal('0'))])
+    costo_stickers = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('50.00'), 
+                                    validators=[MinValueValidator(Decimal('0'))])
+    margen_ganancia = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('30.00'), 
+                                        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('99.99'))])
+    porcentaje_iva = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('19.00'), 
+                                        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('100'))])
+    porcentaje_comision = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal('0.00'), 
+                                        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('99.99'))])
+    comision_afecta_iva = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = 'Configuración de Precios'
+        verbose_name_plural = 'Configuración de Precios'
+        constraints = [
+            models.CheckConstraint(condition=models.Q(id=1), name='configuracion_precio_unica')
+        ]
+
+    def __str__(self):
+        return 'Configuración General de Precios'
