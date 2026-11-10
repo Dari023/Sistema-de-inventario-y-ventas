@@ -12,6 +12,8 @@ import { CompraDetail } from "./modules/CompraDetail";
 import { ToastContainer } from 'react-toastify';
 import { Resenas } from "./modules/Resenas";
 import 'react-toastify/dist/ReactToastify.css';
+import Logo from "./assets/Logo.jpeg";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 export const App = () => {
   const navigate = useNavigate();
@@ -48,7 +50,14 @@ export const App = () => {
       <header className="tienda-cabecera">
         <div className="container py-3">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <Link to="/" className="tienda-marca">Amigos del Vuelo</Link>
+            <Link to="/" className="tienda-marca">
+              <img
+                src={Logo}
+                alt="Logo Amigos del Vuelo"
+                className="tienda-logo"
+              />
+              <span>Amigos del Vuelo</span>
+            </Link>
             <nav className="nav gap-2 align-items-center">
               <NavLink to="/" end className="nav-link tienda-enlace">Inicio</NavLink>
               <Link to="/catalogo" className="nav-link tienda-enlace">Catálogo</Link>
@@ -86,11 +95,88 @@ export const App = () => {
         </Routes>
       </main>
 
-      <footer className="tienda-pie py-3">
-        <div className="container text-center">
-          Amigos del Vuelo
+
+      <footer className="tienda-pie tienda-footer">
+        <div className="container">
+          <div className="tienda-footer-grid">
+
+            <div className="tienda-footer-columna">
+              <h2>Amigos del Vuelo</h2>
+              <p>
+                Artesanías hechas a mano, creadas con
+                cariño y dedicación.
+              </p>
+
+              <div className="tienda-footer-redes">
+                {redesSociales.map((red) =>
+                  red.enlace ? (
+                    <a
+                      key={red.nombre}
+                      href={red.enlace}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={red.nombre}
+                      title={red.nombre}
+                    >
+                      <i className={`bi ${red.icono}`}></i>
+                    </a>
+                  ) : (
+                    <span key={red.nombre} title={`${red.nombre}: próximamente`}>
+                      <i className={`bi ${red.icono}`}></i>
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="tienda-footer-columna">
+              <h2>Información</h2>
+
+              <div className="tienda-footer-enlaces">
+                <Link to="/catalogo">Catálogo</Link>
+                <span>Preguntas frecuentes</span>
+                <span>Envíos y retiros</span>
+                <span>Términos y condiciones</span>
+              </div>
+            </div>
+
+            <div className="tienda-footer-columna">
+              <h2>Contacto</h2>
+
+              <div className="tienda-footer-enlaces">
+                {enlaceWhatsApp ? (
+                  <a href={enlaceWhatsApp} target="_blank" rel="noopener noreferrer">
+                    <i className="bi bi-whatsapp"></i> WhatsApp
+                  </a>
+                ) : (
+                  <span><i className="bi bi-whatsapp"></i> WhatsApp</span>
+                )}
+
+                {correoContacto ? (
+                  <a href={`mailto:${correoContacto}`}>
+                    <i className="bi bi-envelope"></i> Correo electrónico
+                  </a>
+                ) : (
+                  <span><i className="bi bi-envelope"></i> Correo electrónico</span>
+                )}
+
+                <span>
+                  <i className="bi bi-geo-alt"></i> Arica, Chile
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="tienda-footer-inferior">
+            <p>
+              © {new Date().getFullYear()} Amigos del Vuelo.
+              Todos los derechos reservados.
+            </p>
+          </div>
         </div>
       </footer>
+
     </div>
   );
 };
