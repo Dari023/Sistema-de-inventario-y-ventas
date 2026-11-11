@@ -21,5 +21,7 @@ urlpatterns = [
     path('movimientos/', views.movimientos_listar, name='movimientos_listar'),
     path('movimientos/<int:pk>/observacion/', views.movimiento_observacion_editar, name='movimiento_observacion_editar'),
     path('productos/precio-sugerido/', views.producto_precio_sugerido, name='producto_precio_sugerido'),
-    path('configuracion/precios/', views.configuracion_precio_editar, name='configuracion_precio_editar')
+    path('configuracion/precios/', views.configuracion_precio_editar, name='configuracion_precio_editar'),
+    path('pedidos/', views.pedido_listar, name='pedido_listar'),
+    path('pedidos/<int:pk>/', views.pedido_detalles, name='pedido_detalles'),
 ]

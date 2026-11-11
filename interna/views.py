@@ -7,6 +7,8 @@ from django.http import JsonResponse
 from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
+from django.db.models import Q
+from .models import Pedido
 from .models import (Producto, 
     ProductoMateriaPrima, 
     MateriaPrima, 
@@ -457,3 +459,38 @@ def calcular_sugerencia(minutos, materiales, configuracion):
         'margen': margen,
         'iva': iva,
     }
+
+def pedido_listar(request):
+    q = request.GET.get('q', '').strip()
+    pedidos = (
+        Pedido.objects
+        .filter(estado='pagado')
+        .select_related('cliente')
+        .prefetch_related('detallepedido_set__producto')
+        .order_by('-fecha_pedido')
+    )
+    if q:
+        if q.isdigit():
+            pedidos = pedidos.filter(pk=int(q))
+        else:
+            pedidos = pedidos.filter(id_compra__icontains=q)
+    return render(
+        request,
+        'interna/inventario/pedido_listar.html',
+        {'pedidos': pedidos, 'q': q},
+    )
+
+
+def pedido_detalles(request, pk):
+    pedido = get_object_or_404(
+        Pedido.objects
+        .select_related('cliente')
+        .prefetch_related('detallepedido_set__producto'),
+        pk=pk
+    )
+    
+    return render(
+        request,
+        'interna/inventario/pedido_detalles.html',
+        {'pedido': pedido},
+    )
