@@ -7,6 +7,12 @@ export const ProductoDetalles = () => {
   const { id } = useParams();
   const [producto, setProducto] = useState(null);
 
+  const formatoPrecio = new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  });
+
   useEffect(() => {
     api.get(`productos/${id}/`)
       .then((response) => setProducto(response.data))
@@ -33,7 +39,19 @@ export const ProductoDetalles = () => {
         )}
         
         <div>
-          <p><strong>Precio:</strong> ${producto.precio}</p>
+          <p className="mb-2">
+            {producto.descuento_porcentaje > 0 && (
+              <del className='text-secondary small me-2'>
+                {formatoPrecio.format(Number(producto.precio))}
+              </del>
+            )}
+
+            <strong>{formatoPrecio.format(Number(producto.precio_final))}</strong>
+
+            {producto.descuento_porcentaje > 0 && (
+              <small className='ms-2'>−{producto.descuento_porcentaje} %</small>
+            )}
+          </p>
           <p><strong>Stock Disponible:</strong> {producto.stock_actual}</p>
           <p><strong>Modalidad de Venta:</strong> {producto.modalidad_de_venta}</p>
           <div>

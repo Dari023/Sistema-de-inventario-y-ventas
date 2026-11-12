@@ -48,7 +48,12 @@
                 <tr>
                     <td>{{ producto.nombre }}</td>
                     <td>{{ producto.categoria }}</td>
-                    <td data-order="{{ producto.precio|unlocalize }}">${{ producto.precio }}</td>
+                    <td data-order='{{ producto.precio_final|unlocalize }}'>
+                        ${{ producto.precio_final|floatformat:"0g" }}
+                        {% if producto.descuento_porcentaje %}
+                            <small>(−{{ producto.descuento_porcentaje }} %)</small>
+                        {% endif %}
+                    </td>
                     <td>{{ producto.stock_actual }}</td>
                     <td data-search="{% if producto.activo %}Activo{% else %}Deshabilitado{% endif %}">
                         {% if producto.activo %}
