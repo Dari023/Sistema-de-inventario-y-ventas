@@ -53,6 +53,7 @@ export const Checkout = () => {
 
     setEnviando(true);
     try {
+      payload.total_esperado = Number(carrito.total);
       const { data } = await api.post("webpay/iniciar/", payload);
       const formWebpay = document.createElement("form");
       formWebpay.method = "POST";
@@ -63,10 +64,10 @@ export const Checkout = () => {
       inputToken.value = data.token;
       formWebpay.appendChild(inputToken);
       document.body.appendChild(formWebpay);
-      formWebpay.submit();
+      formWebpay.submit()
     } catch (error) {
       toast.error(error.response?.data?.error || "Error al pagar");
-      setEnviando(false);
+      setEnviando(false)
     }
   };
 

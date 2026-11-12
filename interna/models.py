@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from api.models import Cliente
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import uuid
 # Create your models here.
 
@@ -82,11 +82,18 @@ class Producto(models.Model):
     nombre = models.CharField(max_length=100)
     precio = models.DecimalField(max_digits=10, decimal_places=0)
     descripcion = models.CharField(max_length=500)
-    imagen = models.ImageField(upload_to="media/productos")
+    imagen = models.ImageField(upload_to='media/productos')
     activo = models.BooleanField(default=True)
     stock_actual = models.IntegerField(default=0)
     stock_critico = models.IntegerField()
     modalidad_de_venta = models.CharField(max_length=20)
+    descuento_porcentaje = models.IntegerField(default=0, validators=[MinValueValidator(Decimal('1')), MaxValueValidator(Decimal('99'))])
+
+    @property
+    def precio_final(self):
+        precio_con_descuento = (self.precio * (100 - self.descuento_porcentaje) / Decimal('100'))
+
+        return precio_con_descuento.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
     tiempo_fabricacion_minutos = models.PositiveIntegerField(null=True, blank=True, verbose_name='Tiempo de Trabajo por Unidad' \
     '(Minutos)')
@@ -142,7 +149,11 @@ class DetallePedido(models.Model):
 
     @property
     def subtotal(self):
-        precio = self.precio_unitario or self.producto.precio
+        precio = self.precio_unitario
+
+        if precio is None:
+            precio = self.producto.precio
+
         return precio * self.cantidad
 
 class ConfiguracionPrecio(models.Model):

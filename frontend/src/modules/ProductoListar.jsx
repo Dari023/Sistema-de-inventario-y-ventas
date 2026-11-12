@@ -181,8 +181,18 @@ export const ProductoListar = () => {
                     {prod.nombre}
                   </h2>
 
-                  <p className="producto-precio mb-4">
-                    {formatoPrecio.format(Number(prod.precio))}
+                  <p className='mb-2'>
+                    {prod.descuento_porcentaje > 0 && (
+                      <del className='text-secondary small me-2'>
+                        {formatoPrecio.format(Number(prod.precio))}
+                      </del>
+                    )}
+
+                    <strong>{formatoPrecio.format(Number(prod.precio_final))}</strong>
+
+                    {prod.descuento_porcentaje > 0 && (
+                      <small className='ms-2'>−{prod.descuento_porcentaje} %</small>
+                    )}
                   </p>
 
                   <div className="d-grid gap-2 mt-auto">
