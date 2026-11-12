@@ -80,7 +80,7 @@ class CarritoAPIView(APIView):
                 "total": "0",
             })
 
-        serializer = PedidoSerializer(pedido)
+        serializer = PedidoSerializer(pedido, context={'es_carrito': True})
         return Response(serializer.data)
 
     def post(self, request):
@@ -124,10 +124,10 @@ class CarritoAPIView(APIView):
                 pedido=pedido,
                 producto=producto,
                 cantidad=nueva_cantidad,
-                precio_unitario=producto.precio,
+                precio_unitario=producto.precio_final
             )
 
-        serializer = PedidoSerializer(pedido)
+        serializer = PedidoSerializer(pedido,context={'es_carrito': True})
         return Response(serializer.data)
 
     def delete(self, request):
@@ -155,7 +155,7 @@ class WebpayIniciarView(APIView):
 
     def post(self, request):
         pedido = obtener_carrito(request)
-        if not pedido.detallepedido_set.exists():
+        if pedido is None or not pedido.detallepedido_set.exists():
             return Response({"error": "el carrito está vacío"}, status=status.HTTP_400_BAD_REQUEST)
         pedido.tipo_entrega = str(request.data.get('tipo_entrega') or 'retiro').strip().lower()
         if not request.user.is_authenticated:
@@ -177,13 +177,29 @@ class WebpayIniciarView(APIView):
             pedido.direccion_invitado = None
         pedido.save()
 
+        with transaction.atomic():
+            detalles = list(pedido.detallepedido_set.select_related('producto'))
+
+            for detalle in detalles:
+                detalle.precio_unitario = detalle.producto.precio_final
+
+            total = sum(detalle.subtotal for detalle in detalles)
+
+            if total <= 0:
+                return Response({'error': 'El Total del Pedido debe ser Mayor que 0'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if request.data.get('total_esperado') != int(total):
+                return Response({'error': 'El Total Cambió, Vuelve al Carrito y Revisa los Precios Antes de Pagar'}, status=status.HTTP_409_CONFLICT)
+
+            DetallePedido.objects.bulk_update(detalles, ['precio_unitario'])
+
         return_url = getattr(settings, 'WEBPAY_RETURN_URL', 'http://localhost:8000/api/webpay/retorno/')
         try:
             resp = _webpay_tx().create(
                 buy_order=f"pedido-{pedido.id}",
                 session_id=str(pedido.id_compra),
-                amount=int(pedido.total),
-                return_url=return_url,
+                amount=int(total),
+                return_url=return_url
             )
             return Response({"url": resp['url'], "token": resp['token']})
         except Exception as e:
@@ -270,20 +286,18 @@ class WebpayRetornoView(APIView):
         except (TypeError, ValueError, Pedido.DoesNotExist):
             return redirect(f"{frontend}/carrito?pago=error")
         with transaction.atomic():
-            actualizado = Pedido.objects.filter(
-                pk=pedido.pk,
-                estado="pendiente",
-            ).update(estado="pagado")
+            actualizado = Pedido.objects.filter(pk=pedido.pk, estado="pendiente").update(estado="pagado")
 
             if not actualizado:
-                ya_pagado = Pedido.objects.filter(
-                    pk=pedido.pk,
-                    estado="pagado",
-                ).exists()
+                ya_pagado = Pedido.objects.filter(pk=pedido.pk, estado="pagado").exists()
 
                 if ya_pagado:
                     return redirect(f"{frontend}/compra/{pedido.id_compra}")
 
+                return redirect(f"{frontend}/carrito?pago=error")
+
+            if resp.get('amount') != pedido.total:
+                transaction.set_rollback(True)
                 return redirect(f"{frontend}/carrito?pago=error")
 
             for detalle in pedido.detallepedido_set.order_by("producto_id"):

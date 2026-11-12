@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from decimal import Decimal
 from .models import Cliente
 from uuid import uuid4
 import re
@@ -28,6 +29,10 @@ def validar_telefono_chileno(value):
     return f"+56{telefono}"
 
 class ProductoSerializer(serializers.ModelSerializer):
+
+    descuento_porcentaje = serializers.IntegerField(read_only = True)
+    precio_final = serializers.DecimalField(max_digits=10, decimal_places=0, read_only=True)
+
     class Meta:
         model = Producto
         fields = '__all__'
@@ -45,6 +50,16 @@ class DetallePedidoSerializer(serializers.ModelSerializer):
         model = DetallePedido
         fields = ["id", "producto", "producto_nombre", "cantidad", "precio_unitario", "subtotal"]
 
+    def to_representation(self, instancia):
+        datos = super().to_representation(instancia)
+
+        if self.context.get('es_carrito'):
+            precio = instancia.producto.precio_final
+            datos['precio_unitario'] = str(precio)
+            datos['subtotal'] = str(precio * instancia.cantidad)
+
+        return datos
+
 class PedidoSerializer(serializers.ModelSerializer):
     detalles = DetallePedidoSerializer(source="detallepedido_set", many=True, read_only=True,)
     total = serializers.ReadOnlyField()
@@ -54,6 +69,18 @@ class PedidoSerializer(serializers.ModelSerializer):
         fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado",
                   "telefono_invitado", "direccion_invitado",  "tipo_entrega",]
         read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente",]
+
+    def to_representation(self, instancia):
+        datos = super().to_representation(instancia)
+
+        if self.context.get('es_carrito'):
+            total = sum(
+                Decimal(detalle['subtotal'])
+                for detalle in datos['detalles']
+            )
+            datos['total'] = str(total)
+
+        return datos
     
 class RegistroClienteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)

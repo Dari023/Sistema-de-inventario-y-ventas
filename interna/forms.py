@@ -27,12 +27,14 @@ class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
         exclude = ["stock_actual"]
+        labels = {'descuento_porcentaje': 'Descuento'}
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'precio': forms.NumberInput(attrs={'class': 'form-control'}),
+            'descuento_porcentaje': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 99}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control'}),
             'imagen': forms.FileInput(attrs={'class': 'form-control'}),
-            'categoria': forms.Select(attrs={'class': 'form-select'}),
+            'categoria': forms.Select(attrs={'class': 'form-select'})
         }
 
     def __init__(self, *args, **kwargs):
