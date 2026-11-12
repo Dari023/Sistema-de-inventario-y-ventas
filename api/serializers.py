@@ -67,7 +67,7 @@ class PedidoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pedido
         fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado",
-                  "telefono_invitado", "direccion_invitado"]
+                  "telefono_invitado", "direccion_invitado",  "tipo_entrega",]
         read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente",]
 
     def to_representation(self, instancia):

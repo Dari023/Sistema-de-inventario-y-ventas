@@ -161,6 +161,27 @@ export const CompraDetail = () => {
           </dl>
         </section>
       )}
+      <section className="comprobante-comprador">
+        <h2 id="datos-entrega" className="comprobante-subtitulo">
+          Entrega
+        </h2>
+        <dl className="comprobante-datos mb-0">
+          <div>
+            <dt>Tipo</dt>
+            <dd>
+              {compra.tipo_entrega === "envio"
+                ? "Envío a domicilio"
+                : "Retiro en tienda"}
+            </dd>
+          </div>
+          {compra.tipo_entrega === "envio" && compra.direccion_invitado && (
+            <div>
+              <dt>Dirección</dt>
+              <dd>{compra.direccion_invitado}</dd>
+            </div>
+          )}
+        </dl>
+      </section>
 
       <footer className = 'comprobante-pie'>
 
