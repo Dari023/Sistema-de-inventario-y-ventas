@@ -31,6 +31,7 @@
                 <th>Cantidades</th>
                 <th>Total</th>
                 <th>Estado</th>
+                <th>Etapa</th>
                 <th>Acción</th>
             </tr>
         </thead>
@@ -58,13 +59,14 @@
                 </td>
                 <td>${{ pedido.total }}</td>
                 <td>{{ pedido.get_estado_display }}</td>
+                <td>{{ pedido.get_etapa_display|default:"—" }}</td>
                 <td>
                     <a href="{% url 'pedido_detalles' pk=pedido.pk %}" class="btn btn-primary">Ver Detalles</a>
                 </td>
             </tr>
         {% empty %}
             <tr>
-                <td colspan="7">
+                <td colspan="8">
                     {% if q %}
                         No se encontró ningún pedido con el código "{{ q }}".
                     {% else %}

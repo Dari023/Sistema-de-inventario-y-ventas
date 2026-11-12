@@ -131,6 +131,14 @@ class Pedido(models.Model):
         ('retiro', 'Retiro en tienda'),
     ]
     tipo_entrega = models.CharField(max_length=10, choices=TIPOS_ENTREGA, default='retiro')
+    ETAPAS = [
+        ('en_confeccion', 'En confección'),
+        ('listo', 'Listo'),
+        ('enviado', 'Enviado'),
+        ('disponible_retiro', 'Disponible para retiro'),
+        ('entregado', 'Entregado'),
+    ]
+    etapa = models.CharField(max_length=20, choices=ETAPAS, null=True, blank=True, verbose_name='Etapa de preparación')
 
     @property
     def total(self):
@@ -150,6 +158,18 @@ class DetallePedido(models.Model):
         precio = self.precio_unitario or self.producto.precio
         return precio * self.cantidad
 
+class HistorialEtapaPedido(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='historial_etapas')
+    etapa = models.CharField(max_length=20, choices=Pedido.ETAPAS)
+    fecha = models.DateTimeField(auto_now_add=True)
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"Pedido {self.pedido.id} - {self.etapa}"
+    
 class ConfiguracionPrecio(models.Model):
     id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
     costo_hora = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('3500.00'), 

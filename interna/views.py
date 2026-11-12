@@ -16,7 +16,8 @@ from .models import (Producto,
     MovimientoMateriaPrima, 
     ConfiguracionPrecio,
     Resena,
-    PreguntaFrecuente)
+    PreguntaFrecuente,
+    HistorialEtapaPedido)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -594,3 +595,17 @@ def pregunta_frecuente_estado(request, pk):
     pregunta.save(update_fields=['activo'])
 
     return redirect('preguntas_frecuentes_listar')
+
+def pedido_cambiar_estado(request, pk):
+    pedido = get_object_or_404(Pedido, pk=pk)
+    nueva_etapa = request.POST.get('etapa')    
+    etapas_validas = [e[0] for e in Pedido.ETAPAS]
+    if nueva_etapa in etapas_validas:
+        pedido.etapa = nueva_etapa
+        pedido.save(update_fields=['etapa'])
+        HistorialEtapaPedido.objects.create(
+            pedido=pedido,
+            etapa=nueva_etapa,
+            responsable=request.user
+        )
+    return redirect('pedido_detalles', pk=pedido.pk)

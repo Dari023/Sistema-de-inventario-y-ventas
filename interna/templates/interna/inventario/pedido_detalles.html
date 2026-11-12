@@ -12,6 +12,11 @@
                 <span class="badge {% if pedido.estado == 'pagado' %}bg-success{% else %}bg-warning{% endif %}">
                     {{ pedido.get_estado_display }}
                 </span>
+                </span><br>
+                <strong>Etapa Actual:</strong> 
+                <span class="badge bg-info text-dark">
+                    {{ pedido.get_etapa_display|default:"Sin etapa asignada" }}
+                </span>
             </p>
         </div>
         <div>
@@ -85,6 +90,45 @@
                 </tr>
             </tfoot>
         </table>
+    </section>
+    <section class="bloque">
+        <h2>Gestión de Preparación y Envío</h2>
+        <div style="margin-bottom: 20px;">
+            <form method="post" action="{% url 'pedido_cambiar_estado' pedido.pk %}" style="margin: 0;">
+                {% csrf_token %}
+                <label><strong>Cambiar etapa a:</strong></label>
+                <select name="etapa" onchange="this.form.submit()" style="padding: 5px 10px; border-radius: 4px; margin-left: 10px;">
+                    <option value="" disabled selected>Seleccionar...</option>
+                    <option value="en_confeccion">En confección</option>
+                    <option value="listo">Listo</option>
+                    <option value="enviado">Enviado</option>
+                    <option value="disponible_retiro">Disponible para retiro</option>
+                    <option value="entregado">Entregado</option>
+                </select>
+            </form>
+        </div>
+        {% if pedido.historial_etapas.all %}
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Etapa</th>
+                    <th>Responsable</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in pedido.historial_etapas.all %}
+                <tr>
+                    <td>{{ h.fecha|date:"d/m/Y H:i" }}</td>
+                    <td>{{ h.get_etapa_display }}</td>
+                    <td>{{ h.responsable.username|default:"Sistema" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No hay cambios de etapa registrados aún.</p>
+        {% endif %}
     </section>
 </main>
 {% endblock %}
