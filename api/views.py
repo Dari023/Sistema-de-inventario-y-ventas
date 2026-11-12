@@ -5,14 +5,19 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.models import User
-from django.db import transaction
+from django.core.mail import EmailMultiAlternatives
+from django.db import transaction, IntegrityError
+from django.db.models import F
 from django.conf import settings
+from django.core import signing
+from django.http import Http404
+from django.template.loader import render_to_string
 from transbank.webpay.webpay_plus.transaction import Transaction as WpTx
 from transbank.common.integration_commerce_codes import IntegrationCommerceCodes
 from transbank.common.integration_api_keys import IntegrationApiKeys
-
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto
-
+from uuid import UUID
+from urllib.parse import quote
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente
 from .models import Cliente
 from .serializers import (
     ProductoSerializer,
@@ -21,13 +26,14 @@ from .serializers import (
     RegistroClienteSerializer,
     LoginCorreoSerializer,
     MiCuentaSerializer,
+    ResenaCrearSerializer,
+    ResenaPublicaSerializer,
+    PreguntaFrecuenteSerializer
 )
-
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
     queryset = Producto.objects.all()
-
 
 def obtener_carrito(request, crear=False):
     filtros = {"estado": "pendiente"}
@@ -176,6 +182,56 @@ class WebpayIniciarView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+def enviar_correo_compra(pedido_id, frontend):
+    pedido = Pedido.objects.select_related('cliente__usuario').get(pk=pedido_id, estado='pagado')
+
+    if pedido.cliente_id:
+        correo = pedido.cliente.usuario.email
+    else:
+        correo = pedido.email_invitado
+
+    if not correo:
+        return
+
+    firmador = signing.Signer(salt='resenas-pedido')
+    token = firmador.sign(str(pedido.id_compra))
+    enlace_resena = f"{frontend.rstrip('/')}/resenas/{quote(token, safe='')}"
+    detalles = []
+    lineas = []
+
+    for detalle in pedido.detallepedido_set.select_related('producto'):
+        nombre = detalle.producto.nombre
+        subtotal = f"${int(detalle.subtotal):,}".replace(",", ".")
+        detalles.append({
+            'nombre': nombre,
+            'cantidad': detalle.cantidad,
+            'subtotal': subtotal
+        })
+
+        lineas.append(f"{detalle.cantidad} × {nombre}: {subtotal}")
+
+    total = f"${int(pedido.total):,}".replace(",", ".")
+    productos = "\n".join(lineas)
+    cuerpo = (
+        "Gracias por comprar en Amigos del Vuelo\n\n"
+        f"Número de compra: {pedido.id_compra}\n\n"
+        f"{productos}\n\n"
+        f"Total pagado: {total}\n\n"
+        f"Valora tus productos: {enlace_resena}"
+    )
+
+    html = render_to_string('interna/inventario/compra_confirmada.html',
+        {
+            'pedido': pedido,
+            'detalles': detalles,
+            'total': total,
+            'enlace_resena': enlace_resena
+        }
+    )
+
+    mensaje = EmailMultiAlternatives(subject='Compra confirmada | Amigos del Vuelo', body=cuerpo, to=[correo])
+    mensaje.attach_alternative(html, 'text/html')
+    mensaje.send()
 
 class WebpayRetornoView(APIView):
     permission_classes = [AllowAny]
@@ -206,20 +262,40 @@ class WebpayRetornoView(APIView):
             )
         except (TypeError, ValueError, Pedido.DoesNotExist):
             return redirect(f"{frontend}/carrito?pago=error")
-        if pedido.estado == 'pagado':
-            return redirect(f"{frontend}/compra/{pedido.id_compra}")
-        if pedido.estado != 'pendiente':
-            return redirect(f"{frontend}/carrito?pago=error")
-
         with transaction.atomic():
-            for detalle in pedido.detallepedido_set.select_related('producto'):
-                prod = detalle.producto
-                if prod.stock_actual < detalle.cantidad:
+            actualizado = Pedido.objects.filter(
+                pk=pedido.pk,
+                estado="pendiente",
+            ).update(estado="pagado")
+
+            if not actualizado:
+                ya_pagado = Pedido.objects.filter(
+                    pk=pedido.pk,
+                    estado="pagado",
+                ).exists()
+
+                if ya_pagado:
+                    return redirect(f"{frontend}/compra/{pedido.id_compra}")
+
+                return redirect(f"{frontend}/carrito?pago=error")
+
+            for detalle in pedido.detallepedido_set.order_by("producto_id"):
+                stock_actualizado = Producto.objects.filter(
+                    pk=detalle.producto_id,
+                    stock_actual__gte=detalle.cantidad,
+                ).update(
+                    stock_actual=F("stock_actual") - detalle.cantidad,
+                )
+
+                if not stock_actualizado:
+                    transaction.set_rollback(True)
                     return redirect(f"{frontend}/carrito?pago=sin-stock")
-                prod.stock_actual -= detalle.cantidad
-                prod.save(update_fields=['stock_actual'])
-            pedido.estado = 'pagado'
-            pedido.save()
+
+            transaction.on_commit(
+                lambda: enviar_correo_compra(pedido.pk, frontend),
+                robust=True,
+            )
+
         return redirect(f"{frontend}/compra/{pedido.id_compra}")    
 
 class CompraDetailView(APIView):
@@ -242,7 +318,13 @@ class CompraDetailView(APIView):
                 pedidos = pedidos.none()
 
         pedido = get_object_or_404(pedidos, id_compra=id_compra)
-        return Response(PedidoSerializer(pedido).data)
+        datos = PedidoSerializer(pedido).data
+        firmador = signing.Signer(salt='resenas-pedido')
+        datos['token_resenas'] = firmador.sign(str(pedido.id_compra))
+
+        respuesta = Response(datos)
+        respuesta["Cache-Control"] = "no-store"
+        return respuesta
 
 class RegistroClienteView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -283,3 +365,100 @@ class HistorialPedidosView(generics.ListAPIView):
             .prefetch_related("detallepedido_set__producto")
             .order_by("-fecha_pedido")
         )
+
+def obtener_pedido_resena(token):
+    firmador = signing.Signer(salt='resenas-pedido')
+
+    try:
+        codigo_compra = firmador.unsign(token)
+        codigo_compra = UUID(codigo_compra)
+    except (signing.BadSignature, ValueError):
+        raise Http404('El Enlace de Reseñas no es Válido')
+
+    pedido = get_object_or_404(Pedido, id_compra=codigo_compra, estado='pagado')
+
+    return pedido
+
+class ResenaCompraView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, token):
+        pedido = obtener_pedido_resena(token)
+        productos = Producto.objects.filter(detallepedido__pedido=pedido, detallepedido__cantidad__gt=0,).distinct()
+        lista_productos = []
+
+        for producto in productos:
+            resena = Resena.objects.filter(pedido=pedido, producto=producto).first()
+            datos_resena = None
+
+            if resena is not None:
+                datos_resena = ResenaPublicaSerializer(resena).data
+
+            lista_productos.append({
+                'id': producto.id,
+                'nombre': producto.nombre,
+                'resena': datos_resena
+            })
+
+        respuesta = Response({'productos': lista_productos})
+        respuesta['Cache-Control'] = 'no-store'
+        return respuesta
+
+    def post(self, request, token):
+        pedido = obtener_pedido_resena(token)
+        serializer = ResenaCrearSerializer(data=request.data, context={'pedido': pedido})
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            with transaction.atomic():
+                serializer.save(pedido=pedido)
+        except IntegrityError:
+            return Response(
+                {
+                    'error': ('Ya Existe una Reseña para este Producto en esta Compra')
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        respuesta = Response(serializer.data, status=status.HTTP_201_CREATED)
+        respuesta['Cache-Control'] = 'no-store'
+        return respuesta
+
+class ResenasProductoView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, pk):
+        producto = get_object_or_404(Producto, pk=pk, activo=True)
+        resenas = list(Resena.objects.filter(producto=producto, activo=True))
+        suma = 0
+
+        for resena in resenas:
+            suma = suma + resena.calificacion
+
+        cantidad = len(resenas)
+        promedio = 0
+
+        if cantidad > 0:
+            promedio = round(suma / cantidad, 1)
+
+        serializer = ResenaPublicaSerializer(resenas, many=True)
+
+        return Response({
+            'cantidad': cantidad,
+            'promedio': promedio,
+            'resenas': serializer.data,
+        })
+
+class PreguntasFrecuentesView(generics.ListAPIView):
+    serializer_class = PreguntaFrecuenteSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    pagination_class = None
+
+    queryset = (
+        PreguntaFrecuente.objects
+        .filter(activo=True)
+        .order_by('orden', 'pk')
+    )

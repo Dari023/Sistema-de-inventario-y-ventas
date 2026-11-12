@@ -1,9 +1,20 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import JsonResponse, HttpResponseBadRequest
+from decimal import Decimal, ROUND_HALF_UP
+from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
-from .models import Producto, ProductoMateriaPrima, MateriaPrima, CategoriaProducto, MovimientoMateriaPrima
-from django.db.models import F
+from .models import (Producto, 
+    ProductoMateriaPrima, 
+    MateriaPrima, 
+    CategoriaProducto, 
+    MovimientoMateriaPrima, 
+    ConfiguracionPrecio,
+    Resena,
+    PreguntaFrecuente)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -11,7 +22,11 @@ from .forms import (
     CategoriaProductoForm, 
     ProductoMateriaPrimaFormSet, 
     FabricacionForm,
-    MovimientoObservacionForm)
+    MovimientoObservacionForm,
+    ConfiguracionPrecioForm,
+    PrecioMaterialesFormSet,
+    TiempoPrecioForm,
+    PreguntaFrecuenteForm)
 
 
 @login_required
@@ -76,13 +91,27 @@ def _formulario_producto(request, producto):
             instance=producto,
             prefix="materiales",
         )
+
+    configuracion, creada = ConfiguracionPrecio.objects.get_or_create(pk=1)
+
+    parametros_precio = {
+    'costo_hora': str(configuracion.costo_hora),
+    'costo_bolsa': str(configuracion.costo_bolsa),
+    'costo_stickers': str(configuracion.costo_stickers),
+    'margen_ganancia': str(configuracion.margen_ganancia),
+    'porcentaje_iva': str(configuracion.porcentaje_iva),
+    'porcentaje_comision': str(configuracion.porcentaje_comision),
+    'comision_afecta_iva': configuracion.comision_afecta_iva,
+    }
+
     return render(
         request, "interna/producto/producto_crear.html",
         {
             "form": form,
             "producto": producto if editando else None,
             "materiales": materiales,
-        },
+            'parametros_precio': parametros_precio
+        }
     )
 
 @login_required
@@ -343,3 +372,209 @@ def gestionar_materias_producto(request, producto_id):
             "materiales": materiales,
         },
     )
+
+@login_required
+@require_POST
+def producto_precio_sugerido(request):
+    puede_crear = request.user.has_perm('interna.add_producto')
+    puede_editar = request.user.has_perm('interna.change_producto')
+    if not (puede_crear or puede_editar):
+        raise PermissionDenied
+
+    tiempo = TiempoPrecioForm(request.POST)
+    materiales = PrecioMaterialesFormSet(request.POST, prefix='materiales')
+    tiempo_valido = tiempo.is_valid()
+    materiales_validos = materiales.is_valid()
+
+    if not tiempo_valido or not materiales_validos:
+        errores = []
+        for mensajes in tiempo.errors.values():
+            errores.extend(str(mensaje) for mensaje in mensajes)
+        errores.extend(str(mensaje) for mensaje in materiales.non_form_errors())
+        for errores_fila in materiales.errors:
+            for mensajes in errores_fila.values():
+                errores.extend(str(mensaje) for mensaje in mensajes)
+        return JsonResponse({'error': errores[0] if errores else 'Revisa la Receta'}, status=400)
+
+    configuracion, creada = ConfiguracionPrecio.objects.get_or_create(pk=1)
+    costos = []
+    for formulario in materiales.forms:
+        datos = formulario.cleaned_data
+        if not datos or datos.get('DELETE'):
+            continue
+        materia = datos.get('materia_prima')
+        if materia is not None:
+            costos.append((datos['cantidad_requerida'], materia.costo_unitario))
+
+    try:
+        configuracion.full_clean()
+        resultado = calcular_sugerencia(
+            tiempo.cleaned_data['tiempo_fabricacion_minutos'], costos, configuracion,
+        )
+    except (ValueError, ValidationError):
+        return JsonResponse({
+            'error': 'Revisa los costos de la receta o la configuración de precios',
+        }, status=400)
+
+    respuesta = JsonResponse(resultado)
+    respuesta['Cache-Control'] = 'no-store'
+    return respuesta
+
+@login_required
+@permission_required('interna.change_configuracionprecio', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+def configuracion_precio_editar(request):
+    configuracion, creada = ConfiguracionPrecio.objects.get_or_create(pk=1)
+    datos = request.POST if request.method == 'POST' else None
+    form = ConfiguracionPrecioForm(datos, instance=configuracion)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Configuración de Precios Actualizada')
+        return redirect('configuracion_precio_editar')
+    return render(request, 'interna/producto/configuracion_precio.html', {'form': form})
+
+def decimal_valido(valor, nombre):
+    numero = Decimal(str(valor))
+    if not numero.is_finite() or numero < 0:
+        raise ValueError(f"Revisa el valor de {nombre}.")
+    return numero
+
+def calcular_sugerencia(minutos, materiales, configuracion):
+    tiempo = decimal_valido(minutos, 'tiempo de trabajo')
+    if tiempo <= 0 or not materiales:
+        raise ValueError('Indica el Tiempo de Trabajo y al menos un Material')
+
+    costo_materiales = Decimal('0')
+    for cantidad, costo_unitario in materiales:
+        cantidad = decimal_valido(cantidad, 'cantidad requerida')
+        if cantidad <= 0:
+            raise ValueError('Las Cantidades de Materiales deben ser Mayores que 0')
+        costo_materiales += cantidad * decimal_valido(costo_unitario, 'costo del material')
+
+    costo_hora = decimal_valido(configuracion.costo_hora, 'costo por hora')
+    bolsa = decimal_valido(configuracion.costo_bolsa, 'bolsa')
+    stickers = decimal_valido(configuracion.costo_stickers, 'stickers')
+    margen = decimal_valido(configuracion.margen_ganancia, 'margen')
+    iva = decimal_valido(configuracion.porcentaje_iva, 'IVA')
+    tasa_comision = decimal_valido(configuracion.porcentaje_comision, 'comisión')
+    if margen >= 100 or tasa_comision >= 100 or iva > 100:
+        raise ValueError('Revisa los Porcentajes de la Configuración de Precios')
+    mano_obra = tiempo / Decimal('60') * costo_hora
+    total = costo_materiales + mano_obra + bolsa + stickers
+    if total <= 0:
+        raise ValueError('El Costo Total debe ser Mayor que 0')
+    sin_iva = total / (Decimal('1') - margen / Decimal('100'))
+    con_iva = sin_iva * (Decimal('1') + iva / Decimal('100'))
+    comision = con_iva * tasa_comision / Decimal('100')
+    if configuracion.comision_afecta_iva:
+        comision *= Decimal('1') + iva / Decimal('100')
+
+    return {
+        'materiales': costo_materiales,
+        'mano_obra': mano_obra,
+        'bolsa': bolsa,
+        'stickers': stickers,
+        'costo_total': total,
+        'precio_sin_iva': sin_iva,
+        'precio_sugerido': con_iva.quantize(Decimal('1'), rounding=ROUND_HALF_UP),
+        'comision': comision,
+        'margen': margen,
+        'iva': iva,
+    }
+
+@login_required
+@permission_required('interna.view_resena', raise_exception=True)
+def resenas_listar(request):
+    resenas = (Resena.objects
+        .select_related('producto', 'pedido')
+        .order_by('-fecha_creacion', '-pk')
+    )
+
+    return render(request, 'interna/inventario/resenas_listar.html',{'resenas': resenas})
+
+@login_required
+@permission_required(('interna.view_resena', 'interna.change_resena'),raise_exception=True)
+
+@require_POST
+def resena_estado_cambiar(request, pk):
+    resena = get_object_or_404(Resena, pk=pk)
+    accion = request.POST.get('accion')
+
+    if accion == 'deshabilitar':
+        resena.activo = False
+    elif accion == 'reactivar':
+        resena.activo = True
+    else:
+        return HttpResponseBadRequest('La Acción no es Válida')
+
+    resena.save(update_fields=['activo'])
+
+    return redirect('resenas_listar')
+
+@login_required
+@permission_required('interna.view_preguntafrecuente', raise_exception=True)
+def preguntas_frecuentes_listar(request):
+    preguntas = PreguntaFrecuente.objects.all()
+    estado = request.GET.get('estado', '')
+
+    if estado == 'activas':
+        preguntas = preguntas.filter(activo=True)
+    elif estado == 'deshabilitadas':
+        preguntas = preguntas.filter(activo=False)
+
+    return render(
+        request,
+        'interna/inventario/preguntas_listar.html',
+        {
+            'preguntas': preguntas,
+            'estado': estado,
+        },
+    )
+
+@login_required
+@permission_required('interna.add_preguntafrecuente', raise_exception=True)
+def pregunta_frecuente_crear(request):
+    if request.method == 'POST':
+        form = PreguntaFrecuenteForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect('preguntas_frecuentes_listar')
+    else:
+        form = PreguntaFrecuenteForm()
+
+    return render(request, 'interna/inventario/pregunta_formulario.html', {"form": form})
+
+@login_required
+@permission_required('interna.change_preguntafrecuente', raise_exception=True)
+def pregunta_frecuente_editar(request, pk):
+    pregunta = get_object_or_404(PreguntaFrecuente, pk=pk)
+
+    if request.method == 'POST':
+        form = PreguntaFrecuenteForm(request.POST, instance=pregunta)
+
+        if form.is_valid():
+            form.save()
+            return redirect('preguntas_frecuentes_listar')
+    else:
+        form = PreguntaFrecuenteForm(instance=pregunta)
+
+    return render(request, 'interna/inventario/pregunta_formulario.html',{'form': form, 'pregunta': pregunta,})
+
+@login_required
+@permission_required('interna.change_preguntafrecuente',raise_exception=True)
+@require_POST
+def pregunta_frecuente_estado(request, pk):
+    pregunta = get_object_or_404(PreguntaFrecuente, pk=pk)
+    accion = request.POST.get('accion')
+
+    if accion == 'deshabilitar':
+        pregunta.activo = False
+    elif accion == 'reactivar':
+        pregunta.activo = True
+    else:
+        return HttpResponseBadRequest('La Acción no es Válida')
+
+    pregunta.save(update_fields=['activo'])
+
+    return redirect('preguntas_frecuentes_listar')

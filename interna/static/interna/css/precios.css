@@ -1,0 +1,62 @@
+.precio-sugerido {
+    border: 1px solid #e3dcd6;
+    border-left: 0.25rem solid #ff8868;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    background: #fffaf7;
+}
+
+.precio-sugerido h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+}
+
+.precio-sugerido p {
+    margin: 0.5rem 0;
+}
+
+.precio-sugerido-importe {
+    display: block;
+    margin: 0.75rem 0;
+    font-size: 1.8rem;
+}
+
+.precio-desglose {
+    margin: 0.75rem 0;
+}
+
+.precio-desglose > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    padding: 0.35rem 0;
+}
+
+.precio-desglose dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.precio-sugerido summary {
+    cursor: pointer;
+}
+
+.precio-sugerido [hidden] {
+    display: none !important;
+}
+
+.precio-configuracion-enlace {
+    display: inline-block;
+    margin-top: 0.75rem;
+}
+
+.precio-nota {
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.precio-sugerido button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}

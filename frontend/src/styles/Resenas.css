@@ -1,0 +1,111 @@
+.resenas {
+    max-width: 44rem;
+    margin: 2.5rem auto;
+    padding: 0 1rem;
+}
+
+.resenas h1,
+.resenas-publicas h2 {
+    color: #39314b;
+}
+
+.resenas-tarjeta {
+    margin: 1.25rem 0;
+    padding: 1.5rem;
+    border: 1px solid #e5dfdc;
+    border-radius: 0.75rem;
+    background: #fff;
+}
+
+.resenas-tarjeta label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.resenas-tarjeta select,
+.resenas-tarjeta textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.75rem;
+    border: 1px solid #cfc8d5;
+    border-radius: 0.5rem;
+    font: inherit;
+}
+
+.resenas-tarjeta textarea {
+    resize: vertical;
+}
+
+.resenas-calificacion {
+    margin: 1.5rem 0;
+    padding: 0;
+    border: 0;
+}
+
+.resenas-calificacion legend {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.resenas-estrellas {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.resenas-estrellas button {
+    padding: 0.15rem 0.35rem;
+    border: 0;
+    background: transparent;
+    color: #9a6410;
+    font-size: 2rem;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.resenas-estrellas button:focus-visible {
+    outline: 2px solid #39314b;
+    outline-offset: 2px;
+}
+
+.resenas-enviar {
+    display: block;
+    margin-top: 1rem;
+    padding: 0.75rem 1.25rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: #39314b;
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+}
+
+.resenas-enviar:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.resenas-error {
+    color: #a12626;
+}
+
+.resenas-exito {
+    color: #24633d;
+}
+
+.resenas-publicas {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5dfdc;
+}
+
+.resenas-estrellas-texto {
+    margin-bottom: 0.5rem;
+    color: #9a6410;
+    font-size: 1.4rem;
+}
+
+.resenas-comentario {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

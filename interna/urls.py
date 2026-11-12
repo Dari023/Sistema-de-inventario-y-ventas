@@ -19,5 +19,13 @@ urlpatterns = [
     path('materia_prima/editar/<int:pk>/', views.materia_prima_editar, name='materia_prima_editar'),
     path('productos/<int:producto_id>/materias-primas/', views.gestionar_materias_producto, name='gestionar_materias_producto'),
     path('movimientos/', views.movimientos_listar, name='movimientos_listar'),
-    path('movimientos/<int:pk>/observacion/', views.movimiento_observacion_editar, name='movimiento_observacion_editar')
+    path('movimientos/<int:pk>/observacion/', views.movimiento_observacion_editar, name='movimiento_observacion_editar'),
+    path('productos/precio-sugerido/', views.producto_precio_sugerido, name='producto_precio_sugerido'),
+    path('configuracion/precios/', views.configuracion_precio_editar, name='configuracion_precio_editar'),
+    path('resenas/', views.resenas_listar, name='resenas_listar'),
+    path('resenas/<int:pk>/estado/', views.resena_estado_cambiar, name='resena_estado_cambiar'),
+    path('preguntas-frecuentes/', views.preguntas_frecuentes_listar, name='preguntas_frecuentes_listar'),
+    path('preguntas-frecuentes/crear/', views.pregunta_frecuente_crear, name='pregunta_frecuente_crear'),
+    path('preguntas-frecuentes/<int:pk>/editar/', views.pregunta_frecuente_editar, name='pregunta_frecuente_editar'),
+    path('preguntas-frecuentes/<int:pk>/estado/', views.pregunta_frecuente_estado, name='pregunta_frecuente_estado')
 ]

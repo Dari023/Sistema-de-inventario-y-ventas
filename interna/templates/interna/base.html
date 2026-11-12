@@ -42,6 +42,22 @@
                     Movimientos
                 </a>
 
+                {% if perms.interna.view_resena %}
+                    <a href="{% url 'resenas_listar' %}"
+                        class="{% if ruta == 'resenas_listar' %}activo{% endif %}">
+                        <i class="bi bi-star"></i>
+                        Reseñas
+                    </a>
+                {% endif %}
+
+                {% if perms.interna.view_preguntafrecuente %}
+                    <a href="{% url 'preguntas_frecuentes_listar' %}"
+                        class="{% if ruta == 'preguntas_frecuentes_listar' or ruta == 'pregunta_frecuente_crear' or ruta == 'pregunta_frecuente_editar' %}activo{% endif %}">
+                        <i class="bi bi-question-circle"></i>
+                        Preguntas Frecuentes
+                    </a>
+                {% endif %}
+
                 <a href="{% url 'usuario-list' %}"
                     class="{% if ruta == 'usuario-list' or ruta == 'usuario-create' or ruta == 'usuario-update' or ruta == 'usuario-delete' %}activo{% endif %}">
                     <i class="bi bi-people"></i>

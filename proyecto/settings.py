@@ -144,11 +144,29 @@ MEDIA_ROOT= os.path.join(BASE_DIR, 'media')
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+CORREO_TIENDA = os.environ.get("CORREO_TIENDA", "")
+CORREO_TIENDA_CLAVE = os.environ.get("CORREO_TIENDA_CLAVE", "")
+
 MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
     },
 }
+
+if CORREO_TIENDA and CORREO_TIENDA_CLAVE:
+    MAILERS["default"] = {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "username": CORREO_TIENDA,
+            "password": CORREO_TIENDA_CLAVE,
+            "use_tls": True,
+            "timeout": 15,
+        },
+    }
+
+    DEFAULT_FROM_EMAIL = CORREO_TIENDA
 
 LOGIN_URL = 'login'
 

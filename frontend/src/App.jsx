@@ -10,6 +10,7 @@ import { MiCuenta } from "./modules/MiCuenta";
 import { Checkout } from "./modules/Checkout";
 import { CompraDetail } from "./modules/CompraDetail";
 import { ToastContainer } from 'react-toastify';
+import { Resenas } from "./modules/Resenas";
 import 'react-toastify/dist/ReactToastify.css';
 import Logo from "./assets/Logo.jpeg";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -31,21 +32,17 @@ export const App = () => {
     navigate("/login");
   };
 
-
   const numeroWhatsApp  = "56968571198";
   const correoContacto = "apatadiego1@gmail.com";
-
   const enlaceWhatsApp = `https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(
   "Hola, quisiera consultar por sus productos artesanales."
 )}`;
-
 
   const redesSociales = [
     { nombre: "Instagram", icono: "bi-instagram", enlace: "" },
     { nombre: "Facebook", icono: "bi-facebook", enlace: "" },
     { nombre: "WhatsApp", icono: "bi-whatsapp", enlace: "enlaceWhatsApp" },
 ];
-
 
   return (
     <div className="d-flex flex-column min-vh-100">
@@ -94,6 +91,7 @@ export const App = () => {
           <Route path="/carrito" element={<Carrito />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/compra/:id_compra" element={<CompraDetail />} />
+          <Route path='/resenas/:token' element={<Resenas />} />
         </Routes>
       </main>
 
