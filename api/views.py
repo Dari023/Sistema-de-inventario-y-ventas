@@ -157,18 +157,25 @@ class WebpayIniciarView(APIView):
         pedido = obtener_carrito(request)
         if not pedido.detallepedido_set.exists():
             return Response({"error": "el carrito está vacío"}, status=status.HTTP_400_BAD_REQUEST)
+        pedido.tipo_entrega = str(request.data.get('tipo_entrega') or 'retiro').strip().lower()
         if not request.user.is_authenticated:
             campos = {
                 'nombre_invitado': 'nombre', 'rut_invitado': 'RUT',
                 'email_invitado': 'email', 'telefono_invitado': 'teléfono',
-                'direccion_invitado': 'dirección',
             }
             faltantes = [label for campo, label in campos.items() if not str(request.data.get(campo) or '').strip()]
             if faltantes:
                 return Response({"error": f"Faltan campos: {', '.join(faltantes)}"}, status=status.HTTP_400_BAD_REQUEST)
             for campo in campos:
                 setattr(pedido, campo, str(request.data[campo]).strip())
-            pedido.save()
+        if pedido.tipo_entrega == 'envio':
+            direccion = str(request.data.get('direccion_invitado') or '').strip()
+            if not direccion:
+                return Response({"error": "Falta la dirección de envío"}, status=status.HTTP_400_BAD_REQUEST)
+            pedido.direccion_invitado = direccion
+        else:
+            pedido.direccion_invitado = None
+        pedido.save()
 
         return_url = getattr(settings, 'WEBPAY_RETURN_URL', 'http://localhost:8000/api/webpay/retorno/')
         try:

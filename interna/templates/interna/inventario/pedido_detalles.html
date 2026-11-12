@@ -41,6 +41,17 @@
             {% endif %}
         </div>
     </section>
+    <section class="bloque">
+        <h2>Entrega</h2>
+        <div>
+            <p><strong>Tipo:</strong> {{ pedido.get_tipo_entrega_display }}</p>
+            {% if pedido.tipo_entrega == 'envio' %}
+                <p><strong>Dirección:</strong> {{ pedido.direccion_invitado }}</p>
+            {% else %}
+                <p>El comprador retirará en tienda.</p>
+            {% endif %}
+        </div>
+    </section>
 
     <section class="bloque">
         <h2>Productos Comprados</h2>

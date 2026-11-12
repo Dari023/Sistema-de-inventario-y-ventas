@@ -126,6 +126,11 @@ class Pedido(models.Model):
     email_invitado = models.EmailField(null=True, blank=True)
     telefono_invitado = models.CharField(max_length=20, null=True, blank=True)
     direccion_invitado = models.CharField(max_length=200, null=True, blank=True)
+    TIPOS_ENTREGA = [
+        ('envio',  'Envío a domicilio'),
+        ('retiro', 'Retiro en tienda'),
+    ]
+    tipo_entrega = models.CharField(max_length=10, choices=TIPOS_ENTREGA, default='retiro')
 
     @property
     def total(self):
