@@ -197,3 +197,72 @@ body {
     margin: 0 0 0.5rem;
     overflow-wrap: anywhere;
 }
+
+.faq-admin-herramientas,
+.faq-admin-filtro,
+.faq-admin-pie,
+.faq-admin-acciones {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.faq-admin-herramientas,
+.faq-admin-pie {
+    justify-content: space-between;
+}
+
+.faq-admin-herramientas {
+    margin-bottom: 1.5rem;
+}
+
+.faq-admin-filtro {
+    margin: 0;
+}
+
+.faq-admin-filtro select {
+    padding: 0.6rem;
+    border: 1px solid #d8cfdf;
+    border-radius: 0.5rem;
+    font: inherit;
+    background: #fff;
+}
+
+.faq-admin-lista {
+    display: grid;
+    gap: 1rem;
+}
+
+.faq-admin-tarjeta {
+    padding: 1.25rem;
+    border: 1px solid #e5dfdc;
+    border-radius: 0.75rem;
+    background: #fff;
+}
+
+.faq-admin-tarjeta summary {
+    cursor: pointer;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.faq-admin-tarjeta summary .estado {
+    margin-left: 0.5rem;
+}
+
+.faq-admin-respuesta {
+    margin-top: 1rem;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.faq-admin-pie {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.faq-admin-acciones form {
+    margin: 0;
+}

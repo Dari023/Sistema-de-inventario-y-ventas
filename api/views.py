@@ -5,15 +5,19 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.models import User
+from django.core.mail import EmailMultiAlternatives
 from django.db import transaction, IntegrityError
+from django.db.models import F
 from django.conf import settings
 from django.core import signing
 from django.http import Http404
+from django.template.loader import render_to_string
 from transbank.webpay.webpay_plus.transaction import Transaction as WpTx
 from transbank.common.integration_commerce_codes import IntegrationCommerceCodes
 from transbank.common.integration_api_keys import IntegrationApiKeys
 from uuid import UUID
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena
+from urllib.parse import quote
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente
 from .models import Cliente
 from .serializers import (
     ProductoSerializer,
@@ -23,7 +27,8 @@ from .serializers import (
     LoginCorreoSerializer,
     MiCuentaSerializer,
     ResenaCrearSerializer,
-    ResenaPublicaSerializer
+    ResenaPublicaSerializer,
+    PreguntaFrecuenteSerializer
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -177,6 +182,57 @@ class WebpayIniciarView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+def enviar_correo_compra(pedido_id, frontend):
+    pedido = Pedido.objects.select_related('cliente__usuario').get(pk=pedido_id, estado='pagado')
+
+    if pedido.cliente_id:
+        correo = pedido.cliente.usuario.email
+    else:
+        correo = pedido.email_invitado
+
+    if not correo:
+        return
+
+    firmador = signing.Signer(salt='resenas-pedido')
+    token = firmador.sign(str(pedido.id_compra))
+    enlace_resena = f"{frontend.rstrip('/')}/resenas/{quote(token, safe='')}"
+    detalles = []
+    lineas = []
+
+    for detalle in pedido.detallepedido_set.select_related('producto'):
+        nombre = detalle.producto.nombre
+        subtotal = f"${int(detalle.subtotal):,}".replace(",", ".")
+        detalles.append({
+            'nombre': nombre,
+            'cantidad': detalle.cantidad,
+            'subtotal': subtotal
+        })
+
+        lineas.append(f"{detalle.cantidad} × {nombre}: {subtotal}")
+
+    total = f"${int(pedido.total):,}".replace(",", ".")
+    productos = "\n".join(lineas)
+    cuerpo = (
+        "Gracias por comprar en Amigos del Vuelo\n\n"
+        f"Número de compra: {pedido.id_compra}\n\n"
+        f"{productos}\n\n"
+        f"Total pagado: {total}\n\n"
+        f"Valora tus productos: {enlace_resena}"
+    )
+
+    html = render_to_string('interna/inventario/compra_confirmada.html',
+        {
+            'pedido': pedido,
+            'detalles': detalles,
+            'total': total,
+            'enlace_resena': enlace_resena
+        }
+    )
+
+    mensaje = EmailMultiAlternatives(subject='Compra confirmada | Amigos del Vuelo', body=cuerpo, to=[correo])
+    mensaje.attach_alternative(html, 'text/html')
+    mensaje.send()
+
 class WebpayRetornoView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = [] 
@@ -206,20 +262,40 @@ class WebpayRetornoView(APIView):
             )
         except (TypeError, ValueError, Pedido.DoesNotExist):
             return redirect(f"{frontend}/carrito?pago=error")
-        if pedido.estado == 'pagado':
-            return redirect(f"{frontend}/compra/{pedido.id_compra}")
-        if pedido.estado != 'pendiente':
-            return redirect(f"{frontend}/carrito?pago=error")
-
         with transaction.atomic():
-            for detalle in pedido.detallepedido_set.select_related('producto'):
-                prod = detalle.producto
-                if prod.stock_actual < detalle.cantidad:
+            actualizado = Pedido.objects.filter(
+                pk=pedido.pk,
+                estado="pendiente",
+            ).update(estado="pagado")
+
+            if not actualizado:
+                ya_pagado = Pedido.objects.filter(
+                    pk=pedido.pk,
+                    estado="pagado",
+                ).exists()
+
+                if ya_pagado:
+                    return redirect(f"{frontend}/compra/{pedido.id_compra}")
+
+                return redirect(f"{frontend}/carrito?pago=error")
+
+            for detalle in pedido.detallepedido_set.order_by("producto_id"):
+                stock_actualizado = Producto.objects.filter(
+                    pk=detalle.producto_id,
+                    stock_actual__gte=detalle.cantidad,
+                ).update(
+                    stock_actual=F("stock_actual") - detalle.cantidad,
+                )
+
+                if not stock_actualizado:
+                    transaction.set_rollback(True)
                     return redirect(f"{frontend}/carrito?pago=sin-stock")
-                prod.stock_actual -= detalle.cantidad
-                prod.save(update_fields=['stock_actual'])
-            pedido.estado = 'pagado'
-            pedido.save()
+
+            transaction.on_commit(
+                lambda: enviar_correo_compra(pedido.pk, frontend),
+                robust=True,
+            )
+
         return redirect(f"{frontend}/compra/{pedido.id_compra}")    
 
 class CompraDetailView(APIView):
@@ -374,3 +450,15 @@ class ResenasProductoView(APIView):
             'promedio': promedio,
             'resenas': serializer.data,
         })
+
+class PreguntasFrecuentesView(generics.ListAPIView):
+    serializer_class = PreguntaFrecuenteSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    pagination_class = None
+
+    queryset = (
+        PreguntaFrecuente.objects
+        .filter(activo=True)
+        .order_by('orden', 'pk')
+    )

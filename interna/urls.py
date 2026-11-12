@@ -25,3 +25,12 @@ urlpatterns = [
     path('pedidos/', views.pedido_listar, name='pedido_listar'),
     path('pedidos/<int:pk>/', views.pedido_detalles, name='pedido_detalles'),
 ]
+
+    path('configuracion/precios/', views.configuracion_precio_editar, name='configuracion_precio_editar'),
+    path('resenas/', views.resenas_listar, name='resenas_listar'),
+    path('resenas/<int:pk>/estado/', views.resena_estado_cambiar, name='resena_estado_cambiar'),
+    path('preguntas-frecuentes/', views.preguntas_frecuentes_listar, name='preguntas_frecuentes_listar'),
+    path('preguntas-frecuentes/crear/', views.pregunta_frecuente_crear, name='pregunta_frecuente_crear'),
+    path('preguntas-frecuentes/<int:pk>/editar/', views.pregunta_frecuente_editar, name='pregunta_frecuente_editar'),
+    path('preguntas-frecuentes/<int:pk>/estado/', views.pregunta_frecuente_estado, name='pregunta_frecuente_estado')
+]

@@ -1,0 +1,84 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario formulario-contenedor'>
+
+    <header class='inventario-cabecera'>
+        <div>
+            {% if pregunta %}
+                <h1>EDITAR PREGUNTA FRECUENTE</h1>
+            {% else %}
+                <h1>CREAR PREGUNTA FRECUENTE</h1>
+            {% endif %}
+
+            <p>Completa la pregunta y la respuesta que aparecerán en la tienda</p>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+        <form method='post' class='formulario'>
+            {% csrf_token %}
+
+            {{ form.non_field_errors }}
+
+            <div class='formulario-grid'>
+                {% for campo in form %}
+                    <div class='formulario-campo formulario-campo-completo'>
+
+                        {% if campo.field.widget.input_type == 'checkbox' %}
+                            <label class='formulario-checkbox' for='{{ campo.id_for_label }}'>
+                                {{ campo }}
+                                <span>{{ campo.label }}</span>
+                            </label>
+                        {% else %}
+                            <label for='{{ campo.id_for_label }}'>
+                                {{ campo.label }}
+                                {% if campo.field.required %}
+                                    <span class='formulario-obligatorio'>*</span>
+                                {% endif %}
+                            </label>
+
+                            {{ campo }}
+                        {% endif %}
+
+                        {% if campo.help_text %}
+                            <p class='formulario-ayuda'>
+                                {{ campo.help_text }}
+                            </p>
+                        {% endif %}
+
+                        {% if campo.errors %}
+                            <ul class='formulario-error-campo'>
+                                {% for error in campo.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class='formulario-acciones'>
+                <button type='submit'
+                        class='formulario-boton formulario-boton-principal'>
+                    {% if pregunta %}
+                        Actualizar Pregunta
+                    {% else %}
+                        Guardar Pregunta
+                    {% endif %}
+                </button>
+
+                <a href="{% url 'preguntas_frecuentes_listar' %}" class='formulario-boton formulario-boton-secundario'>
+                    Cancelar
+                </a>
+            </div>
+
+        </form>
+    </section>
+</main>
+{% endblock %}

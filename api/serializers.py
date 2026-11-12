@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -328,3 +328,8 @@ class ResenaPublicaSerializer(serializers.ModelSerializer):
             'comentario',
             'fecha_creacion',
         ]
+
+class PreguntaFrecuenteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PreguntaFrecuente
+        fields = ['id', 'pregunta', 'respuesta']
