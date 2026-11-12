@@ -1,0 +1,79 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<main class="inventario">
+    <header class="inventario-cabecera">
+        <div>
+            <h1>PEDIDOS</h1>
+            <p>Busca un pedido por su código.</p>
+        </div>
+    </header>
+
+    <form method="get" class="filtros">
+        <input type="text"
+               name="q"
+               value="{{ q }}"
+               placeholder="Código del pedido (UUID)"
+               autocomplete="off">
+        <button type="submit">Buscar</button>
+        {% if q %}
+            <a href="{% url 'pedido_listar' %}">Limpiar</a>
+        {% endif %}
+    </form>
+
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Comprador</th>
+                <th>Productos</th>
+                <th>Cantidades</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for pedido in pedidos %}
+            <tr>
+                <td><code>{{ pedido.id }}</code></td>
+                <td>{{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</td>
+                <td>
+                    {% if pedido.cliente %}
+                        {{ pedido.cliente.nombre }} {{ pedido.cliente.apellido }}
+                    {% else %}
+                        {{ pedido.nombre_invitado|default:"Invitado" }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% for d in pedido.detallepedido_set.all %}
+                        {{ d.producto.nombre }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}—{% endfor %}
+                </td>
+                <td>
+                    {% for d in pedido.detallepedido_set.all %}
+                        ×{{ d.cantidad }}{% if not forloop.last %}, {% endif %}
+                    {% empty %}—{% endfor %}
+                </td>
+                <td>${{ pedido.total }}</td>
+                <td>{{ pedido.get_estado_display }}</td>
+                <td>
+                    <a href="{% url 'pedido_detalles' pk=pedido.pk %}" class="btn btn-primary">Ver Detalles</a>
+                </td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="7">
+                    {% if q %}
+                        No se encontró ningún pedido con el código "{{ q }}".
+                    {% else %}
+                        No hay pedidos registrados.
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</main>
+{% endblock %}
