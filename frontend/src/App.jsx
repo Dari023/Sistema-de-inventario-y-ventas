@@ -43,7 +43,7 @@ export const App = () => {
   const redesSociales = [
     { nombre: "Instagram", icono: "bi-instagram", enlace: "" },
     { nombre: "Facebook", icono: "bi-facebook", enlace: "" },
-    { nombre: "WhatsApp", icono: "bi-whatsapp", enlace: "enlaceWhatsApp" },
+    { nombre: "WhatsApp", icono: "bi-whatsapp", enlace: enlaceWhatsApp},
 ];
 
   return (

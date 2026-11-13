@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { api } from "../api/Api";
+import "../styles/contacto.css";
 
 const datosIniciales = {
   nombre: "",
