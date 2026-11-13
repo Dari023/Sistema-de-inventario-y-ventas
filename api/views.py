@@ -80,7 +80,7 @@ class CarritoAPIView(APIView):
                 "total": "0",
             })
 
-        serializer = PedidoSerializer(pedido, context={'es_carrito': True})
+        serializer = PedidoSerializer(pedido, context={'es_carrito': True, 'request': request})
         return Response(serializer.data)
 
     def post(self, request):
@@ -127,7 +127,7 @@ class CarritoAPIView(APIView):
                 precio_unitario=producto.precio_final
             )
 
-        serializer = PedidoSerializer(pedido,context={'es_carrito': True})
+        serializer = PedidoSerializer(pedido,context={'es_carrito': True, 'request': request})
         return Response(serializer.data)
 
     def delete(self, request):

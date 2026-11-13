@@ -44,11 +44,15 @@ class CategoriaProductoSerializer(serializers.ModelSerializer):
 
 class DetallePedidoSerializer(serializers.ModelSerializer):
     producto_nombre = serializers.ReadOnlyField(source="producto.nombre")
+    producto_imagen = serializers.ImageField(
+        source="producto.imagen",
+        read_only=True
+    )
     subtotal = serializers.ReadOnlyField()
 
     class Meta:
         model = DetallePedido
-        fields = ["id", "producto", "producto_nombre", "cantidad", "precio_unitario", "subtotal"]
+        fields = ["id", "producto", "producto_nombre", "producto_imagen", "cantidad", "precio_unitario", "subtotal"]
 
     def to_representation(self, instancia):
         datos = super().to_representation(instancia)
