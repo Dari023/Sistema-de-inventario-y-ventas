@@ -243,3 +243,48 @@ class PreguntaFrecuente(models.Model):
 
     def __str__(self):
         return self.pregunta
+    
+    
+
+class Consulta(models.Model):
+    ESTADOS = [
+        ("pendiente", "Pendiente"),
+        ("respondida", "Respondida"),
+    ]
+
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="consultas",
+    )
+
+    nombre = models.CharField(max_length=150)
+    correo = models.EmailField()
+    asunto = models.CharField(max_length=150)
+    mensaje = models.TextField()
+
+    es_personalizado = models.BooleanField(default=False)
+
+    imagen_referencia = models.ImageField(
+        upload_to="consultas/",
+        blank=True,
+        null=True,
+    )
+
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADOS,
+        default="pendiente",
+    )
+
+    class Meta:
+        ordering = ["-fecha", "-pk"]
+        verbose_name = "Consulta"
+        verbose_name_plural = "Consultas"
+
+    def __str__(self):
+        return f"{self.nombre} - {self.asunto}"
