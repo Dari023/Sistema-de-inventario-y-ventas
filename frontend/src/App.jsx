@@ -15,6 +15,7 @@ import { Seguimiento } from "./modules/Seguimiento";
 import 'react-toastify/dist/ReactToastify.css';
 import Logo from "./assets/Logo.jpeg";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import { Contacto } from "./modules/Contacto";
 
 export const App = () => {
   const navigate = useNavigate();
@@ -93,6 +94,7 @@ export const App = () => {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/compra/:id_compra" element={<CompraDetail />} />
           <Route path='/resenas/:token' element={<Resenas />} />
+          <Route path="/contacto" element={<Contacto />} />
           <Route path="/seguimiento/:id_compra" element={<Seguimiento />} />
         </Routes>
       </main>
@@ -146,6 +148,9 @@ export const App = () => {
               <h2>Contacto</h2>
 
               <div className="tienda-footer-enlaces">
+                <Link to="/contacto">
+                  <i className="bi bi-chat-dots"></i> Enviar consulta
+                </Link>
                 {enlaceWhatsApp ? (
                   <a href={enlaceWhatsApp} target="_blank" rel="noopener noreferrer">
                     <i className="bi bi-whatsapp"></i> WhatsApp
