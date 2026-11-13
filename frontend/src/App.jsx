@@ -11,6 +11,7 @@ import { Checkout } from "./modules/Checkout";
 import { CompraDetail } from "./modules/CompraDetail";
 import { ToastContainer } from 'react-toastify';
 import { Resenas } from "./modules/Resenas";
+import { Seguimiento } from "./modules/Seguimiento";
 import 'react-toastify/dist/ReactToastify.css';
 import Logo from "./assets/Logo.jpeg";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -94,6 +95,7 @@ export const App = () => {
           <Route path="/compra/:id_compra" element={<CompraDetail />} />
           <Route path='/resenas/:token' element={<Resenas />} />
           <Route path="/contacto" element={<Contacto />} />
+          <Route path="/seguimiento/:id_compra" element={<Seguimiento />} />
         </Routes>
       </main>
 
