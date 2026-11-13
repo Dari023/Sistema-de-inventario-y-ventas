@@ -1,0 +1,48 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<main>
+    <h1>Detalle de consulta</h1>
+
+    <p>
+        <a href="{% url 'consultas_listar' %}">Volver a consultas</a>
+    </p>
+
+    <dl>
+        <dt>Nombre</dt>
+        <dd>{{ consulta.nombre }}</dd>
+
+        <dt>Correo electrónico</dt>
+        <dd>{{ consulta.correo }}</dd>
+
+        <dt>Fecha y hora</dt>
+        <dd>{{ consulta.fecha|date:"d/m/Y H:i" }}</dd>
+
+        <dt>Estado</dt>
+        <dd>{{ consulta.get_estado_display }}</dd>
+
+        <dt>Tipo</dt>
+        <dd>
+            {% if consulta.es_personalizado %}
+                Pedido personalizado
+            {% else %}
+                Consulta general
+            {% endif %}
+        </dd>
+    </dl>
+
+    <h2>{{ consulta.asunto }}</h2>
+    <div>{{ consulta.mensaje|linebreaks }}</div>
+
+    <h2>Imagen de referencia</h2>
+    {% if consulta.imagen_referencia %}
+        <a href="{{ consulta.imagen_referencia.url }}"
+           target="_blank"
+           rel="noopener noreferrer">
+            Ver imagen adjunta
+        </a>
+    {% else %}
+        <p>No se adjuntó una imagen.</p>
+    {% endif %}
+</main>
+{% endblock %}

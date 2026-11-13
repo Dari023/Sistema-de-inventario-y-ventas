@@ -58,6 +58,14 @@
                     </a>
                 {% endif %}
 
+                {% if perms.interna.view_consulta %}
+                    <a href="{% url 'consultas_listar' %}"
+                    class="{% if ruta == 'consultas_listar' or ruta == 'consulta_detalle' %}activo{% endif %}">
+                        <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                        Consultas
+                    </a>
+                {% endif %}
+                
                 <a href="{% url 'usuario-list' %}"
                     class="{% if ruta == 'usuario-list' or ruta == 'usuario-create' or ruta == 'usuario-update' or ruta == 'usuario-delete' %}activo{% endif %}">
                     <i class="bi bi-people"></i>
