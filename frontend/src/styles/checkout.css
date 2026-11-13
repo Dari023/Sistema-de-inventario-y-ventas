@@ -165,3 +165,113 @@
 .checkout-direccion {
   margin-top: 20px;
 }
+.checkout-productos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checkout-producto {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--tienda-borde);
+}
+
+.checkout-producto:first-child {
+  padding-top: 0;
+}
+
+.checkout-imagen {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  object-fit: contain;
+  background-color: #fff;
+  border: 1px solid var(--tienda-borde);
+  border-radius: 10px;
+}
+
+.checkout-producto-info {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.checkout-producto-info h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.checkout-producto-info p {
+  margin: 0;
+  color: var(--tienda-texto-suave);
+  font-size: 0.9rem;
+}
+
+.checkout-subtotal {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+
+.checkout-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 24px 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.checkout-terminos {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 24px;
+  color: var(--tienda-texto-suave);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.checkout-terminos input {
+  margin-top: 2px;
+}
+
+.checkout .checkout-pagar {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.checkout .checkout-pagar:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.checkout-aviso {
+  margin: 14px 0 0;
+  color: var(--tienda-texto-suave);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.checkout a:focus-visible,
+.checkout button:focus-visible,
+.checkout input[type="radio"]:focus-visible,
+.checkout input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--tienda-naranjo-oscuro);
+  outline-offset: 3px;
+}
