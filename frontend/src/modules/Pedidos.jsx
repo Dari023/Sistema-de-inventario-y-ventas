@@ -38,6 +38,14 @@ export const Pedidos = () => {
                   {p.detalles.length} producto{p.detalles.length === 1 ? "" : "s"}
                 </small>
               </div>
+              <div className="mt-2 mt-md-0 d-flex gap-2">
+                <Link to={`/seguimiento/${p.id_compra}`} className="btn btn-sm btn-link text-dark" title="Seguimiento">
+                  <i className="bi bi-truck-front-fill fs-5"></i>
+                </Link>
+                <Link to={`/compra/${p.id_compra}`} className="btn btn-sm btn-link text-dark" title="Comprobante">
+                  <i className="bi bi-file-earmark-text-fill fs-5"></i>
+                </Link>
+              </div>
             </Link>
           ))}
         </div>
