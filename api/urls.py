@@ -20,5 +20,6 @@ urlpatterns = [
     path('mi-cuenta/pedidos/', views.HistorialPedidosView.as_view(), name='api_historial_pedidos'),
     path('resenas/<str:token>/', views.ResenaCompraView.as_view(), name='api_resena_compra'),
     path('productos/<int:pk>/resenas/', views.ResenasProductoView.as_view(), name='api_resenas_producto'),
-    path('preguntas-frecuentes/', views.PreguntasFrecuentesView.as_view(), name='api_preguntas_frecuentes')
+    path('preguntas-frecuentes/', views.PreguntasFrecuentesView.as_view(), name='api_preguntas_frecuentes'),
+    path("consultas/",views.ConsultaCrearView.as_view(), name="api_consulta_crear"),
 ]

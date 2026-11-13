@@ -19,6 +19,7 @@ from uuid import UUID
 from urllib.parse import quote
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente
 from .models import Cliente
+from .serializers import ConsultaCrearSerializer
 from .serializers import (
     ProductoSerializer,
     PedidoSerializer,
@@ -483,3 +484,20 @@ class PreguntasFrecuentesView(generics.ListAPIView):
         .filter(activo=True)
         .order_by('orden', 'pk')
     )
+    
+class ConsultaCrearView(generics.CreateAPIView):
+    serializer_class = ConsultaCrearSerializer
+    permission_classes = [AllowAny]
+
+    def perform_create(self, serializer):
+        cliente = None
+
+        if self.request.user.is_authenticated:
+            cliente = Cliente.objects.filter(
+                usuario=self.request.user
+            ).first()
+
+        serializer.save(
+            cliente=cliente,
+            estado="pendiente",
+        )

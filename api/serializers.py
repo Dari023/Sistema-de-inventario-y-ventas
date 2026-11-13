@@ -9,6 +9,7 @@ from django.db import transaction
 from decimal import Decimal
 from .models import Cliente
 from uuid import uuid4
+from interna.models import Consulta
 import re
 
 def validar_telefono_chileno(value):
@@ -364,3 +365,21 @@ class PreguntaFrecuenteSerializer(serializers.ModelSerializer):
     class Meta:
         model = PreguntaFrecuente
         fields = ['id', 'pregunta', 'respuesta']
+        
+
+class ConsultaCrearSerializer(serializers.ModelSerializer):
+    mensaje = serializers.CharField(
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+    class Meta:
+        model = Consulta
+        fields = [
+            "nombre",
+            "correo",
+            "asunto",
+            "mensaje",
+            "es_personalizado",
+            "imagen_referencia",
+        ]
