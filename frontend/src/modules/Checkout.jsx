@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api } from "../api/Api";
+import "../styles/checkout.css";
 
 const CAMPOS = [
   ["nombre_invitado", "Nombre completo", "text"],
@@ -86,106 +87,179 @@ export const Checkout = () => {
       setEnviando(false)
     }
   };
+  const formatoPrecio = (valor) =>
+    Number(valor).toLocaleString("es-CL", {
+      style: "currency",
+      currency: "CLP",
+      maximumFractionDigits: 0,
+    });
 
   if (!carrito) return <p>Cargando...</p>;
 
   return (
-    <form onSubmit={confirmar}>
-      <h2>Checkout</h2>
-      <Link to="/carrito">← Volver al carrito</Link>
+    <form className="checkout" onSubmit={confirmar}>
+      <header className="checkout-cabecera">
+        <Link to="/carrito" className="checkout-volver">
+          ← Volver al carrito
+        </Link>
 
-      {token ? (
-        <section>
-          <h4>Datos de envío</h4>
-          <p>
-            Usaremos los datos de tu cuenta. Puedes editarlos en{" "}
-            <Link to="/mi-cuenta">Mi Cuenta</Link>.
-          </p>
-        </section>
-      ) : (
-        <section>
-          <h4>Datos para la compra</h4>
-          {CAMPOS.map(([name, label, type]) => (
-            <div key={name}>
-              <label>
-                {label}:{" "}
+        <h1>Finalizar compra</h1>
+        <p>Completa tus datos y elige cómo recibir tu pedido.</p>
+      </header>
+
+      <div className="checkout-contenido">
+        <div className="checkout-datos">
+          <section className="checkout-panel">
+            <h2>Datos para la compra</h2>
+
+            {token ? (
+              <p className="checkout-cuenta">
+                Usaremos los datos de tu cuenta. Puedes editarlos en{" "}
+                <Link to="/mi-cuenta">Mi Cuenta</Link>.
+              </p>
+            ) : (
+              <div className="checkout-campos">
+                {CAMPOS.map(([name, label, type]) => (
+                  <div key={name} className="checkout-campo">
+                    <label htmlFor={`checkout-${name}`}>
+                      {label}
+                    </label>
+
+                    <input
+                      id={`checkout-${name}`}
+                      type={type}
+                      name={name}
+                      value={form[name]}
+                      onChange={onFormChange}
+                      disabled={enviando}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section
+            className="checkout-panel"
+            aria-labelledby="checkout-entrega-titulo"
+          >
+            <h2 id="checkout-entrega-titulo">Tipo de entrega</h2>
+
+            <div className="checkout-entregas">
+              <label
+                className={`checkout-opcion ${
+                  tipoEntrega === "retiro" ? "seleccionada" : ""
+                }`}
+              >
                 <input
-                  type={type}
-                  name={name}
-                  value={form[name]}
-                  onChange={onFormChange}
+                  type="radio"
+                  name="tipo_entrega"
+                  value="retiro"
+                  checked={tipoEntrega === "retiro"}
+                  onChange={() => setTipoEntrega("retiro")}
                   disabled={enviando}
                 />
+
+                <span>Retiro en tienda</span>
+              </label>
+
+              <label
+                className={`checkout-opcion ${
+                  tipoEntrega === "envio" ? "seleccionada" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tipo_entrega"
+                  value="envio"
+                  checked={tipoEntrega === "envio"}
+                  onChange={() => setTipoEntrega("envio")}
+                  disabled={enviando}
+                />
+
+                <span>Envío a domicilio</span>
               </label>
             </div>
-          ))}
-        </section>
-      )}
 
-      <section>
-        <h4>Resumen del pedido</h4>
-        <ul>
-          {carrito.detalles.map((item) => (
-            <li key={item.id}>
-              {item.cantidad} × {item.producto_nombre} — ${item.subtotal}
-            </li>
-          ))}
-        </ul>
-        <h3>Total: ${carrito.total}</h3>
-      </section>
-      <section>
-        <h4>Tipo de entrega</h4>
-        <label>
-          <input
-            type="radio"
-            name="tipo_entrega"
-            value="retiro"
-            checked={tipoEntrega === "retiro"}
-            onChange={() => setTipoEntrega("retiro")}
-            disabled={enviando}
-          />{" "}
-          Retiro en tienda
-        </label>
-        <br />
-        <label>
-          <input
-            type="radio"
-            name="tipo_entrega"
-            value="envio"
-            checked={tipoEntrega === "envio"}
-            onChange={() => setTipoEntrega("envio")}
-            disabled={enviando}
-          />{" "}
-          Envío a domicilio
-        </label>
+            {tipoEntrega === "envio" && (
+              <div className="checkout-campo checkout-direccion">
+                <label htmlFor="checkout-direccion">
+                  Dirección de envío
+                </label>
 
-        {tipoEntrega === "envio" && (
-          <div style={{ marginTop: "0.5rem" }}>
-            <label>
-              Dirección de envío:{" "}
-              <input
-                type="text"
-                value={direccion}
-                onChange={(e) => setDireccion(e.target.value)}
-                disabled={enviando}
-                required
-              />
-            </label>
+                <input
+                  id="checkout-direccion"
+                  type="text"
+                  value={direccion}
+                  onChange={(e) => setDireccion(e.target.value)}
+                  disabled={enviando}
+                  placeholder="Calle, número, departamento o casa"
+                  required
+                />
+              </div>
+            )}
+          </section>
+        </div>
+
+        <aside className="checkout-panel checkout-resumen">
+          <h2>Resumen del pedido</h2>
+
+          <ul className="checkout-productos">
+            {carrito.detalles.map((item) => (
+              <li key={item.id} className="checkout-producto">
+                {item.producto_imagen && (
+                  <img
+                    src={item.producto_imagen}
+                    alt={item.producto_nombre}
+                    className="checkout-imagen"
+                  />
+                )}
+
+                <div className="checkout-producto-info">
+                  <h3>{item.producto_nombre}</h3>
+                  <p>Cantidad: {item.cantidad}</p>
+                </div>
+
+                <strong className="checkout-subtotal">
+                  {formatoPrecio(item.subtotal)}
+                </strong>
+              </li>
+            ))}
+          </ul>
+
+          <div className="checkout-total">
+            <span>Total</span>
+            <strong>{formatoPrecio(carrito.total)}</strong>
           </div>
-        )}
-      </section>
-      <label style={{ display: "block", margin: "1rem 0" }}>
-        <input
-          type="checkbox"
-          checked={aceptaTerminos}
-          onChange={(e) => setAceptaTerminos(e.target.checked)}
-          disabled={enviando}
-        />{" "}
-        Acepto los términos y condiciones y el tratamiento de datos
-      </label>
-      <button type="submit" disabled={enviando}>
-        {enviando ? "Redirigiendo a Webpay..." : "Pagar con Webpay"}
-      </button>
+
+          <label className="checkout-terminos">
+            <input
+              type="checkbox"
+              checked={aceptaTerminos}
+              onChange={(e) => setAceptaTerminos(e.target.checked)}
+              disabled={enviando}
+            />
+
+            <span>
+              Acepto los términos y condiciones y el tratamiento de datos.
+            </span>
+          </label>
+
+          <button
+            type="submit"
+            className="btn boton-principal checkout-pagar"
+            disabled={enviando}
+          >
+            {enviando
+              ? "Redirigiendo a Webpay..."
+              : "Pagar con Webpay →"}
+          </button>
+
+          <p className="checkout-aviso">
+            Serás redirigido a Webpay para realizar el pago.
+          </p>
+        </aside>
+      </div>
     </form>
   );
 };
