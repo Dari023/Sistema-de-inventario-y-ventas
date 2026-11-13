@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
+from django.db.models import F
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -31,9 +32,30 @@ from .forms import (
     TiempoPrecioForm,
     PreguntaFrecuenteForm)
 
+
 @login_required
 def home(request):
-    return redirect('inventario')
+    materias_criticas = list(
+        MateriaPrima.objects.filter(
+            estado=True,
+            cantidad_actual__lte=F("cantidad_critica")
+        ).order_by("nombre")
+    )
+
+    productos_criticos = list(
+        Producto.objects.filter(
+            activo=True,
+            stock_actual__lte=F("stock_critico")
+        ).order_by("nombre")
+    )
+
+    return render(request, "interna/dashboard.html", {
+        "materias_criticas": materias_criticas,
+        "productos_criticos": productos_criticos,
+        "total_alertas": len(materias_criticas) + len(productos_criticos),
+    })
+
+
 
 @login_required
 def inventario(request):
