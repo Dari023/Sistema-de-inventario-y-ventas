@@ -5,6 +5,80 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!panel || !precio || !tiempo) return;
 
     const formulario = precio.form;
+    const selectorTalla = document.getElementById("calcular-talla");
+
+    function sincronizarTallas() {
+        let primeraTalla = "";
+
+        for (const opcion of selectorTalla.options) {
+            if (!opcion.value) continue;
+
+            const ofrecer = formulario.elements.namedItem(
+                `talla-${opcion.value}-ofrecer`
+            );
+            const marcada = Boolean(ofrecer?.checked);
+
+            opcion.hidden = !marcada;
+            opcion.disabled = !marcada;
+
+            if (marcada && !primeraTalla) {
+                primeraTalla = opcion.value;
+            }
+        }
+
+        const tieneTallas = primeraTalla !== "";
+        const opcionGeneral = selectorTalla.querySelector('option[value=""]');
+
+        opcionGeneral.hidden = tieneTallas;
+        opcionGeneral.disabled = tieneTallas;
+
+        if (!tieneTallas) {
+            selectorTalla.value = "";
+        } else if (
+            !selectorTalla.value ||
+            selectorTalla.selectedOptions[0]?.disabled
+        ) {
+            selectorTalla.value = primeraTalla;
+        }
+
+        document.getElementById("bloque-tiempo-general").hidden = tieneTallas;
+        tiempo.disabled = tieneTallas;
+        tiempo.required = !tieneTallas;
+        document.getElementById("bloque-precio-base").hidden = tieneTallas;
+        precio.disabled = tieneTallas;
+        precio.required = !tieneTallas;
+    }
+
+    function prepararReceta(talla, campoTiempo) {
+        const datos = new URLSearchParams();
+        datos.set("tiempo_fabricacion_minutos", campoTiempo.value);
+
+        const campoCantidad = talla
+            ? `cantidad_${talla.toLowerCase()}`
+            : "cantidad_requerida";
+
+        let cantidadFilas = 0;
+
+        formulario.querySelectorAll("#lista-materiales .fila-material").forEach(function (fila) {
+            if (fila.hidden || fila.querySelector('[name$="-DELETE"]')?.checked) return;
+
+            const materia = fila.querySelector('[name$="-materia_prima"]');
+            const cantidad = fila.querySelector(`[name$="-${campoCantidad}"]`);
+
+            if (!materia?.value && !cantidad?.value) return;
+            if (talla && materia?.value && !cantidad?.value) return;
+
+            const prefijo = `materiales-${cantidadFilas}`;
+            datos.set(`${prefijo}-materia_prima`, materia?.value || "");
+            datos.set(`${prefijo}-cantidad_requerida`, cantidad?.value || "");
+            cantidadFilas += 1;
+        });
+
+        datos.set("materiales-TOTAL_FORMS", String(cantidadFilas));
+        datos.set("materiales-INITIAL_FORMS", "0");
+        return datos;
+    }
+
     const mensaje = panel.querySelector('[data-mensaje-precio]');
     const resultado = panel.querySelector('[data-resultado-precio]');
     const boton = panel.querySelector('[data-usar-precio]');
@@ -33,23 +107,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function calcular(version) {
-        if (!tiempo.value || !tiempo.checkValidity()) {
-            mostrarMensaje('Completa el tiempo de trabajo y la receta para calcular la sugerencia.');
-            return;
-        }
-        const csrf = formulario.querySelector("[name='csrfmiddlewaretoken']");
-        if (!csrf) {
-            mostrarMensaje('Recarga la página para calcular la sugerencia.');
-            return;
-        }
-        const datos = new URLSearchParams();
-        const controles = new FormData(formulario);
-        controles.forEach(function (valor, nombre) {
-            if (typeof valor === 'string' && (
-                nombre.startsWith('materiales-') ||
-                nombre === 'tiempo_fabricacion_minutos'
-            )) datos.append(nombre, valor);
-        });
+    const talla = selectorTalla.value;
+    const campoTiempo = talla
+        ? formulario.elements.namedItem(`talla-${talla}-tiempo_minutos`)
+        : tiempo;
+
+    if (!campoTiempo?.value || !campoTiempo.checkValidity()) {
+        mostrarMensaje("Completa los minutos de confección y la receta seleccionada.");
+        return;
+    }
+
+    const csrf = formulario.querySelector('[name="csrfmiddlewaretoken"]');
+    if (!csrf) {
+        mostrarMensaje("Recarga la página para calcular la sugerencia.");
+        return;
+    }
+
+    const datos = prepararReceta(talla, campoTiempo);
         solicitud = new AbortController();
         panel.setAttribute('aria-busy', 'true');
         try {
@@ -88,21 +162,46 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function cambioDeCalculo(evento) {
-        const nombre = evento.target.name || '';
-        if (nombre === 'tiempo_fabricacion_minutos' || nombre.startsWith('materiales-')) {
+        function cambioDeCalculo(evento) {
+        const nombre = evento.target.name || "";
+        const cambioOferta = /^talla-[SML]-ofrecer$/.test(nombre);
+        const cambioMinutos = /^talla-[SML]-tiempo_minutos$/.test(nombre);
+
+        if (cambioOferta) {
+            sincronizarTallas();
+        }
+
+        if (
+            nombre === "tiempo_fabricacion_minutos" ||
+            nombre.startsWith("materiales-") ||
+            cambioOferta ||
+            cambioMinutos
+        ) {
             programarCalculo();
         }
     }
-    formulario.addEventListener('input', cambioDeCalculo);
-    formulario.addEventListener('change', cambioDeCalculo);
-    formulario.addEventListener('materiales-cambiados', programarCalculo);
-    window.addEventListener('focus', programarCalculo);
-    boton.addEventListener('click', function () {
+
+    formulario.addEventListener("input", cambioDeCalculo);
+    formulario.addEventListener("change", cambioDeCalculo);
+    formulario.addEventListener("materiales-cambiados", programarCalculo);
+    window.addEventListener("focus", programarCalculo);
+    selectorTalla.addEventListener("change", programarCalculo);
+
+    boton.addEventListener("click", function () {
         if (sugerencia === null) return;
-        precio.value = sugerencia;
-        precio.dispatchEvent(new Event('input', { bubbles: true }));
-        precio.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const talla = selectorTalla.value;
+        const destino = talla
+            ? formulario.elements.namedItem(`talla-${talla}-precio`)
+            : precio;
+
+        if (!destino) return;
+
+        destino.value = sugerencia;
+        destino.dispatchEvent(new Event("input", { bubbles: true }));
+        destino.dispatchEvent(new Event("change", { bubbles: true }));
     });
+
+    sincronizarTallas();
     programarCalculo();
 });

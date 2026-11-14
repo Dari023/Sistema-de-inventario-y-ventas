@@ -38,7 +38,7 @@
                     <th>Nombre</th>
                     <th>Categoría</th>
                     <th>Precio</th>
-                    <th>Stock actual</th>
+                    <th>Stock Total</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
@@ -54,7 +54,7 @@
                             <small>(−{{ producto.descuento_porcentaje }} %)</small>
                         {% endif %}
                     </td>
-                    <td>{{ producto.stock_actual }}</td>
+                    <td>{{ producto.stock_para_mostrar }}</td>
                     <td data-search="{% if producto.activo %}Activo{% else %}Deshabilitado{% endif %}">
                         {% if producto.activo %}
                             <span class="estado estado-activo">Activo</span>

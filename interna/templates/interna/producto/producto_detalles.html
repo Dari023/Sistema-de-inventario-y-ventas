@@ -8,58 +8,103 @@
 
 {% block content %}
 <main class="inventario">
-
     <header class="inventario-cabecera">
         <div>
-            <h1>Detalles del Producto</h1>
-            <p>Información y Disponibilidad del Producto.</p>
+            <h1>DETALLES DEL PRODUCTO</h1>
+            <p>Información y disponibilidad del producto</p>
         </div>
     </header>
 
-    <section class="inventario-panel detalle">
-        <div class="detalle-imagen">
-            {% if producto.imagen %}
-                <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
-            {% else %}
-                <span>Sin Imagen Disponible</span>
-            {% endif %}
-        </div>
-
-        <div class="detalle-informacion">
-            <div class="detalle-titulo">
-                <h2>{{ producto.nombre }}</h2>
-                {% if producto.activo %}
-                    <span class="estado estado-activo">Activo</span>
+    {% with variantes=producto.variantes.all %}
+        <section class="inventario-panel detalle">
+            <div class="detalle-imagen">
+                {% if producto.imagen %}
+                    <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
                 {% else %}
-                    <span class="estado estado-deshabilitado">Deshabilitado</span>
+                    <span>Sin imagen disponible</span>
                 {% endif %}
             </div>
-            <p class="detalle-categoria">{{ producto.categoria.nombre }}</p>
-            <p class="detalle-precio">${{ producto.precio }}</p>
-            <dl class="detalle-datos">
-                <div>
-                    <dt>Stock Actual</dt>
-                    <dd>{{ producto.stock_actual }}</dd>
-                </div>
-                <div>
-                    <dt>Stock Crítico</dt>
-                    <dd>{{ producto.stock_critico }}</dd>
-                </div>
-                <div>
-                    <dt>Modalidad de Venta</dt>
-                    <dd>{{ producto.modalidad_de_venta }}</dd>
-                </div>
-            </dl>
-            <div class="detalle-descripcion">
-                <h3>Descripción</h3>
-                <p>{{ producto.descripcion|default:"Sin Descripción Disponible." }}</p>
-            </div>
-            <div class="detalle-acciones">
-                <a class="detalle-boton detalle-boton-principal" href="{% url 'producto_editar' producto.pk %}">Editar Producto</a>
-                <a class="detalle-boton detalle-boton-secundario" href="{% url 'producto_listar' %}">Volver a la Lista</a>
-            </div>
-        </div>
-    </section>
 
+            <div class="detalle-informacion">
+                <div class="detalle-titulo">
+                    <h2>{{ producto.nombre }}</h2>
+                    {% if producto.activo %}
+                        <span class="estado estado-activo">Activo</span>
+                    {% else %}
+                        <span class="estado estado-deshabilitado">Deshabilitado</span>
+                    {% endif %}
+                </div>
+
+                <p class="detalle-categoria">{{ producto.categoria.nombre }}</p>
+                <p class="detalle-precio">
+                    {% if variantes %}Desde {% endif %}${{ producto.precio_final|floatformat:"0g" }}
+                </p>
+
+                <dl class="detalle-datos">
+                    <div>
+                        <dt>{% if variantes %}Stock total{% else %}Stock actual{% endif %}</dt>
+                        <dd>{{ producto.stock_para_mostrar }}</dd>
+                    </div>
+                    <div>
+                        <dt>Stock crítico</dt>
+                        <dd>{{ producto.stock_critico }}</dd>
+                    </div>
+                    <div>
+                        <dt>Modalidad de venta</dt>
+                        <dd>{{ producto.modalidad_de_venta }}</dd>
+                    </div>
+                    {% if not variantes %}
+                        <div>
+                            <dt>Tiempo de confección (min)</dt>
+                            <dd>{{ producto.tiempo_fabricacion_minutos|default_if_none:"—" }}</dd>
+                        </div>
+                    {% endif %}
+                </dl>
+
+                <div class="detalle-descripcion">
+                    <h3>Descripción</h3>
+                    <p>{{ producto.descripcion|default:"Sin descripción disponible." }}</p>
+                </div>
+
+                <div class="detalle-acciones">
+                    <a class="detalle-boton detalle-boton-principal"
+                       href="{% url 'producto_editar' producto.pk %}">Editar producto</a>
+                    <a class="detalle-boton detalle-boton-secundario"
+                       href="{% url 'producto_listar' %}">Volver a la lista</a>
+                </div>
+            </div>
+        </section>
+
+        {% if variantes %}
+            <section class="inventario-panel detalle-tallas">
+                <h2>Disponibilidad por talla</h2>
+
+                <div class="detalle-tallas-tabla">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Talla</th>
+                                <th scope="col">Stock</th>
+                                <th scope="col">Precio final</th>
+                                <th scope="col">Confección (min)</th>
+                                <th scope="col">A pedido</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for variante in variantes %}
+                                <tr>
+                                    <th scope="row">{{ variante.get_talla_display }}</th>
+                                    <td>{{ variante.stock_actual }}</td>
+                                    <td>${{ variante.precio_final|floatformat:"0g" }}</td>
+                                    <td>{{ variante.tiempo_minutos|default_if_none:"—" }}</td>
+                                    <td>{{ variante.a_pedido|yesno:"Sí,No" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% endif %}
+    {% endwith %}
 </main>
 {% endblock %}

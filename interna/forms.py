@@ -10,11 +10,13 @@ from .models import (Producto,
     CategoriaProducto, 
     MovimientoMateriaPrima, 
     ConfiguracionPrecio,
-    PreguntaFrecuente)
+    PreguntaFrecuente,
+    ProductoVariante)
 
 class ProductoForm(forms.ModelForm):
     tiempo_fabricacion_minutos = forms.IntegerField(
         label='Tiempo de Trabajo por Unidad (Minutos)',
+        required= False,
         min_value=1,
         help_text='Por Ejemplo: 90 Minutos Equivalen a una Hora y Media',
         widget=forms.NumberInput(attrs={
@@ -41,16 +43,32 @@ class ProductoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields["categoria"].queryset = (
-        CategoriaProducto.objects
-        .filter(activo=True)
-        .order_by("nombre")
-        )
+        CategoriaProducto.objects.filter(activo=True).order_by("nombre"))
         self.fields["categoria"].empty_label = "Selecciona una Opción"
         self.fields["categoria"].error_messages["invalid_choice"] = (
         "Selecciona una Categoría que se Encuentre Activa."
         )
         if not self.instance.pk:
             self.fields["activo"].initial = False
+
+class ProductoVarianteForm(forms.Form):
+    ofrecer = forms.BooleanField(required=False)
+    precio = forms.DecimalField(required=False, min_value=1, max_digits=10, decimal_places=0)
+    tiempo_minutos = forms.IntegerField(required=False, min_value=1, max_value=2147483647,label='Minutos de confección')
+    a_pedido = forms.BooleanField(required=False)
+
+    def clean(self):
+        datos = super().clean()
+
+        if datos.get('ofrecer'):
+            if 'tiempo_minutos' in datos and datos['tiempo_minutos'] is None:
+                self.add_error('tiempo_minutos', 'Ingresa los Minutos de esta Talla')
+            if 'precio' in datos and datos['precio'] is None:
+                self.add_error('precio', 'Ingresa el Precio de esta Talla')
+        elif datos.get('precio') is not None or datos.get('a_pedido') or datos.get('tiempo_minutos') is not None:
+            self.add_error('ofrecer', 'Marca esta Talla para Guardarla')
+
+        return datos
 
 class MateriaPrimaForm(forms.ModelForm):
     observacion = forms.CharField(
@@ -131,7 +149,7 @@ class ProductoMateriaPrimaForm(forms.ModelForm):
 
     class Meta:
         model = ProductoMateriaPrima
-        fields = ["materia_prima", "cantidad_requerida"]
+        fields = ["materia_prima", "cantidad_requerida", "cantidad_s", "cantidad_m", "cantidad_l"]
         labels = {
             "materia_prima": "Materia prima",
         }
@@ -195,8 +213,14 @@ ProductoMateriaPrimaFormSet = inlineformset_factory(
 
 class FabricacionForm(forms.Form):
     cantidad = forms.IntegerField(
-        label="Unidades fabricadas",
-        min_value=1,
+        label="Unidades Fabricadas",
+        min_value=1
+    )
+    variante = forms.ModelChoiceField(
+    queryset=ProductoVariante.objects.none(),
+    required=False,
+    label='Talla a Fabricar',
+    empty_label='Selecciona una Talla'
     )
 
 class MovimientoObservacionForm(forms.ModelForm):
