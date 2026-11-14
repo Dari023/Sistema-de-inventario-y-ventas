@@ -14,146 +14,266 @@
         <div>
             {% if producto %}
                 <h1>EDITAR PRODUCTO</h1>
-                <p>Actualiza la Información de {{ producto.nombre }}.</p>
+                <p>Actualiza la información de {{ producto.nombre }}.</p>
             {% else %}
                 <h1>CREAR PRODUCTO</h1>
-                <p>Completa la Información para Registrar un Producto</p>
+                <p>Completa la información para registrar un producto.</p>
             {% endif %}
         </div>
     </header>
 
     <section class="inventario-panel">
-        <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios</p>
+        <p class="formulario-aviso">
+            Los campos con <span>*</span> son obligatorios.
+        </p>
+
         <form class="formulario" method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {% for campo in form.hidden_fields %}
                 {{ campo }}
             {% endfor %}
+
             {% if form.non_field_errors %}
-                <div class="formulario-errores">
-                    <ul>
-                        {% for error in form.non_field_errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+                <div class="formulario-errores">{{ form.non_field_errors }}</div>
             {% endif %}
 
-            <div class="formulario-grid">
-                {% for campo in form.visible_fields %}
-                    {% if campo.name == 'precio' %}
-                        <section id='precio-sugerido' class='precio-sugerido formulario-campo-completo'
-                                data-url="{% url 'producto_precio_sugerido' %}"
-                                aria-labelledby='titulo-precio-sugerido'>
-                            <h2 id='titulo-precio-sugerido'>Precio Sugerido</h2>
-                            <p data-mensaje-precio>Completa el Tiempo de Trabajo y la Receta para Calcular la Sugerencia</p>
-                            <div data-resultado-precio hidden>
-                                <strong class='precio-sugerido-importe' data-importe='precio_sugerido'></strong>
-                                <p class='precio-nota'>
-                                    Margen: <span data-margen></span>
-                                    IVA: <span data-iva></span>
-                                </p>
-                                <details>
-                                    <summary>Ver Desglose por Unidad</summary>
-                                    <dl class='precio-desglose'>
-                                        <div><dt>Materias Primas</dt><dd data-importe='materiales'></dd></div>
-                                        <div><dt>Mano de Obra</dt><dd data-importe='mano_obra'></dd></div>
-                                        <div><dt>Bolsa</dt><dd data-importe='bolsa'></dd></div>
-                                        <div><dt>Stickers</dt><dd data-importe='stickers'></dd></div>
-                                        <div><dt>Costo Total</dt><dd data-importe='costo_total'></dd></div>
-                                        <div><dt>Precio sin IVA</dt><dd data-importe='precio_sin_iva'></dd></div>
-                                        <div><dt>Comisión Estimada</dt><dd data-importe='comision'></dd></div>
-                                    </dl>
-                                    <p class='precio-nota'>
-                                        El margen se calcula antes de descontar la comisión.
-                                        La comisión se informa por separado y no se suma al precio sugerido.
-                                        Los cálculos conservan decimales y los importes se muestran redondeados al peso.
-                                    </p>
-                                </details>
-                                <button type='button' data-usar-precio disabled 
-                                class='formulario-boton formulario-boton-secundario'>
-                                    Usar Precio Sugerido
-                                </button>
-                            </div>
-                            {% if perms.interna.change_configuracionprecio %}
-                                <a class='precio-configuracion-enlace' href="{% url 'configuracion_precio_editar' %}"
-                                    target='_blank' rel='noopener'>
-                                    Configurar Fórmula de Precios
-                                </a>
-                                <span class='precio-nota'>Abre otra Pestaña</span>
-                            {% endif %}
-                        </section>
-                    {% endif %}
+            <section class="producto-paso">
+                <h2>1. Datos del producto</h2>
 
-                    <div class="formulario-campo{% if campo.name == 'descripcion' or campo.name == 'imagen' %} formulario-campo-completo{% endif %}">
-                        {% if campo.field.widget.input_type == 'checkbox' %}
-                            <label class="formulario-checkbox" for="{{ campo.id_for_label }}" style="margin-top: 1.55rem;">
-                                {{ campo }}
-                                <span>{{ campo.label }}</span>
-                            </label>
-                        {% else %}
-                            <label for="{{ campo.id_for_label }}">
-                                {{ campo.label }}
-                                {% if campo.field.required %}
-                                    <span class="formulario-obligatorio">*</span>
+                <div class="formulario-grid">
+                    {% for campo in form.visible_fields %}
+                        {% if campo.name != 'precio' and campo.name != 'descuento_porcentaje' and campo.name != 'tiempo_fabricacion_minutos' %}
+                            <div class="formulario-campo{% if campo.name == 'descripcion' or campo.name == 'imagen' %} formulario-campo-completo{% endif %}">
+                                {% if campo.field.widget.input_type == 'checkbox' %}
+                                    <label class="formulario-checkbox" for="{{ campo.id_for_label }}">
+                                        {{ campo }}
+                                        <span>{{ campo.label }}</span>
+                                    </label>
+                                {% else %}
+                                    <label for="{{ campo.id_for_label }}">
+                                        {{ campo.label }}
+                                        {% if campo.field.required %}
+                                            <span class="formulario-obligatorio">*</span>
+                                        {% endif %}
+                                    </label>
+                                    {{ campo }}
                                 {% endif %}
-                            </label>
-                            {{ campo }}
+
+                                {% if campo.help_text %}
+                                    <p class="formulario-ayuda">{{ campo.help_text }}</p>
+                                {% endif %}
+                                {{ campo.errors }}
+                            </div>
                         {% endif %}
-                        {% if campo.help_text %}
-                            <p class="formulario-ayuda">{{ campo.help_text }}</p>
-                        {% endif %}
-                        {% if campo.errors %}
-                            <ul class="formulario-error-campo">
-                                {% for error in campo.errors %}
-                                    <li>{{ error }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-            <h2>Materias Primas Asociadas</h2>
-            <p>Indica el consumo por unidad de producto, puedes dejarlo vacío si guardas el producto deshabilitado.</p>
-            {{ materiales.management_form }}
-            {{ materiales.non_form_errors }}
-            <div id="lista-materiales">
-                {% for material in materiales %}
-                    <div class="fila-material formulario-campo">
-                        {{ material.as_p }}
-                    </div>
-                {% endfor %}
-            </div>
-            <button type="button"
-                    style="margin-top: 1rem;"
-                    id="agregar-material"
-                    class="formulario-boton formulario-boton-secundario">
-                + Agregar Material
-            </button>
-            <template id="material-vacio">
-                <div class="fila-material formulario-campo">
-                    {{ materiales.empty_form.as_p }}
+                    {% endfor %}
                 </div>
-            </template>
-            <div class="formulario-acciones">
-                <button class="formulario-boton formulario-boton-principal" type="submit">
-                    {% if producto %}
-                        Actualizar Producto
-                    {% else %}
-                        Guardar Producto
-                    {% endif %}
+            </section>
+
+            <section class="producto-paso">
+                <h2>2. Tallas y tiempos de confección</h2>
+
+                <details id="bloque-tallas" class="formulario-tallas"{% if mostrar_tallas %} open{% endif %}>
+                    <summary>Configurar Tallas</summary>
+                    <p class="formulario-ayuda">
+                        Marca las tallas que ofreces e indica sus minutos de confección.
+                        Si el producto no usa tallas, deja esta sección sin completar.
+                    </p>
+
+                    <table class="tallas-tabla">
+                        <thead>
+                            <tr>
+                                <th scope="col">Talla</th>
+                                <th scope="col">Ofrecer</th>
+                                <th scope="col">Minutos</th>
+                                <th scope="col">A pedido</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for talla, etiqueta, fila in filas_tallas %}
+                                <tr>
+                                    <th scope="row">{{ etiqueta }}</th>
+                                    <td>{{ fila.ofrecer }}{{ fila.ofrecer.errors }}</td>
+                                    <td>{{ fila.tiempo_minutos }}{{ fila.tiempo_minutos.errors }}</td>
+                                    <td>{{ fila.a_pedido }}{{ fila.a_pedido.errors }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </details>
+
+                <div id="bloque-tiempo-general" class="formulario-campo"{% if tiene_tallas %} hidden{% endif %}>
+                    <label for="{{ form.tiempo_fabricacion_minutos.id_for_label }}">
+                        Tiempo general por unidad (minutos)
+                        {% if form.tiempo_fabricacion_minutos.field.required %}
+                            <span class="formulario-obligatorio">*</span>
+                        {% endif %}
+                    </label>
+                    {{ form.tiempo_fabricacion_minutos }}
+                    {{ form.tiempo_fabricacion_minutos.errors }}
+                </div>
+
+            </section>
+
+            <section class="producto-paso">
+                <h2>3. Materias primas</h2>
+                <p class="formulario-ayuda">
+                    Agrega cada material una vez e indica cuánto se usa por unidad.
+                    Si marcaste tallas, completa también las cantidades que correspondan.
+                </p>
+
+                {{ materiales.management_form }}
+                {{ materiales.non_form_errors }}
+
+                <div id="lista-materiales">
+                    {% for material in materiales %}
+                        <div class="fila-material formulario-campo">
+                            {{ material.as_p }}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <button type="button" id="agregar-material"
+                        class="formulario-boton formulario-boton-secundario">
+                    + Agregar material
                 </button>
 
-                <a class="formulario-boton formulario-boton-secundario" href="{% url 'producto_listar' %}">Cancelar</a>
+                <template id="material-vacio">
+                    <div class="fila-material formulario-campo">
+                        {{ materiales.empty_form.as_p }}
+                    </div>
+                </template>
+            </section>
+
+            <section class="producto-paso">
+                <h2>4. Precios de Venta</h2>
+
+                <div class="producto-precios-grid">
+                    <div>
+                        {% for campo in form.visible_fields %}
+                            {% if campo.name == 'precio' or campo.name == 'descuento_porcentaje' %}
+                                <div class="formulario-campo"{% if campo.name == 'precio' %} id="bloque-precio-base"{% if tiene_tallas %} hidden{% endif %}{% endif %}>
+                                    <label for="{{ campo.id_for_label }}">
+                                        {% if campo.name == 'precio' %}Precio base (CLP){% else %}{{ campo.label }}{% endif %}
+                                        {% if campo.field.required %}
+                                            <span class="formulario-obligatorio">*</span>
+                                        {% endif %}
+                                    </label>
+                                    {{ campo }}
+                                    {% if campo.help_text %}
+                                        <p class="formulario-ayuda">{{ campo.help_text }}</p>
+                                    {% endif %}
+                                    {{ campo.errors }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        <div id="bloque-precios-tallas">
+                            <h3>Precios por Talla</h3>
+                            <p class="formulario-ayuda">
+                                Completa solo los precios de las tallas que están marcadas.
+                            </p>
+
+                            <table class="tallas-tabla">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Talla</th>
+                                        <th scope="col">Precio (CLP)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for talla, etiqueta, fila in filas_tallas %}
+                                        <tr>
+                                            <th scope="row">{{ etiqueta }}</th>
+                                            <td>{{ fila.precio }}{{ fila.precio.errors }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <section id="precio-sugerido" class="precio-sugerido"
+                             data-url="{% url 'producto_precio_sugerido' %}"
+                             aria-labelledby="titulo-precio-sugerido">
+                        <h3 id="titulo-precio-sugerido">Sugerencia de precio</h3>
+
+                        <div class="formulario-campo">
+                            <label for="calcular-talla">Calcular para</label>
+                            <select id="calcular-talla">
+                                <option value="">Receta general</option>
+                                <option value="S">Talla S</option>
+                                <option value="M">Talla M</option>
+                                <option value="L">Talla L</option>
+                            </select>
+                        </div>
+
+                        <p data-mensaje-precio>
+                            Completa el tiempo y la receta para calcular la sugerencia.
+                        </p>
+
+                        <div data-resultado-precio hidden>
+                            <strong class="precio-sugerido-importe" data-importe="precio_sugerido"></strong>
+
+                            <p class="precio-nota">
+                                Margen: <span data-margen></span> % ·
+                                IVA: <span data-iva></span> %
+                            </p>
+
+                            <details>
+                                <summary>Ver desglose por unidad</summary>
+                                <dl class="precio-desglose">
+                                    <div><dt>Materias primas</dt><dd data-importe="materiales"></dd></div>
+                                    <div><dt>Mano de obra</dt><dd data-importe="mano_obra"></dd></div>
+                                    <div><dt>Bolsa</dt><dd data-importe="bolsa"></dd></div>
+                                    <div><dt>Stickers</dt><dd data-importe="stickers"></dd></div>
+                                    <div><dt>Costo total</dt><dd data-importe="costo_total"></dd></div>
+                                    <div><dt>Precio sin IVA</dt><dd data-importe="precio_sin_iva"></dd></div>
+                                    <div><dt>Comisión estimada</dt><dd data-importe="comision"></dd></div>
+                                </dl>
+                                <p class="precio-nota">
+                                    El margen se calcula antes de descontar la comisión.
+                                    La comisión se muestra por separado.
+                                    Los importes se muestran redondeados al peso.
+                                </p>
+                            </details>
+
+                            <button type="button" data-usar-precio disabled
+                                    class="formulario-boton formulario-boton-secundario">
+                                Aplicar sugerencia
+                            </button>
+                        </div>
+
+                        {% if perms.interna.change_configuracionprecio %}
+                            <a class="precio-configuracion-enlace"
+                               href="{% url 'configuracion_precio_editar' %}"
+                               target="_blank" rel="noopener">
+                                Configurar fórmula de precios
+                            </a>
+                            <span class="precio-nota">(abre otra pestaña)</span>
+                        {% endif %}
+                    </section>
+                </div>
+            </section>
+
+            <div class="formulario-acciones">
+                <button class="formulario-boton formulario-boton-principal" type="submit">
+                    {% if producto %}Actualizar producto{% else %}Guardar producto{% endif %}
+                </button>
+                <a class="formulario-boton formulario-boton-secundario"
+                   href="{% url 'producto_listar' %}">
+                    Cancelar
+                </a>
             </div>
         </form>
     </section>
-
-    {% block extra_js %}
-        <script src="https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/js/tom-select.complete.min.js"></script>
-        <script src="{% static 'interna/js/producto_precios.js' %}"></script>
-        <script src="{% static 'interna/js/producto_materiales.js' %}"></script>
-    {% endblock %}
-
 </main>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.6.2/dist/js/tom-select.complete.min.js"></script>
+<script src="{% static 'interna/js/producto_precios.js' %}"></script>
+<script src="{% static 'interna/js/producto_materiales.js' %}"></script>
+{{ categorias_con_tallas|json_script:"categorias-con-tallas" }}
+{{ hay_variantes_guardadas|json_script:"hay-variantes-guardadas" }}
+<script src="{% static 'interna/js/producto_categorias.js' %}"></script>
 {% endblock %}

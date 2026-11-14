@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.db.models import F
+from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse, HttpResponseBadRequest
@@ -18,7 +19,8 @@ from .models import (Producto,
     ConfiguracionPrecio,
     Resena,
     PreguntaFrecuente,
-    HistorialEtapaPedido)
+    HistorialEtapaPedido,
+    ProductoVariante)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -30,8 +32,8 @@ from .forms import (
     ConfiguracionPrecioForm,
     PrecioMaterialesFormSet,
     TiempoPrecioForm,
-    PreguntaFrecuenteForm)
-
+    PreguntaFrecuenteForm,
+    ProductoVarianteForm)
 
 @login_required
 def home(request):
@@ -55,66 +57,171 @@ def home(request):
         "total_alertas": len(materias_criticas) + len(productos_criticos),
     })
 
-
-
 @login_required
 def inventario(request):
     return render(request, 'interna/inventario/inventario.html')
 
 @login_required
 def producto_listar(request):
-    productos = Producto.objects.all()
+    productos = Producto.objects.prefetch_related('variantes')
     return render(request, 'interna/producto/producto_listar.html', {'productos': productos})
+
+def _categoria_admite_tallas(categoria):
+    return categoria.nombre.strip().casefold() == 'chaleco'
 
 def _formulario_producto(request, producto):
     editando = producto.pk is not None
-    if request.method == "POST":
-        form = ProductoForm(
-            request.POST,
-            request.FILES,
-            instance=producto,
-        )
-        materiales = ProductoMateriaPrimaFormSet(
-            request.POST,
-            instance=producto,
-            prefix="materiales",
+    es_post = request.method == "POST"
+    datos = request.POST if es_post else None
+    archivos = request.FILES if es_post else None
+
+    form = ProductoForm(datos, archivos, instance=producto)
+    materiales = ProductoMateriaPrimaFormSet(datos, instance=producto, prefix='materiales')
+    variantes_guardadas = {}
+    if editando:
+        variantes_guardadas = {
+            variante.talla: variante for variante in producto.variantes.all()
+        }
+
+    filas_tallas = []
+    for talla, etiqueta in ProductoVariante.TALLAS:
+        variante = variantes_guardadas.get(talla)
+        fila = ProductoVarianteForm(
+            datos,
+            prefix=f"talla-{talla}",
+            initial={
+                'ofrecer': variante is not None,
+                'precio': variante.precio if variante else None,
+                'a_pedido': variante.a_pedido if variante else False,
+                'tiempo_minutos': variante.tiempo_minutos if variante else None
+            }
         )
 
+        if variante is not None:
+            fila.fields['ofrecer'].disabled = True
+
+        filas_tallas.append((talla, etiqueta, fila))
+
+    tallas_ofrecidas = [
+        talla for talla, _, fila in filas_tallas
+        if fila['ofrecer'].value()
+    ]
+    tiene_tallas = bool(tallas_ofrecidas)
+
+    campo_precio = form.fields['precio']
+    campo_precio.required = not tiene_tallas
+    campo_precio.disabled = tiene_tallas
+
+    for fila_material in materiales.forms:
+        campo_cantidad = fila_material.fields['cantidad_requerida']
+        campo_cantidad.required = not tiene_tallas
+        campo_cantidad.disabled = tiene_tallas
+
+    campo_tiempo = form.fields['tiempo_fabricacion_minutos']
+    campo_tiempo.required = not tiene_tallas
+    campo_tiempo.disabled = tiene_tallas
+
+    if es_post:
         producto_valido = form.is_valid()
         materiales_validos = materiales.is_valid()
+        tallas_validas = all([fila.is_valid() for _, _, fila in filas_tallas])
 
-        if producto_valido and materiales_validos:
+        if tiene_tallas and materiales_validos:
+            campos_tallas = [
+                f"cantidad_{talla.lower()}" for talla in tallas_ofrecidas
+            ]
+
+            for fila_material in materiales.forms:
+                receta = fila_material.cleaned_data
+
+                if receta.get('DELETE') or not receta.get('materia_prima'):
+                    continue
+
+                if not any(receta.get(campo) is not None for campo in campos_tallas):
+                    fila_material.add_error(
+                        campos_tallas[0],
+                        'Indica Cuánto se usa de este Material en al Menos una Talla'
+                    )
+                    materiales_validos = False
+
+        if producto_valido:
+            categoria = form.cleaned_data['categoria']
+
+            if not _categoria_admite_tallas(categoria) and (variantes_guardadas or tiene_tallas):
+                mensaje = (
+                    'Este producto ya tiene Tallas Registradas, debe Mantenerse en la Categoría Chaleco'
+                    if variantes_guardadas
+                    else 'Solo la Categoría Chaleco Admite Tallas'
+                )
+                form.add_error('categoria', mensaje)
+                producto_valido = False
+
+        if producto_valido and materiales_validos and tallas_validas:
             with transaction.atomic():
-                producto = form.save()
+
+                producto = form.save(commit=False)
+                if tiene_tallas:
+                    producto.precio = min(
+                        fila.cleaned_data['precio']
+                        for _, _, fila in filas_tallas
+                        if fila.cleaned_data['ofrecer']
+                    )
+
+                producto.save()
+                form.save_m2m()
+
                 materiales.instance = producto
                 materiales.save()
-            return redirect("producto_listar")
-    else:
-        form = ProductoForm(instance=producto)
-        materiales = ProductoMateriaPrimaFormSet(
-            instance=producto,
-            prefix="materiales",
-        )
 
-    configuracion, creada = ConfiguracionPrecio.objects.get_or_create(pk=1)
+                for talla, _, fila in filas_tallas:
+                    if fila.cleaned_data['ofrecer']:
+                        ProductoVariante.objects.update_or_create(
+                            producto=producto,
+                            talla=talla,
+                            defaults={
+                                'precio': fila.cleaned_data['precio'],
+                                'a_pedido': fila.cleaned_data['a_pedido'],
+                                'tiempo_minutos': fila.cleaned_data['tiempo_minutos']
+                            }
+                        )
+
+            return redirect("producto_listar")
+
+    configuracion, _ = ConfiguracionPrecio.objects.get_or_create(pk=1)
 
     parametros_precio = {
-    'costo_hora': str(configuracion.costo_hora),
-    'costo_bolsa': str(configuracion.costo_bolsa),
-    'costo_stickers': str(configuracion.costo_stickers),
-    'margen_ganancia': str(configuracion.margen_ganancia),
-    'porcentaje_iva': str(configuracion.porcentaje_iva),
-    'porcentaje_comision': str(configuracion.porcentaje_comision),
-    'comision_afecta_iva': configuracion.comision_afecta_iva,
+        "costo_hora": str(configuracion.costo_hora),
+        "costo_bolsa": str(configuracion.costo_bolsa),
+        "costo_stickers": str(configuracion.costo_stickers),
+        "margen_ganancia": str(configuracion.margen_ganancia),
+        "porcentaje_iva": str(configuracion.porcentaje_iva),
+        "porcentaje_comision": str(configuracion.porcentaje_comision),
+        "comision_afecta_iva": configuracion.comision_afecta_iva
     }
 
+    mostrar_tallas = bool(variantes_guardadas)
+    if es_post:
+        mostrar_tallas = mostrar_tallas or any(
+            fila["ofrecer"].value() or fila.errors for _, _, fila in filas_tallas
+        )
+
     return render(
-        request, "interna/producto/producto_crear.html",
+        request,
+        "interna/producto/producto_crear.html",
         {
             "form": form,
             "producto": producto if editando else None,
             "materiales": materiales,
-            'parametros_precio': parametros_precio
+            "filas_tallas": filas_tallas,
+            "mostrar_tallas": mostrar_tallas,
+            "parametros_precio": parametros_precio,
+            "tiene_tallas": tiene_tallas,
+            'categorias_con_tallas': [
+                categoria.pk
+                for categoria in form.fields['categoria'].queryset
+                if _categoria_admite_tallas(categoria)
+            ],
+            'hay_variantes_guardadas': bool(variantes_guardadas),
         }
     )
 
@@ -138,68 +245,124 @@ def producto_editar(request, pk):
 @login_required
 def producto_fabricar(request, pk):
     producto = get_object_or_404(Producto, pk=pk)
-    datos = request.POST if request.method == "POST" else None
-    form = FabricacionForm(datos)
+    es_post = request.method == "POST"
+    form = FabricacionForm(request.POST if es_post else None)
+    variantes = producto.variantes.order_by("talla")
+    tiene_tallas = variantes.exists()
+    campo_variante = form.fields["variante"]
+    campo_variante.queryset = variantes
+    campo_variante.required = tiene_tallas
 
-    if request.method == "POST" and form.is_valid():
-        cantidad = form.cleaned_data["cantidad"]
+    if not tiene_tallas:
+        campo_variante.widget = forms.HiddenInput()
+
+    if es_post and form.is_valid():
+        cantidad = form.cleaned_data['cantidad']
+        variante_elegida = form.cleaned_data['variante']
+
         with transaction.atomic():
-            producto = Producto.objects.select_for_update().get(pk=pk)
-            materiales = list(
-                ProductoMateriaPrima.objects
-                .select_for_update()
-                .filter(producto=producto)
-                .select_related("materia_prima")
-                .order_by("materia_prima_id")
-            )
-            if not materiales:
-                form.add_error(None, "El Producto no Tiene Materiales Asociados.")
-            elif any(
-                not material.materia_prima.estado
-                or material.cantidad_requerida <= 0
-                for material in materiales
-            ):
-                form.add_error(None, "Revisa los Materiales de la Receta.")
+            producto = get_object_or_404(Producto.objects.select_for_update(), pk=pk)
+            variantes_actuales = producto.variantes.select_for_update()
+            variante = None
 
-            elif any(
-                material.materia_prima.cantidad_actual
-                < material.cantidad_requerida * cantidad
-                for material in materiales
-            ):
-                form.add_error(None, "No hay Suficientes Materias Primas.")
+            if variante_elegida is not None:
+                variante = variantes_actuales.filter(pk=variante_elegida.pk,).first()
 
-            else:
+                if variante is None:
+                    form.add_error("variante", "Esta talla ya no está disponible.")
+            elif variantes_actuales.exists():
+                form.add_error("variante", "Selecciona la talla que vas a fabricar.")
+
+            if not form.errors:
+                campo_cantidad = (
+                    f"cantidad_{variante.talla.lower()}"
+                    if variante is not None
+                    else "cantidad_requerida"
+                )
+
+                materiales = (
+                    ProductoMateriaPrima.objects
+                    .select_for_update()
+                    .filter(producto=producto)
+                    .select_related("materia_prima")
+                    .order_by("materia_prima_id")
+                )
+
+                consumos = []
+
                 for material in materiales:
+                    cantidad_por_unidad = getattr(material, campo_cantidad)
+
+                    if variante is not None and cantidad_por_unidad is None:
+                        continue
+
                     materia_prima = material.materia_prima
-                    consumo = material.cantidad_requerida * cantidad
-                    materia_prima.cantidad_actual -= consumo
-                    materia_prima.save(update_fields=["cantidad_actual"])
 
-                    MovimientoMateriaPrima.objects.create(
-                        materia_prima=materia_prima,
-                        tipo="SALIDA",
-                        motivo="FABRICACION",
-                        cantidad=consumo,
-                        saldo_resultante=materia_prima.cantidad_actual,
-                        responsable=request.user,
-                        observacion=(
-                            f"Fabricación de {cantidad} Unidad(es) "
-                            f"de {producto.nombre} (ID {producto.pk})."
-                        ),
+                    if (
+                        not materia_prima.estado
+                        or cantidad_por_unidad is None
+                        or cantidad_por_unidad <= 0
+                    ):
+                        form.add_error(
+                            None,
+                            f"Revisa la cantidad o el estado de {materia_prima.nombre}.",
+                        )
+                        break
+
+                    consumo = cantidad_por_unidad * cantidad
+
+                    if materia_prima.cantidad_actual < consumo:
+                        form.add_error(None, f"No hay stock suficiente de {materia_prima.nombre}")
+                        break
+
+                    consumos.append((materia_prima, consumo))
+
+                if not form.errors and not consumos:
+                    mensaje = (
+                        f"La talla {variante.talla} no tiene materiales en su receta."
+                        if variante is not None
+                        else "El producto no tiene materiales en su receta."
                     )
-                producto.stock_actual += cantidad
-                producto.save(update_fields=["stock_actual"])
+                    form.add_error(None, mensaje)
 
-                return redirect("producto_detalles", producto.pk)
+                if not form.errors:
+                    nombre = (
+                        f"{producto.nombre}, talla {variante.talla}"
+                        if variante is not None
+                        else producto.nombre
+                    )
+
+                    for materia_prima, consumo in consumos:
+                        materia_prima.cantidad_actual -= consumo
+                        materia_prima.save(update_fields=["cantidad_actual"])
+
+                        MovimientoMateriaPrima.objects.create(
+                            materia_prima=materia_prima,
+                            tipo="SALIDA",
+                            motivo="FABRICACION",
+                            cantidad=consumo,
+                            saldo_resultante=materia_prima.cantidad_actual,
+                            responsable=request.user,
+                            observacion=(
+                                f"Fabricación de {cantidad} unidad(es) de "
+                                f"{nombre} (ID {producto.pk})."
+                            ),
+                        )
+
+                    destino_stock = variante if variante is not None else producto
+                    destino_stock.stock_actual += cantidad
+                    destino_stock.save(update_fields=["stock_actual"])
+
+                    return redirect("producto_detalles", producto.pk)
 
     return render(
         request,
         "interna/producto/producto_fabricar.html",
-        {"form": form, "producto": producto},
+        {"form": form, "producto": producto, "tiene_tallas": tiene_tallas},
     )
 
 def producto_detalles(request, pk):
-    producto = get_object_or_404(Producto, pk=pk)
+    producto = get_object_or_404(Producto.objects.select_related('categoria').prefetch_related('variantes'), pk=pk)
     return render(request, 'interna/producto/producto_detalles.html', {'producto': producto})
 
 def materia_prima_listar(request):

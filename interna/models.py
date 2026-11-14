@@ -82,29 +82,66 @@ class Producto(models.Model):
     nombre = models.CharField(max_length=100)
     precio = models.DecimalField(max_digits=10, decimal_places=0)
     descripcion = models.CharField(max_length=500)
-    imagen = models.ImageField(upload_to='media/productos')
+    imagen = models.ImageField(upload_to="media/productos")
     activo = models.BooleanField(default=True)
     stock_actual = models.IntegerField(default=0)
     stock_critico = models.IntegerField()
     modalidad_de_venta = models.CharField(max_length=20)
-    descuento_porcentaje = models.IntegerField(default=0, validators=[MinValueValidator(Decimal('1')), MaxValueValidator(Decimal('99'))])
+    descuento_porcentaje = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(99)])
+    tiempo_fabricacion_minutos = models.PositiveIntegerField(null=True, blank=True, verbose_name='Tiempo de Trabajo por Unidad (Minutos)')
+
+    def aplicar_descuento(self, precio):
+        monto = precio * (100 - self.descuento_porcentaje) / Decimal("100")
+        return monto.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
     @property
     def precio_final(self):
-        precio_con_descuento = (self.precio * (100 - self.descuento_porcentaje) / Decimal('100'))
+        return self.aplicar_descuento(self.precio)
 
-        return precio_con_descuento.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
-
-    tiempo_fabricacion_minutos = models.PositiveIntegerField(null=True, blank=True, verbose_name='Tiempo de Trabajo por Unidad' \
-    '(Minutos)')
+    @property
+    def stock_para_mostrar(self):
+        variantes = list(self.variantes.all())
+        if variantes:
+            return sum(variante.stock_actual for variante in variantes)
+        return self.stock_actual
 
     def __str__(self):
         return self.nombre
 
+class ProductoVariante(models.Model):
+    TALLAS = [
+        ('S', 'S'),
+        ('M', 'M'),
+        ('L', 'L')
+    ]
+
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='variantes')
+    talla = models.CharField(max_length=1, choices=TALLAS)
+    precio = models.DecimalField('Precio de venta', max_digits=10, decimal_places=0, validators=[MinValueValidator(1)])
+    stock_actual = models.PositiveIntegerField(default=0)
+    a_pedido = models.BooleanField('A pedido', default=False)
+    tiempo_minutos = models.PositiveIntegerField('Minutos de confección', null=True, blank=True, validators=[MinValueValidator(1)])
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['producto', 'talla'], name='producto_talla_unica')]
+
+    @property
+    def precio_final(self):
+        return self.producto.aplicar_descuento(self.precio)
+
+    def __str__(self):
+        return f"{self.producto.nombre} · Talla {self.talla}"
+
 class ProductoMateriaPrima(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
     materia_prima = models.ForeignKey(MateriaPrima, on_delete=models.CASCADE)
-    cantidad_requerida = models.DecimalField(max_digits=10, decimal_places=2)
+    cantidad_requerida = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    cantidad_s = models.DecimalField('Cantidad S', max_digits=10, decimal_places=2, null=True, blank=True, 
+    validators=[MinValueValidator(Decimal('0.01'))])
+    cantidad_m = models.DecimalField('Cantidad M', max_digits=10, decimal_places=2, null=True, blank=True, 
+    validators=[MinValueValidator(Decimal('0.01'))])
+    cantidad_l = models.DecimalField('Cantidad L', max_digits=10, decimal_places=2,null=True, blank=True, 
+    validators=[MinValueValidator(Decimal('0.01'))])
 
     def __str__(self):
         return f"{self.producto.nombre} - {self.materia_prima.nombre}"
@@ -244,8 +281,6 @@ class PreguntaFrecuente(models.Model):
     def __str__(self):
         return self.pregunta
     
-    
-
 class Consulta(models.Model):
     ESTADOS = [
         ("pendiente", "Pendiente"),

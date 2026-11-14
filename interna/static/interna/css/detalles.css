@@ -183,3 +183,23 @@
 .detalle-materia-prima .detalle {
     grid-template-columns: minmax(0, 1fr);
 }
+
+.detalle-tallas {
+    margin-top: 1rem;
+}
+
+.detalle-tallas-tabla {
+    overflow-x: auto;
+}
+
+.detalle-tallas-tabla table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.detalle-tallas-tabla th,
+.detalle-tallas-tabla td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e5dfdc;
+}

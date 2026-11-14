@@ -12,6 +12,37 @@ document.addEventListener('DOMContentLoaded', function () {
         );
     }
 
+    function actualizarCantidadesPorTalla() {
+        const formulario = lista.closest('form');
+
+        for (const talla of ['S','M', 'L']) {
+            const ofrecer = formulario.elements.namedItem(`talla-${talla}-ofrecer`);
+            const sufijo = `-cantidad_${talla.toLowerCase()}`;
+
+            lista.querySelectorAll(`input[name$="${sufijo}"]`).forEach(function (campo) {
+                const fila = campo.closest(".fila-material");
+                const campoConEtiqueta = campo.closest("p");
+                const visible = Boolean(ofrecer?.checked) && !fila?.hidden;
+
+                campo.disabled = !visible;
+                if (campoConEtiqueta) campoConEtiqueta.hidden = !visible;
+            });
+        }
+        const tieneTallas = ["S", "M", "L"].some(function (talla) {
+        return formulario.elements.namedItem(`talla-${talla}-ofrecer`)?.checked;
+    });
+
+    lista.querySelectorAll('input[name$="-cantidad_requerida"]').forEach(function (campo) {
+        const fila = campo.closest(".fila-material");
+        const ocultar = tieneTallas || Boolean(fila?.hidden);
+
+        campo.disabled = ocultar;
+
+        const parrafo = campo.closest("p");
+        if (parrafo) parrafo.hidden = ocultar;
+    });
+    }
+
     function ocultarFila(fila) {
         fila.hidden = true;
 
@@ -73,6 +104,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     prepararFilas(lista);
 
+    actualizarCantidadesPorTalla();
+    lista.closest('form').addEventListener('change', function (evento) {
+        if (/^talla-[SML]-ofrecer$/.test(evento.target.name)) {
+            actualizarCantidadesPorTalla();
+            notificarCambio();
+        }
+    });
+
     if (!plantilla || !total || !botonAgregar) return;
 
     botonAgregar.addEventListener('click', function () {
@@ -87,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
         total.value = Number(total.value) + 1;
 
         prepararFilas(nuevaFila);
+        actualizarCantidadesPorTalla();
         notificarCambio();
     });
 });
