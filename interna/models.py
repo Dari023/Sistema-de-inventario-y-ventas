@@ -89,6 +89,7 @@ class Producto(models.Model):
     modalidad_de_venta = models.CharField(max_length=20)
     descuento_porcentaje = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(99)])
     tiempo_fabricacion_minutos = models.PositiveIntegerField(null=True, blank=True, verbose_name='Tiempo de Trabajo por Unidad (Minutos)')
+    admite_personalizacion = models.BooleanField('Admite personalización', default=False)
 
     def aplicar_descuento(self, precio):
         monto = precio * (100 - self.descuento_porcentaje) / Decimal("100")

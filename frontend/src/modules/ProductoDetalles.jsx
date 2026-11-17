@@ -94,6 +94,15 @@ export const ProductoDetalles = () => {
             <strong>Descripción:</strong>
             <p>{producto.descripcion}</p>
           </div>
+          {producto.admite_personalizacion && (
+            <div>
+              <p>
+                ¿Te gustaría este producto en otro color o con un diseño diferente?
+                Cuéntanos tu idea y te responderemos a la brevedad.
+              </p>
+              <Link to="/contacto">Consultar Personalización</Link>
+            </div>
+          )}
           {(!tieneTallas || variante) && stock > 0 && (
             <button type='button' onClick={agregarAlCarrito}>
               Agregar al carrito
