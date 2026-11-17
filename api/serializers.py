@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente, ProductoVariante
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -29,10 +29,18 @@ def validar_telefono_chileno(value):
 
     return f"+56{telefono}"
 
+class ProductoVarianteSerializer(serializers.ModelSerializer):
+    precio_final = serializers.ReadOnlyField()
+
+    class Meta:
+        model = ProductoVariante
+        fields = ['id', 'talla', 'precio', 'precio_final', 'stock_actual', 'a_pedido']
+
 class ProductoSerializer(serializers.ModelSerializer):
 
     descuento_porcentaje = serializers.IntegerField(read_only = True)
     precio_final = serializers.DecimalField(max_digits=10, decimal_places=0, read_only=True)
+    variantes = ProductoVarianteSerializer(many=True, read_only=True)
 
     class Meta:
         model = Producto
@@ -45,23 +53,27 @@ class CategoriaProductoSerializer(serializers.ModelSerializer):
 
 class DetallePedidoSerializer(serializers.ModelSerializer):
     producto_nombre = serializers.ReadOnlyField(source="producto.nombre")
-    producto_imagen = serializers.ImageField(
-        source="producto.imagen",
-        read_only=True
-    )
+    producto_imagen = serializers.ImageField(source="producto.imagen", read_only=True)
     subtotal = serializers.ReadOnlyField()
+    producto_id = serializers.IntegerField(read_only=True)
+    variante_id = serializers.IntegerField(read_only=True, allow_null=True)
+    talla = serializers.SerializerMethodField()
+
+    def get_talla(self, detalle):
+        return detalle.variante.talla if detalle.variante_id is not None else None
 
     class Meta:
         model = DetallePedido
-        fields = ["id", "producto", "producto_nombre", "producto_imagen", "cantidad", "precio_unitario", "subtotal"]
+        fields = ["id", "producto", 'producto_id', 'variante_id', 'talla', "producto_nombre", "producto_imagen", "cantidad", 
+                    "precio_unitario", "subtotal"]
 
-    def to_representation(self, instancia):
-        datos = super().to_representation(instancia)
+    def to_representation(self, detalle):
+        datos = super().to_representation(detalle)
 
         if self.context.get('es_carrito'):
-            precio = instancia.producto.precio_final
-            datos['precio_unitario'] = str(precio)
-            datos['subtotal'] = str(precio * instancia.cantidad)
+            precio = detalle.precio_vigente
+            datos['precio_unitario'] = format(precio, "f")
+            datos['subtotal'] = format(precio * detalle.cantidad, "f")
 
         return datos
 
@@ -79,11 +91,8 @@ class PedidoSerializer(serializers.ModelSerializer):
         datos = super().to_representation(instancia)
 
         if self.context.get('es_carrito'):
-            total = sum(
-                Decimal(detalle['subtotal'])
-                for detalle in datos['detalles']
-            )
-            datos['total'] = str(total)
+            total = sum((Decimal(str(linea['subtotal'])) for linea in datos['detalles']), Decimal('0'))
+            datos['total'] = format(total, "f")
 
         return datos
     
@@ -366,7 +375,6 @@ class PreguntaFrecuenteSerializer(serializers.ModelSerializer):
         model = PreguntaFrecuente
         fields = ['id', 'pregunta', 'respuesta']
         
-
 class ConsultaCrearSerializer(serializers.ModelSerializer):
     mensaje = serializers.CharField(
         allow_blank=False,

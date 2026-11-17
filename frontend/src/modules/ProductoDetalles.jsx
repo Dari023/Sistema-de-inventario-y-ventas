@@ -6,6 +6,7 @@ import { ResenasProducto } from "./Resenas";
 export const ProductoDetalles = () => {
   const { id } = useParams();
   const [producto, setProducto] = useState(null);
+  const [varianteId, setVarianteId] = useState('');
 
   const formatoPrecio = new Intl.NumberFormat("es-CL", {
     style: "currency",
@@ -14,22 +15,39 @@ export const ProductoDetalles = () => {
   });
 
   useEffect(() => {
+    setVarianteId('');
     api.get(`productos/${id}/`)
       .then((response) => setProducto(response.data))
       .catch((error) => console.log(error));
   }, [id]);
 
-  const agregarAlCarrito = () => {
-    api.post("carrito/", { producto_id: id, cantidad: 1 })
-      .then(() => toast.success("producto se añadio al carrito"))
-      .catch((error) => toast.error(error.response?.data?.error || "Error al agregar"));
-  };
 
-  if (!producto) return <div>Cargando detalles</div>;
+  if (!producto) return <div>Cargando Detalles</div>;
+
+  const variantes = producto.variantes ?? [];
+  const tieneTallas = variantes.length > 0;
+  const variante = variantes.find((v) => String(v.id) === varianteId);
+  const precio = variante ? (variante.precio_final ?? variante.precio) : (producto.precio_final ?? producto.precio);
+  const stock = variante?.stock_actual ?? producto.stock_actual;
+  const agregarAlCarrito = () => {
+    if ((tieneTallas && !variante) || stock <= 0) return;
+
+    const datos = { producto_id: id, cantidad: 1 };
+
+    if (variante) {
+      datos.variante_id = variante.id;
+    }
+
+    api.post('carrito/', datos)
+      .then(() => toast.success('El Producto se Añadió Correctamente al Carrito'))
+      .catch((error) =>
+        toast.error(error.response?.data?.error || 'Error al Agregar')
+      );
+  };
 
   return (
     <div>
-      <Link to="/">Volver al catálogo</Link>
+      <Link to="/catalogo">Volver al Catálogo</Link>
       
       <h2>{producto.nombre}</h2>
       
@@ -39,28 +57,48 @@ export const ProductoDetalles = () => {
         )}
         
         <div>
-          <p className="mb-2">
-            {producto.descuento_porcentaje > 0 && (
-              <del className='text-secondary small me-2'>
-                {formatoPrecio.format(Number(producto.precio))}
-              </del>
-            )}
+{tieneTallas && (
+  <div>
+    <label htmlFor="talla-producto">Talla</label>
+    <select
+      id="talla-producto"
+      value={varianteId}
+      onChange={(e) => setVarianteId(e.target.value)}
+    >
+      <option value="">Selecciona una talla</option>
+      {variantes.map((v) => (
+        <option key={v.id} value={v.id}>
+          {v.talla}
+        </option>
+      ))}
+    </select>
+  </div>
+)}
 
-            <strong>{formatoPrecio.format(Number(producto.precio_final))}</strong>
-
-            {producto.descuento_porcentaje > 0 && (
-              <small className='ms-2'>−{producto.descuento_porcentaje} %</small>
-            )}
+          <p>
+            <strong>{tieneTallas && !variante ? "Desde: " : "Precio: "}</strong>
+            {formatoPrecio.format(Number(precio))}
           </p>
-          <p><strong>Stock Disponible:</strong> {producto.stock_actual}</p>
+
+          {(!tieneTallas || variante) && (
+            <p>
+              {stock > 0
+                ? `Stock disponible: ${stock}`
+                : variante?.a_pedido
+                  ? "Disponible a pedido"
+                  : "Agotado"}
+            </p>
+          )}
           <p><strong>Modalidad de Venta:</strong> {producto.modalidad_de_venta}</p>
           <div>
             <strong>Descripción:</strong>
             <p>{producto.descripcion}</p>
           </div>
-          <button onClick={agregarAlCarrito} disabled={producto.stock_actual <= 0}>
-            {producto.stock_actual > 0 ? "Agregar al Carrito" : "Agotado"}
-          </button>
+          {(!tieneTallas || variante) && stock > 0 && (
+            <button type='button' onClick={agregarAlCarrito}>
+              Agregar al carrito
+            </button>
+          )}
         </div>
       </div>
       <ResenasProducto productoId={producto.id} />

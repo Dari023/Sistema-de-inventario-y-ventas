@@ -98,6 +98,7 @@ export const CompraDetail = () => {
                   {detalle.producto_nombre}
                 </p>
                 <p className = 'comprobante-texto small mb-0'>
+                  {detalle.talla && <span>Talla: {detalle.talla} · </span>}
                   Cantidad: {detalle.cantidad}
                 </p>
               </div>
