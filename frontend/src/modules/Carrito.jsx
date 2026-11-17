@@ -16,17 +16,26 @@ export const Carrito = () => {
     cargarCarrito();
   }, []);
 
-  const actualizarCantidad = (producto_id, cantidad) => {
-    api.post("carrito/", { producto_id: producto_id, cantidad: cantidad })
-      .then(() => cargarCarrito())
-      .catch((error) => toast.error(error.response?.data?.error || "Error al actualizar cantidad"));
-  };
+  const actualizarCantidad = (item, cantidad) => {
+    const datos = {producto_id: item.producto_id, cantidad};
 
-  const eliminarProducto = (producto_id) => {
-    api.delete("carrito/", { data: { producto_id: producto_id } })
+    if (item.variante_id != null) {
+      datos.variante_id = item.variante_id;
+    }
+
+    api.post('carrito/', datos)
       .then(() => cargarCarrito())
-      .catch((error) => toast.error(error.response?.data?.error || "Error al eliminar producto"));
+      .catch((error) =>
+        toast.error(error.response?.data?.error || 'Error al Actualizar la Cantidad')
+      );
   };
+const eliminarProducto = (detalleId) => {
+  api.delete('carrito/', { data: { detalle_id: detalleId } })
+    .then(() => cargarCarrito())
+    .catch((error) =>
+      toast.error(error.response?.data?.error || 'No se Pudo Eliminar el Producto')
+    );
+};
 
   const cancelarCompra = () => {
   api.delete("carrito/")
@@ -43,7 +52,7 @@ export const Carrito = () => {
       maximumFractionDigits: 0,
     });
 
-  if (!carrito) return <div>Cargando carrito...</div>;
+  if (!carrito) return <div>Cargando Carrito</div>;
 
   return (
     <section className="carrito">
@@ -68,46 +77,30 @@ export const Carrito = () => {
                   <li key={item.id} className="carrito-producto">
                     <div className="carrito-producto-info">
                       {item.producto_imagen && (
-                        <img
-                          src={item.producto_imagen}
-                          alt={item.producto_nombre}
-                          className="carrito-imagen"
-                        />
+                        <img src={item.producto_imagen} alt={item.producto_nombre} className="carrito-imagen"/>
                       )}
 
                       <div className="carrito-producto-texto">
                         <h3>{item.producto_nombre}</h3>
+                          {item.talla && <span> · Talla {item.talla}</span>}
                         <p>
                           Precio unitario: {formatoPrecio(item.precio_unitario)}
                         </p>
 
-                        <button
-                          type="button"
-                          className="carrito-eliminar"
-                          onClick={() => eliminarProducto(item.producto)}
-                        >
+                        <button type="button" className="carrito-eliminar" onClick={() => eliminarProducto(item.id)}>
                           Eliminar
                         </button>
                       </div>
                     </div>
 
                     <div className="carrito-cantidad">
-                      <button
-                        type="button"
-                        onClick={() => actualizarCantidad(item.producto, -1)}
-                        disabled={item.cantidad <= 1}
-                        aria-label={`Disminuir cantidad de ${item.producto_nombre}`}
-                      >
+                      <button type="button" onClick={() => actualizarCantidad(item, -1)} disabled={item.cantidad <= 1}>
                         −
                       </button>
 
                       <span>{item.cantidad}</span>
 
-                      <button
-                        type="button"
-                        onClick={() => actualizarCantidad(item.producto, 1)}
-                        aria-label={`Aumentar cantidad de ${item.producto_nombre}`}
-                      >
+                      <button type="button" onClick={() => actualizarCantidad(item, 1)}>
                         +
                       </button>
                     </div>

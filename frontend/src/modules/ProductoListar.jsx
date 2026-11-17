@@ -9,6 +9,16 @@ const formatoPrecio = new Intl.NumberFormat("es-CL", {
   maximumFractionDigits: 0,
 });
 
+function tieneStock(producto) {
+  const variantes = producto.variantes ?? [];
+
+  if (variantes.length > 0) {
+    return variantes.some((variante) => variante.stock_actual > 0);
+  }
+
+  return producto.stock_actual > 0;
+}
+
 export const ProductoListar = () => {
   const [productos, setProductos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -84,13 +94,7 @@ export const ProductoListar = () => {
                   onClick={() => setCategoriaSeleccionada(categoria)}
                 >
                   <span className="categoria-foto">
-                    {categoria.imagen ? (
-                      <img
-                        src={categoria.imagen}
-                        alt=""
-                        className="categoria-imagen"
-                        loading="lazy"
-                      />
+                    {categoria.imagen ? (<img src={categoria.imagen} className="categoria-imagen" loading="lazy"/>
                     ) : (
                       <span className="categoria-sin-imagen">
                         Sin Imagen
@@ -120,12 +124,12 @@ export const ProductoListar = () => {
     className="btn boton-secundario"
     onClick={() => setCategoriaSeleccionada(null)}
   >
-    Ver todos
+    Ver Todos
   </button>
 </div>
 
       {cargando ? (
-        <p className="text-center text-secondary py-5">Cargando Productos...</p>
+        <p className="text-center text-secondary py-5">Cargando Productos</p>
       ) : errorCarga ? (
         <p className="text-center text-danger py-5">
           {errorCarga}
@@ -164,16 +168,8 @@ export const ProductoListar = () => {
 
                 <div className="card-body d-flex flex-column p-4">
                   <div className="mb-3">
-                    <span
-                      className={
-                        prod.stock_actual > 0
-                          ? "badge producto-disponible"
-                          : "badge producto-agotado"
-                      }
-                    >
-                      {prod.stock_actual > 0
-                        ? "Disponible"
-                        : "Agotado"}
+                    <span className={`badge ${tieneStock(prod) ? 'producto-disponible' : 'producto-agotado'}`}>
+                      {tieneStock(prod) ? 'Disponible' : 'Agotado'}
                     </span>
                   </div>
 
@@ -203,16 +199,19 @@ export const ProductoListar = () => {
                       Ver Detalles
                     </Link>
 
-                    <button
-                      type="button"
-                      className="btn boton-principal"
-                      onClick={() => agregarAlCarrito(prod.id)}
-                      disabled={prod.stock_actual <= 0}
-                    >
-                      {prod.stock_actual > 0
-                        ? "Agregar al carrito"
-                        : "Agotado"}
-                    </button>
+                    {prod.variantes?.length > 0 ? (
+                      <Link to={`/producto/${prod.id}`} className='btn boton-principal'>
+                        Elegir talla
+                      </Link>
+                    ) : (
+                      <button type='button'
+                        className='btn boton-principal'
+                        onClick={() => agregarAlCarrito(prod.id)}
+                        disabled={prod.stock_actual <= 0}
+                      >
+                        {prod.stock_actual > 0 ? 'Agregar al carrito' : 'Agotado'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>

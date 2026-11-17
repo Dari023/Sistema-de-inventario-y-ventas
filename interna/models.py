@@ -194,8 +194,15 @@ class Pedido(models.Model):
 class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
+    variante = models.ForeignKey('ProductoVariante', on_delete=models.PROTECT, null=True, blank=True)
     cantidad = models.PositiveIntegerField(default=1)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True)
+
+    @property
+    def precio_vigente(self):
+        if self.variante_id is not None:
+            return self.variante.precio_final
+        return self.producto.precio_final
 
     @property
     def subtotal(self):
