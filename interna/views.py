@@ -62,6 +62,7 @@ def inventario(request):
     return render(request, 'interna/inventario/inventario.html')
 
 @login_required
+@permission_required('interna.view_producto', raise_exception=True)
 def producto_listar(request):
     productos = Producto.objects.prefetch_related('variantes')
     return render(request, 'interna/producto/producto_listar.html', {'productos': productos})
@@ -362,6 +363,8 @@ def producto_fabricar(request, pk):
         {"form": form, "producto": producto, "tiene_tallas": tiene_tallas},
     )
 
+@login_required
+@permission_required('interna.view_producto', raise_exception=True)
 def producto_detalles(request, pk):
     producto = get_object_or_404(Producto.objects.select_related('categoria').prefetch_related('variantes'), pk=pk)
 
@@ -380,15 +383,20 @@ def producto_detalles(request, pk):
 
     return render(request, 'interna/producto/producto_detalles.html', {'producto': producto, 'variantes':variantes, 'receta':receta})
 
+@login_required
+@permission_required('interna.view_materiaprima', raise_exception=True)
 def materia_prima_listar(request):
     materia_prima = MateriaPrima.objects.all()
     return render(request, 'interna/inventario/materia_prima_listar.html', {'materia_prima': materia_prima})
 
+@login_required
+@permission_required('interna.view_materiaprima', raise_exception=True)
 def materia_prima_detalles(request, pk):
     materia_prima = get_object_or_404(MateriaPrima, pk=pk)
     return render(request, 'interna/inventario/materia_prima_detalles.html', {'materia_prima': materia_prima})
 
 @login_required
+@permission_required('interna.add_materiaprima', raise_exception=True)
 def materia_prima_crear(request):
     if request.method == "POST":
         form = MateriaPrimaForm(request.POST)
@@ -424,12 +432,13 @@ def materia_prima_editar(request, pk):
     consulta = MateriaPrima.objects.all()
     if request.method == 'POST':
         consulta = consulta.select_for_update()
-    materia_prima = get_object_or_404(MateriaPrima, pk=pk)
+    materia_prima = get_object_or_404(consulta, pk=pk)
     cantidad_anterior = materia_prima.cantidad_actual
     datos = request.POST if request.method == 'POST' else None
     form = MateriaPrimaForm(datos, instance=materia_prima)
 
-    form.fields['cantidad_actual'].widget.attrs.update({'data-cantidad-inicial': str(cantidad_anterior),})
+    form.fields['cantidad_actual'].widget.attrs.update({'data-cantidad-inicial': str(cantidad_anterior)})
+    form.fields['unidad_de_medida'].disabled = True
 
     if materia_prima.movimientos.exists():
         form.fields['unidad_de_medida'].disabled = True
@@ -446,9 +455,9 @@ def materia_prima_editar(request, pk):
                 cantidad=abs(diferencia),
                 saldo_resultante=materia_prima.cantidad_actual,
                 responsable=request.user,
-                observacion=form.cleaned_data['observacion'],
+                observacion=form.cleaned_data['observacion']
             )
-            return redirect ('materia_prima_listar')
+        return redirect ('materia_prima_listar')
     return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
 
 @login_required
@@ -488,10 +497,13 @@ def movimiento_observacion_editar(request, pk):
     )
 
 @login_required
+@permission_required('interna.view_categoriaproducto', raise_exception=True)
 def categoria_listar(request):
     categorias = CategoriaProducto.objects.all()
     return render(request, 'interna/inventario/categoria_listar.html', {'categorias': categorias})
 
+@login_required
+@permission_required('interna.add_categoriaproducto', raise_exception=True)
 def categoria_crear(request):
     if request.method == 'POST':
         form = CategoriaProductoForm(request.POST, request.FILES)
@@ -502,6 +514,8 @@ def categoria_crear(request):
         form = CategoriaProductoForm()
     return render(request, 'interna/inventario/categoria_crear.html', {'form': form})
 
+@login_required
+@permission_required('interna.change_categoriaproducto', raise_exception=True)
 def categoria_editar(request, pk):
     categoria = get_object_or_404(CategoriaProducto, pk=pk)
     if request.method == 'POST':
@@ -683,7 +697,6 @@ def pedido_listar(request):
         'interna/inventario/pedido_listar.html',
         {'pedidos': pedidos, 'q': q},
     )
-
 
 def pedido_detalles(request, pk):
     pedido = get_object_or_404(

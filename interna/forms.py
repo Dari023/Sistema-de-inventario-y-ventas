@@ -19,11 +19,7 @@ class ProductoForm(forms.ModelForm):
         required= False,
         min_value=1,
         help_text='Por Ejemplo: 90 Minutos Equivalen a una Hora y Media',
-        widget=forms.NumberInput(attrs={
-            'class':'form-control',
-            'min':'1',
-            'step':'1'
-        })
+        widget=forms.NumberInput(attrs={'class':'form-control', 'min':'1','step':'1'})
     )
 
     class Meta:
@@ -191,16 +187,10 @@ class BaseMaterialesFormSet(BaseInlineFormSet):
             and not formulario.cleaned_data.get("DELETE")
         ]
 
-        if self.instance.activo:
-            if not materiales:
-                raise ValidationError(
-                    "Asocia Materiales o Guarda el Producto Deshabilitado."
-                )
-
-            if any(not material.estado for material in materiales):
-                raise ValidationError(
-                    "Un Producto Activo Necesita Materias Primas Habilitadas."
-                )
+        if self.instance.activo and not materiales:
+            raise ValidationError(
+                "Asocia Materiales o Guarda el Producto Deshabilitado."
+            )
 
 ProductoMateriaPrimaFormSet = inlineformset_factory(
     Producto,
