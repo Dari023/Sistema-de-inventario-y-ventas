@@ -34,7 +34,7 @@ from .serializers import (
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
-    queryset = Producto.objects.all()
+    queryset = Producto.objects.filter(activo=True)
 
 def obtener_carrito(request, crear=False):
     filtros = {"estado": "pendiente"}
