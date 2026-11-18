@@ -11,12 +11,12 @@
     <header class="inventario-cabecera">
         <div>
             <h1>DETALLES DEL PRODUCTO</h1>
-            <p>Información y disponibilidad del producto</p>
+            <p>Información y Disponibilidad del Producto</p>
         </div>
     </header>
 
-    {% with variantes=producto.variantes.all %}
-        <section class="inventario-panel detalle">
+    <section class="inventario-panel">
+        <div class="detalle">
             <div class="detalle-imagen">
                 {% if producto.imagen %}
                     <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
@@ -42,21 +42,38 @@
 
                 <dl class="detalle-datos">
                     <div>
+                        <dt>ID del Producto</dt>
+                        <dd>{{ producto.pk }}</dd>
+                    </div>
+                    <div>
                         <dt>{% if variantes %}Stock total{% else %}Stock actual{% endif %}</dt>
                         <dd>{{ producto.stock_para_mostrar }}</dd>
                     </div>
                     <div>
-                        <dt>Stock crítico</dt>
+                        <dt>Stock Crítico</dt>
                         <dd>{{ producto.stock_critico }}</dd>
                     </div>
                     <div>
-                        <dt>Modalidad de venta</dt>
+                        <dt>Modalidad de Venta</dt>
                         <dd>{{ producto.modalidad_de_venta }}</dd>
                     </div>
+                    <div>
+                        <dt>Descuento</dt>
+                        <dd>{{ producto.descuento_porcentaje }} %</dd>
+                    </div>
+                    <div>
+                        <dt>Admite Personalización</dt>
+                        <dd>{{ producto.admite_personalizacion|yesno:"Sí,No" }}</dd>
+                    </div>
+
                     {% if not variantes %}
                         <div>
-                            <dt>Tiempo de confección (min)</dt>
+                            <dt>Tiempo de Confección (min)</dt>
                             <dd>{{ producto.tiempo_fabricacion_minutos|default_if_none:"—" }}</dd>
+                        </div>
+                        <div>
+                            <dt>A Pedido</dt>
+                            <dd>{{ producto.a_pedido|yesno:"Sí,No" }}</dd>
                         </div>
                     {% endif %}
                 </dl>
@@ -65,28 +82,20 @@
                     <h3>Descripción</h3>
                     <p>{{ producto.descripcion|default:"Sin descripción disponible." }}</p>
                 </div>
-
-                <div class="detalle-acciones">
-                    <a class="detalle-boton detalle-boton-principal"
-                       href="{% url 'producto_editar' producto.pk %}">Editar producto</a>
-                    <a class="detalle-boton detalle-boton-secundario"
-                       href="{% url 'producto_listar' %}">Volver a la lista</a>
-                </div>
             </div>
-        </section>
+        </div>
 
         {% if variantes %}
-            <section class="inventario-panel detalle-tallas">
-                <h2>Disponibilidad por talla</h2>
-
+            <section class="detalle-tallas">
+                <h2>Disponibilidad por Talla</h2>
                 <div class="detalle-tallas-tabla">
                     <table>
                         <thead>
                             <tr>
                                 <th scope="col">Talla</th>
                                 <th scope="col">Stock</th>
-                                <th scope="col">Precio final</th>
-                                <th scope="col">Confección (min)</th>
+                                <th scope="col">Precio Final</th>
+                                <th scope="col">Confección (Minutos)</th>
                                 <th scope="col">A pedido</th>
                             </tr>
                         </thead>
@@ -105,6 +114,45 @@
                 </div>
             </section>
         {% endif %}
-    {% endwith %}
+
+        <section class="detalle-tallas">
+            <h2>Receta de Fabricación</h2>
+            {% if receta %}
+                <div class="detalle-tallas-tabla">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">Materia Prima</th>
+                                {% for variante in variantes %}
+                                    <th scope="col">Cantidad Talla {{ variante.get_talla_display }}</th>
+                                {% empty %}
+                                    <th scope="col">Cantidad por Unidad</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for material in receta %}
+                                <tr>
+                                    <th scope="row">{{ material.materia_prima.nombre }}</th>
+                                    {% for cantidad in material.cantidades_por_talla %}
+                                        <td>{{ cantidad|default_if_none:"—" }}</td>
+                                    {% empty %}
+                                        <td>{{ material.cantidad_general|default_if_none:"—" }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>Este Producto no Tiene Materias Primas Asociadas</p>
+            {% endif %}
+        </section>
+
+        <div class="detalle-acciones">
+            <a class="detalle-boton detalle-boton-principal" href="{% url 'producto_editar' producto.pk %}">Editar Producto</a>
+            <a class="detalle-boton detalle-boton-secundario" href="{% url 'producto_listar' %}">Volver a la Lista</a>
+        </div>
+    </section>
 </main>
 {% endblock %}

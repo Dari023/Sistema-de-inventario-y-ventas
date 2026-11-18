@@ -243,6 +243,7 @@ def producto_editar(request, pk):
 )
 
 @login_required
+@permission_required('interna.fabricar_producto', raise_exception=True)
 def producto_fabricar(request, pk):
     producto = get_object_or_404(Producto, pk=pk)
     es_post = request.method == "POST"
@@ -363,7 +364,21 @@ def producto_fabricar(request, pk):
 
 def producto_detalles(request, pk):
     producto = get_object_or_404(Producto.objects.select_related('categoria').prefetch_related('variantes'), pk=pk)
-    return render(request, 'interna/producto/producto_detalles.html', {'producto': producto})
+
+    variantes = list(producto.variantes.all())
+    materiales = ProductoMateriaPrima.objects.filter(producto=producto).select_related('materia_prima').order_by('materia_prima__nombre')
+    receta = [
+        {
+            'materia_prima': material.materia_prima,
+            'cantidad_general': material.cantidad_requerida,
+            'cantidades_por_talla': [getattr(material, f"cantidad_{variante.talla.lower()}")
+                for variante in variantes
+            ]
+        }
+        for material in materiales
+    ]
+
+    return render(request, 'interna/producto/producto_detalles.html', {'producto': producto, 'variantes':variantes, 'receta':receta})
 
 def materia_prima_listar(request):
     materia_prima = MateriaPrima.objects.all()

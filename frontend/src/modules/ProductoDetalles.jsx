@@ -3,26 +3,46 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../api/Api";
 import { toast } from 'react-toastify';
 import { ResenasProducto } from "./Resenas";
+
+const formatoPrecio = new Intl.NumberFormat("es-CL", {
+  style: "currency",
+  currency: "CLP",
+  maximumFractionDigits: 0,
+});
+
 export const ProductoDetalles = () => {
   const { id } = useParams();
   const [producto, setProducto] = useState(null);
   const [varianteId, setVarianteId] = useState('');
-
-  const formatoPrecio = new Intl.NumberFormat("es-CL", {
-    style: "currency",
-    currency: "CLP",
-    maximumFractionDigits: 0,
-  });
+  const [errorCarga, setErrorCarga] = useState(null);
 
   useEffect(() => {
-    setVarianteId('');
+    let consultaVigente = true;
+    setProducto(null);
+    setVarianteId("");
+    setErrorCarga(null);
+
     api.get(`productos/${id}/`)
-      .then((response) => setProducto(response.data))
-      .catch((error) => console.log(error));
+      .then(({ data }) => setProducto(data))
+      .catch((error) => {
+        setErrorCarga(
+          error.response?.status === 404
+            ? 'El Producto no se Encuentra Disponible'
+            : 'No se Pudimos Cargar los Detalles del Producto'
+        );
+      });
   }, [id]);
 
+  if (errorCarga) {
+    return (
+      <section>
+        <h1>{errorCarga}</h1>
+        <Link to='/catalogo'>Volver al catálogo</Link>
+      </section>
+    );
+  }
 
-  if (!producto) return <div>Cargando Detalles</div>;
+  if (!producto) {return <p role='status'>Cargando detalles…</p>;}
 
   const variantes = producto.variantes ?? [];
   const tieneTallas = variantes.length > 0;
@@ -47,33 +67,25 @@ export const ProductoDetalles = () => {
 
   return (
     <div>
-      <Link to="/catalogo">Volver al Catálogo</Link>
-      
       <h2>{producto.nombre}</h2>
       
       <div>
-        {producto.imagen && (
-          <img src={producto.imagen} alt={producto.nombre} width="250" />
-        )}
+        {producto.imagen && (<img src={producto.imagen} alt={producto.nombre} width="250" />)}
         
         <div>
-{tieneTallas && (
-  <div>
-    <label htmlFor="talla-producto">Talla</label>
-    <select
-      id="talla-producto"
-      value={varianteId}
-      onChange={(e) => setVarianteId(e.target.value)}
-    >
-      <option value="">Selecciona una talla</option>
-      {variantes.map((v) => (
-        <option key={v.id} value={v.id}>
-          {v.talla}
-        </option>
-      ))}
-    </select>
-  </div>
-)}
+          {tieneTallas && (
+            <div>
+              <label htmlFor="talla-producto">Talla</label>
+              <select id="talla-producto" value={varianteId} onChange={(e) => setVarianteId(e.target.value)}>
+                <option value="">Selecciona una Talla</option>
+                {variantes.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.talla}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <p>
             <strong>{tieneTallas && !variante ? "Desde: " : "Precio: "}</strong>
@@ -94,6 +106,15 @@ export const ProductoDetalles = () => {
             <strong>Descripción:</strong>
             <p>{producto.descripcion}</p>
           </div>
+          {producto.admite_personalizacion && (
+            <div>
+              <p>
+                ¿Te gustaría este producto en otro color o con un diseño diferente?
+                Cuéntanos tu idea y te responderemos a la brevedad.
+              </p>
+              <Link to="/contacto">Consultar Personalización</Link>
+            </div>
+          )}
           {(!tieneTallas || variante) && stock > 0 && (
             <button type='button' onClick={agregarAlCarrito}>
               Agregar al carrito

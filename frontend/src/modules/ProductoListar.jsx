@@ -171,6 +171,12 @@ export const ProductoListar = () => {
                     <span className={`badge ${tieneStock(prod) ? 'producto-disponible' : 'producto-agotado'}`}>
                       {tieneStock(prod) ? 'Disponible' : 'Agotado'}
                     </span>
+                    <span
+                      className={`badge ${prod.admite_personalizacion ? 'producto-disponible' : 'producto-agotado'}`}>
+                      {prod.admite_personalizacion
+                        ? 'Admite Personalización'
+                        : 'No Admite Personalización'}
+                    </span>
                   </div>
 
                   <h2 className="h5 producto-nombre">
