@@ -21,40 +21,25 @@
             <h2>Contacto, Entrega y Adelanto</h2>
             {{ form_pedido.as_p }}
 
-            <h2>Características del Encargo</h2>
-            {{ form_detalle.as_p }}
-
-            <h2>Receta por Unidad</h2>
+            <h2>Artículos del Pedido</h2>
             <p>
-                Indica cuánto material requiere una unidad del encargo,
-                en la unidad de medida de cada materia prima.
-                *Guardar esta receta no descuenta inventario*
+                <strong>
+                    Guardar el Pedido y sus Recetas no Descuenta Inventario
+                </strong>
             </p>
+            {{ articulos.management_form }}
+            {{ articulos.non_form_errors }}
 
-            {{ materiales.management_form }}
-            {{ materiales.non_form_errors }}
-
-            <div id='materiales-personalizados'>
-                {% for fila in materiales %}
-                    <fieldset>
-                        <legend>Material</legend>
-                        {{ fila.as_p }}
-                    </fieldset>
+            <div id='articulos-personalizados'>
+                {% for fila in articulos %}
+                    {% include 'interna/inventario/_pedido_personalizado_articulo.html' with fila=fila only %}
                 {% endfor %}
             </div>
-
-            <template id='material-personalizado-vacio'>
-                <fieldset>
-                    <legend>Material</legend>
-                    {{ materiales.empty_form.as_p }}
-                </fieldset>
+            <template id='articulo-personalizado-vacio'>
+                {% include 'interna/inventario/_pedido_personalizado_articulo.html' with fila=articulos.empty_form only %}
             </template>
 
-            <button type='button' id='agregar-material-personalizado'>Agregar Material</button>
-
-            <p>
-                Para Omitir una Fila, Marca su Casilla de Eliminación
-            </p>
+            <button type='button' id='agregar-articulo-personalizado'>Agregar otro Artículo</button>
 
             <div class='detalle-acciones'>
                 <button type='submit' class='boton-crear'>Guardar Pedido Personalizado</button>
@@ -66,5 +51,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'interna/js/pedido_personalizado.js' %}"></script>
+<script src="{% static 'interna/js/pedido_personalizado_crear.js' %}"></script>
 {% endblock %}

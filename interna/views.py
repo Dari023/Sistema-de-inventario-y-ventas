@@ -36,7 +36,8 @@ from .forms import (
     ProductoVarianteForm,
     PedidoPersonalizadoForm,
     DetallePedidoPersonalizadoForm,
-    MaterialPedidoPersonalizadoFormSet)
+    MaterialPedidoPersonalizadoFormSet,
+    ArticulosPedidoPersonalizadoFormSet)
 
 @login_required
 def home(request):
@@ -719,8 +720,10 @@ def pedido_detalles(request, pk):
         )
 
         return render(request, 'interna/inventario/pedido_personalizado_detalles.html',
-                {'pedido': pedido, 'total_abonado': total_abonado, 'saldo_pendiente': pedido.total - total_abonado}
-            )
+                {'pedido': pedido, 
+                'total_abonado': total_abonado, 
+                'saldo_pendiente': pedido.total - total_abonado, 
+                'puede_editar_encargo': _puede_editar_encargo(pedido)})
     
     return render(request, 'interna/inventario/pedido_detalles.html', {'pedido': pedido})
 
@@ -845,24 +848,48 @@ def pedido_personalizado_crear(request):
     es_post = request.method == 'POST'
     datos = request.POST if es_post else None
     archivos = request.FILES if es_post else None
-    detalle = DetallePedidoPersonalizado()
-    form_pedido = PedidoPersonalizadoForm(datos, prefix='pedido')
-    form_detalle = DetallePedidoPersonalizadoForm(datos, archivos, instance=detalle, prefix='encargo')
-    materiales = MaterialPedidoPersonalizadoFormSet(datos, instance=detalle, prefix='materiales')
+    pedido = Pedido(tipo_pedido='personalizado')
+    form_pedido = PedidoPersonalizadoForm(datos, instance=pedido, prefix='pedido')
+    articulos = ArticulosPedidoPersonalizadoFormSet(datos, archivos, instance=pedido, prefix='articulos', queryset=DetallePedidoPersonalizado.objects.none())
 
     if es_post:
         pedido_valido = form_pedido.is_valid()
-        detalle_valido = form_detalle.is_valid()
-        materiales_validos = materiales.is_valid()
+        articulos_validos = articulos.is_valid()
+        recetas_validas = True
 
-        if pedido_valido and detalle_valido:
-            total = (form_detalle.cleaned_data['cantidad'] * form_detalle.cleaned_data['precio_unitario'])
+        for fila in articulos.forms:
+            if fila.cleaned_data.get('DELETE'):
+                continue
+
+            if fila.empty_permitted and not fila.has_changed():
+                if fila.materiales.has_changed():
+                    fila.add_error(None, 'Completa las Características del Artículo al que Pertenecen estos Materiales')
+                    articulos_validos = False
+                else:
+                    continue
+
+            if not fila.materiales.is_valid():
+                recetas_validas = False
+
+        filas_a_guardar= []
+
+        if articulos_validos:
+            filas_a_guardar = [
+                fila
+                for fila in articulos.forms
+                if fila.cleaned_data
+                and not fila.cleaned_data.get('DELETE')
+            ]
+
+        if pedido_valido and articulos_validos:
+            total = sum(
+                (fila.cleaned_data['cantidad']* fila.cleaned_data['precio_unitario'] for fila in filas_a_guardar), Decimal('0'))
 
             if form_pedido.cleaned_data['adelanto_requerido'] > total:
-                form_pedido.add_error('adelanto_requerido', 'El Adelanto no puede Superar el Total del Encargo')
+                form_pedido.add_error('adelanto_requerido', 'El Adelanto no puede Superar el Total de Todos los Artículos del Pedido')
                 pedido_valido = False
 
-        if pedido_valido and detalle_valido and materiales_validos:
+        if pedido_valido and articulos_validos and recetas_validas:
             with transaction.atomic():
                 pedido = form_pedido.save(commit=False)
                 pedido.tipo_pedido = 'personalizado'
@@ -870,17 +897,107 @@ def pedido_personalizado_crear(request):
                 pedido.etapa = None
                 pedido.save()
 
-                detalle = form_detalle.save(commit=False)
-                detalle.pedido = pedido
-                detalle.save()
+                for fila in filas_a_guardar:
+                    detalle = fila.save(commit=False)
+                    detalle.pedido = pedido
+                    detalle.save()
 
-                materiales.instance = detalle
-                materiales.save()
+                    fila.materiales.instance = detalle
+                    fila.materiales.save()
 
             return redirect('pedido_detalles', pk=pedido.pk)
 
-    return render(
-        request,
-        'interna/inventario/pedido_personalizado_crear.html',
-        {'form_pedido': form_pedido, 'form_detalle': form_detalle, 'materiales': materiales}
+    return render(request, 'interna/inventario/pedido_personalizado_crear.html',
+        {
+            'form_pedido': form_pedido,
+            'articulos': articulos
+        }
     )
+
+def _puede_editar_encargo(pedido):
+    return (
+        pedido.estado == 'pendiente'
+        and not pedido.etapa
+        and not pedido.pagos.exclude(estado="rechazado").exists()
+        and not pedido.detalles_personalizados.filter(unidades_fabricadas__gt=0).exists()
+    )
+
+@transaction.atomic
+def _formulario_articulo_personalizado(request, pedido_pk, detalle_pk=None):
+    es_post = request.method == 'POST'
+
+    consulta = Pedido.objects.filter(tipo_pedido='personalizado')
+    if es_post:
+        consulta = consulta.select_for_update()
+
+    pedido = get_object_or_404(consulta, pk=pedido_pk)
+
+    if not _puede_editar_encargo(pedido):
+        return HttpResponseForbidden(
+            'No puedes modificar los artículos de un pedido'
+            "con pagos en trámite, pagos aprobados o fabricación iniciada"
+        )
+
+    if detalle_pk is None:
+        detalle = DetallePedidoPersonalizado(pedido=pedido)
+        subtotal_anterior = 0
+    else:
+        detalle = get_object_or_404(DetallePedidoPersonalizado, pk=detalle_pk, pedido=pedido)
+        subtotal_anterior = detalle.subtotal
+
+    editando = detalle.pk is not None
+    datos = request.POST if es_post else None
+    archivos = request.FILES if es_post else None
+
+    form_detalle = DetallePedidoPersonalizadoForm(datos, archivos, instance=detalle, prefix='encargo')
+    materiales = MaterialPedidoPersonalizadoFormSet(datos, instance=detalle, prefix='materiales')
+
+    for fila in materiales.forms:
+        disponibles = Q(estado=True)
+
+        if fila.instance.pk:
+            disponibles |= Q(pk=fila.instance.materia_prima_id)
+
+        fila.fields['materia_prima'].queryset = (
+            MateriaPrima.objects
+            .filter(disponibles)
+            .order_by('nombre')
+        )
+
+    if es_post:
+        detalle_valido = form_detalle.is_valid()
+        materiales_validos = materiales.is_valid()
+
+        if detalle_valido:
+            nuevo_subtotal = (form_detalle.cleaned_data['cantidad'] * form_detalle.cleaned_data['precio_unitario'])
+            nuevo_total = pedido.total - subtotal_anterior + nuevo_subtotal
+
+            if nuevo_total < pedido.adelanto_requerido:
+                form_detalle.add_error(None,
+                    'El total resultante del pedido no puede ser '
+                    'menor que el adelanto requerido'
+                )
+                detalle_valido = False
+
+        if detalle_valido and materiales_validos:
+            detalle = form_detalle.save(commit=False)
+            detalle.pedido = pedido
+            detalle.save()
+
+            materiales.instance = detalle
+            materiales.save()
+
+            return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_articulo_form.html',
+        {'pedido': pedido, 'form_detalle': form_detalle, 'materiales': materiales, 'editando': editando})
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+def pedido_personalizado_articulo_agregar(request, pk):
+    return _formulario_articulo_personalizado(request, pedido_pk=pk)
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+def pedido_personalizado_articulo_editar(request, pk, detalle_pk):
+    return _formulario_articulo_personalizado(request, pedido_pk=pk, detalle_pk=detalle_pk)

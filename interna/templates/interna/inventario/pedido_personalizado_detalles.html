@@ -34,9 +34,22 @@
 
         <h2>Encargo y Receta</h2>
 
+        {% if puede_editar_encargo and perms.interna.change_pedido %}
+            <p>
+                <a href="{% url 'pedido_personalizado_articulo_agregar' pedido.pk %}" class="boton-crear">Agregar otro artículo</a>
+            </p>
+        {% endif %}
+
         {% for detalle in pedido.detalles_personalizados.all %}
             <article>
                 <h3>Artículo Personalizado</h3>
+
+                {% if puede_editar_encargo and perms.interna.change_pedido %}
+                    <p>
+                        <a href="{% url 'pedido_personalizado_articulo_editar' pedido.pk detalle.pk %}">Editar Artículo y Receta</a>
+                    </p>
+                {% endif %}
+
                 <div>{{ detalle.descripcion|linebreaks }}</div>
 
                 {% if detalle.imagen_referencia %}

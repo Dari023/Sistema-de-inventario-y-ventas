@@ -2,8 +2,7 @@ from django import forms
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.forms import BaseInlineFormSet, inlineformset_factory
-from django.forms import BaseFormSet, formset_factory
+from django.forms import BaseInlineFormSet, BaseFormSet, inlineformset_factory, formset_factory
 from .models import (Producto, 
     MateriaPrima, 
     ProductoMateriaPrima, 
@@ -416,4 +415,29 @@ MaterialPedidoPersonalizadoFormSet = inlineformset_factory(
     min_num=1,
     validate_min=True,
     can_delete=True
+)
+
+class BaseArticulosPedidoPersonalizadoFormSet(BaseInlineFormSet):
+    def add_fields(self, form, index):
+        super().add_fields(form, index)
+
+        form.fields['DELETE'].label = 'Quitar este Artículo'
+
+        datos = self.data if form.is_bound else None
+        archivos = self.files if form.is_bound else None
+
+        form.materiales = MaterialPedidoPersonalizadoFormSet(datos, archivos, instance=form.instance, prefix=f"{form.prefix}-materiales")
+
+        for fila_material in form.materiales.forms:
+            fila_material.fields['DELETE'].label = 'Quitar este Material'
+
+ArticulosPedidoPersonalizadoFormSet = inlineformset_factory(
+    Pedido,
+    DetallePedidoPersonalizado,
+    form=DetallePedidoPersonalizadoForm,
+    formset=BaseArticulosPedidoPersonalizadoFormSet,
+    extra=0,
+    min_num=1,
+    validate_min=True,
+    can_delete=True,
 )
