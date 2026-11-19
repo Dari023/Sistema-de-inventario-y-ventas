@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from api.models import Cliente
 from decimal import Decimal, ROUND_HALF_UP
 import uuid
@@ -57,6 +57,7 @@ class MovimientoMateriaPrima(models.Model):
     saldo_resultante = models.DecimalField(max_digits=10, decimal_places=3 )
     responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     observacion = models.CharField(max_length=300, blank=True)
+    fabricacion_personalizada = models.ForeignKey('FabricacionPedidoPersonalizado', on_delete=models.PROTECT, null=True, blank=True, related_name='movimientos')
 
     class Meta:
         ordering = ["-fecha", "-pk"]
@@ -105,6 +106,9 @@ class Producto(models.Model):
         if variantes:
             return sum(variante.stock_actual for variante in variantes)
         return self.stock_actual
+
+    class Meta:
+        permissions = [('fabricar_producto', 'Puede registrar fabricación')]
 
     def __str__(self):
         return self.nombre
@@ -185,12 +189,54 @@ class Pedido(models.Model):
     ]
     etapa = models.CharField(max_length=20, choices=ETAPAS, null=True, blank=True, verbose_name='Etapa de preparación')
 
+    TIPOS_PEDIDO = [
+        ('normal', 'Compra de Catálogo'),
+        ('personalizado', 'Pedido Personalizado'),
+    ]
+
+    tipo_pedido = models.CharField(max_length=20, choices=TIPOS_PEDIDO, default='normal')
+    adelanto_requerido = models.DecimalField(max_digits=10, decimal_places=0, default=0, validators=[MinValueValidator(Decimal('0'))])
+    fecha_compromiso = models.DateField('Fecha acordada de entrega', null=True, blank=True)
+
     @property
     def total(self):
-        return sum(item.subtotal for item in self.detallepedido_set.all())
+        if self.tipo_pedido == 'personalizado':
+            return sum((detalle.subtotal for detalle in self.detalles_personalizados.all()), Decimal('0'))
+                
+        return sum((detalle.subtotal for detalle in self.detallepedido_set.all()), Decimal('0'))
 
     def __str__(self):
         return f"Pedido {self.id} - {self.cliente or self.nombre_invitado or 'Invitado'}"
+
+class PagoPedido(models.Model):
+    METODOS = [('transferencia', 'Transferencia Bancaria'), ('webpay', 'Webpay')]
+    ESTADOS = [('pendiente', 'Pendiente'), ('en_revision', 'Comprobante en Revisión'), ('aprobado', 'Aprobado'), ('rechazado', 'Rechazado')]
+
+    pedido = models.ForeignKey(Pedido, on_delete=models.PROTECT, related_name='pagos')
+    metodo = models.CharField(max_length=20, choices=METODOS)
+    monto = models.DecimalField(max_digits=10, decimal_places=0, validators=[MinValueValidator(Decimal('1'))])
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
+    comprobante = models.FileField(upload_to="comprobantes_pedidos/", max_length=255, blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'jpg', 'jpeg', 'png'])]
+    )
+
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    revisado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos_pedidos_revisados')
+    fecha_revision = models.DateTimeField(null=True, blank=True)
+    observacion = models.TextField(blank=True)
+    orden_webpay = models.CharField(max_length=26, unique=True, null=True, blank=True, editable=False)
+    token_webpay = models.CharField(max_length=64, unique=True, null=True, blank=True, editable=False)
+
+    class Meta:
+        ordering = ['-fecha_creacion', '-pk']
+        permissions = [('validar_transferencia','Puede Aprobar o Rechazar Transferencias de Pedidos')]
+        constraints = [models.CheckConstraint(condition=models.Q(monto__gt=0), name='pago_pedido_monto_positivo')]
+
+    def __str__(self):
+        return (
+            f"Pago {self.pk} - Pedido {self.pedido_id} "
+            f"- {self.get_estado_display()}"
+        )
 
 class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
@@ -331,3 +377,64 @@ class Consulta(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.asunto}"
+
+class DetallePedidoPersonalizado(models.Model):
+    pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='detalles_personalizados')
+    descripcion = models.TextField('Descripción del Encargo')
+    imagen_referencia = models.ImageField(upload_to='pedidos_personalizados/', blank=True)
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    precio_unitario = models.DecimalField('Precio acordado por unidad', max_digits=10, decimal_places=0, validators=[MinValueValidator((1))])
+    unidades_fabricadas = models.PositiveIntegerField(default=0, editable=False)
+
+    @property
+    def subtotal(self):
+        return self.precio_unitario * self.cantidad
+
+    @property
+    def unidades_pendientes(self):
+        return self.cantidad - self.unidades_fabricadas
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=models.Q(cantidad__gt=0), name='detalle_personalizado_cantidad_positiva'),
+            models.CheckConstraint(condition=models.Q(precio_unitario__gt=0), name='detalle_personalizado_precio_positivo'),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(unidades_fabricadas__gte=0)
+                    & models.Q(
+                        unidades_fabricadas__lte=models.F('cantidad'),
+                    )
+                ),
+                name='detalle_personalizado_fabricadas_validas',
+            )
+        ]
+
+    def __str__(self):
+        return f"Encargo {self.pk} - Pedido {self.pedido_id}"
+
+class MaterialPedidoPersonalizado(models.Model):
+    detalle = models.ForeignKey(DetallePedidoPersonalizado, on_delete=models.CASCADE, related_name='materiales')
+    materia_prima = models.ForeignKey(MateriaPrima, on_delete=models.PROTECT)
+    cantidad_por_unidad = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(Decimal('0.001'))])
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['detalle', 'materia_prima'], name='material_unico_por_encargo'),
+            models.CheckConstraint(condition=models.Q(cantidad_por_unidad__gt=0), name='material_encargo_cantidad_positiva')
+        ]
+
+    def __str__(self):
+        return f"{self.materia_prima.nombre} - Encargo {self.detalle_id}"
+
+class FabricacionPedidoPersonalizado(models.Model):
+    detalle = models.ForeignKey(DetallePedidoPersonalizado, on_delete=models.PROTECT, related_name='fabricaciones')
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    fecha = models.DateTimeField(auto_now_add=True)
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-fecha', '-pk']
+        constraints = [models.CheckConstraint(condition=models.Q(cantidad__gt=0), name='fabricacion_encargo_cantidad_positiva')]
+
+    def __str__(self):
+        return f"Fabricación {self.pk} - Encargo {self.detalle_id}"

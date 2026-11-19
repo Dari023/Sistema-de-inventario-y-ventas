@@ -1,16 +1,14 @@
-from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.db.models import F
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
 from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q
-from .models import Pedido
 from .models import (Producto, 
     ProductoMateriaPrima, 
     MateriaPrima, 
@@ -20,7 +18,9 @@ from .models import (Producto,
     Resena,
     PreguntaFrecuente,
     HistorialEtapaPedido,
-    ProductoVariante)
+    ProductoVariante,
+    Pedido,
+    DetallePedidoPersonalizado)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -33,7 +33,10 @@ from .forms import (
     PrecioMaterialesFormSet,
     TiempoPrecioForm,
     PreguntaFrecuenteForm,
-    ProductoVarianteForm)
+    ProductoVarianteForm,
+    PedidoPersonalizadoForm,
+    DetallePedidoPersonalizadoForm,
+    MaterialPedidoPersonalizadoFormSet)
 
 @login_required
 def home(request):
@@ -678,13 +681,15 @@ def calcular_sugerencia(minutos, materiales, configuracion):
         'iva': iva,
     }
 
+@login_required
+@permission_required('interna.view_pedido', raise_exception=True)
 def pedido_listar(request):
     q = request.GET.get('q', '').strip()
     pedidos = (
         Pedido.objects
-        .filter(estado='pagado')
+        .filter(Q(tipo_pedido='normal', estado='pagado') | (Q(tipo_pedido='personalizado')))
         .select_related('cliente')
-        .prefetch_related('detallepedido_set__producto')
+        .prefetch_related('detallepedido_set__producto', 'detalles_personalizados')
         .order_by('-fecha_pedido')
     )
     if q:
@@ -692,25 +697,32 @@ def pedido_listar(request):
             pedidos = pedidos.filter(pk=int(q))
         else:
             pedidos = pedidos.filter(id_compra__icontains=q)
-    return render(
-        request,
-        'interna/inventario/pedido_listar.html',
-        {'pedidos': pedidos, 'q': q},
-    )
+    return render(request, 'interna/inventario/pedido_listar.html', {'pedidos': pedidos, 'q': q})
 
+@login_required
+@permission_required('interna.view_pedido', raise_exception=True)
 def pedido_detalles(request, pk):
     pedido = get_object_or_404(
         Pedido.objects
         .select_related('cliente')
-        .prefetch_related('detallepedido_set__producto'),
-        pk=pk
-    )
+        .prefetch_related('detallepedido_set__producto', 'detalles_personalizados__materiales__materia_prima', 
+        'pagos', 'historial_etapas__responsable'), pk=pk)
+
+    if pedido.tipo_pedido == 'personalizado':
+        total_abonado = sum(
+            (
+                pago.monto
+                for pago in pedido.pagos.all()
+                if pago.estado == 'aprobado'
+            ),
+            Decimal('0')
+        )
+
+        return render(request, 'interna/inventario/pedido_personalizado_detalles.html',
+                {'pedido': pedido, 'total_abonado': total_abonado, 'saldo_pendiente': pedido.total - total_abonado}
+            )
     
-    return render(
-        request,
-        'interna/inventario/pedido_detalles.html',
-        {'pedido': pedido},
-    )
+    return render(request, 'interna/inventario/pedido_detalles.html', {'pedido': pedido})
 
 @login_required
 @permission_required('interna.view_resena', raise_exception=True)
@@ -813,6 +825,10 @@ def pedido_cambiar_estado(request, pk):
     pedido = get_object_or_404(Pedido, pk=pk)
     nueva_etapa = request.POST.get('etapa')    
     etapas_validas = [e[0] for e in Pedido.ETAPAS]
+
+    if pedido.tipo_pedido == 'personalizado':
+        return HttpResponseForbidden('La Gestión de Etapas de pedidos Personalizados aún no está Habilitada')
+
     if nueva_etapa in etapas_validas:
         pedido.etapa = nueva_etapa
         pedido.save(update_fields=['etapa'])
@@ -822,3 +838,49 @@ def pedido_cambiar_estado(request, pk):
             responsable=request.user
         )
     return redirect('pedido_detalles', pk=pedido.pk)
+
+@login_required
+@permission_required('interna.add_pedido', raise_exception=True)
+def pedido_personalizado_crear(request):
+    es_post = request.method == 'POST'
+    datos = request.POST if es_post else None
+    archivos = request.FILES if es_post else None
+    detalle = DetallePedidoPersonalizado()
+    form_pedido = PedidoPersonalizadoForm(datos, prefix='pedido')
+    form_detalle = DetallePedidoPersonalizadoForm(datos, archivos, instance=detalle, prefix='encargo')
+    materiales = MaterialPedidoPersonalizadoFormSet(datos, instance=detalle, prefix='materiales')
+
+    if es_post:
+        pedido_valido = form_pedido.is_valid()
+        detalle_valido = form_detalle.is_valid()
+        materiales_validos = materiales.is_valid()
+
+        if pedido_valido and detalle_valido:
+            total = (form_detalle.cleaned_data['cantidad'] * form_detalle.cleaned_data['precio_unitario'])
+
+            if form_pedido.cleaned_data['adelanto_requerido'] > total:
+                form_pedido.add_error('adelanto_requerido', 'El Adelanto no puede Superar el Total del Encargo')
+                pedido_valido = False
+
+        if pedido_valido and detalle_valido and materiales_validos:
+            with transaction.atomic():
+                pedido = form_pedido.save(commit=False)
+                pedido.tipo_pedido = 'personalizado'
+                pedido.estado = 'pendiente'
+                pedido.etapa = None
+                pedido.save()
+
+                detalle = form_detalle.save(commit=False)
+                detalle.pedido = pedido
+                detalle.save()
+
+                materiales.instance = detalle
+                materiales.save()
+
+            return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(
+        request,
+        'interna/inventario/pedido_personalizado_crear.html',
+        {'form_pedido': form_pedido, 'form_detalle': form_detalle, 'materiales': materiales}
+    )

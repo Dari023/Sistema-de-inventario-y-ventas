@@ -32,4 +32,5 @@ urlpatterns = [
     path('preguntas-frecuentes/<int:pk>/editar/', views.pregunta_frecuente_editar, name='pregunta_frecuente_editar'),
     path('preguntas-frecuentes/<int:pk>/estado/', views.pregunta_frecuente_estado, name='pregunta_frecuente_estado'),
     path('pedidos/<int:pk>/cambiar-estado/', views.pedido_cambiar_estado, name='pedido_cambiar_estado'),
+    path('pedidos/personalizado/crear/', views.pedido_personalizado_crear, name='pedido_personalizado_crear')
 ]
