@@ -37,7 +37,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
     queryset = Producto.objects.filter(activo=True)
 
 def obtener_carrito(request, crear=False):
-    filtros = {"estado": "pendiente"}
+    filtros = {"estado": "pendiente", 'tipo_pedido':'normal'}
 
     if request.user.is_authenticated:
         filtros["cliente"] = get_object_or_404(

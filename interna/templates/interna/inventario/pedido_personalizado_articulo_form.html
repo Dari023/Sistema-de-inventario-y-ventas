@@ -1,0 +1,65 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>
+                {% if editando %}
+                    EDITAR ARTÍCULO PERSONALIZADO
+                {% else %}
+                    AGREGAR ARTÍCULO PERSONALIZADO
+                {% endif %}
+            </h1>
+            <p>Pedido #{{ pedido.pk }}</p>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+        <form method='post' enctype='multipart/form-data'>
+            {% csrf_token %}
+
+            <h2>Características del Artículo</h2>
+            {{ form_detalle.as_p }}
+
+            <h2>Receta por Unidad de Este Artículo</h2>
+
+            {{ materiales.management_form }}
+            {{ materiales.non_form_errors }}
+
+            <div id='materiales-personalizados'>
+                {% for fila in materiales %}
+                    <fieldset>
+                        <legend>Material</legend>
+                        {{ fila.as_p }}
+                    </fieldset>
+                {% endfor %}
+            </div>
+
+            <template id='material-personalizado-vacio'>
+                <fieldset>
+                    <legend>Material</legend>
+                    {{ materiales.empty_form.as_p }}
+                </fieldset>
+            </template>
+
+            <button type='button' id='agregar-material-personalizado'>Agregar Material</button>
+
+            <div class='detalle-acciones'>
+                <button type='submit' class='boton-crear'>Guardar Artículo</button>
+
+                <a href="{% url 'pedido_detalles' pedido.pk %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'interna/js/pedido_personalizado.js' %}"></script>
+{% endblock %}

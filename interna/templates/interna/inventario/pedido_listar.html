@@ -5,8 +5,13 @@
     <header class="inventario-cabecera">
         <div>
             <h1>PEDIDOS</h1>
-            <p>Busca un pedido por su código.</p>
+            <p>Busca un Pedido por su Código</p>
         </div>
+        {% if perms.interna.add_pedido %}
+            <a href="{% url 'pedido_personalizado_crear' %}" class='boton-crear'>
+                Crear Pedido Personalizado
+            </a>
+        {% endif %}
     </header>
 
     <form method="get" class="filtros">
@@ -48,14 +53,26 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% for d in pedido.detallepedido_set.all %}
-                        {{ d.producto.nombre }}{% if not forloop.last %}, {% endif %}
-                    {% empty %}—{% endfor %}
+                    {% if pedido.tipo_pedido == 'personalizado' %}
+                        {% for d in pedido.detalles_personalizados.all %}
+                            {{ d.descripcion|truncatechars:70 }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}—{% endfor %}
+                    {% else %}
+                        {% for d in pedido.detallepedido_set.all %}
+                            {{ d.producto.nombre }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}—{% endfor %}
+                    {% endif %}
                 </td>
                 <td>
-                    {% for d in pedido.detallepedido_set.all %}
-                        ×{{ d.cantidad }}{% if not forloop.last %}, {% endif %}
-                    {% empty %}—{% endfor %}
+                    {% if pedido.tipo_pedido == 'personalizado' %}
+                        {% for d in pedido.detalles_personalizados.all %}
+                            ×{{ d.cantidad }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}—{% endfor %}
+                    {% else %}
+                        {% for d in pedido.detallepedido_set.all %}
+                            ×{{ d.cantidad }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}—{% endfor %}
+                    {% endif %}
                 </td>
                 <td>${{ pedido.total }}</td>
                 <td>{{ pedido.get_estado_display }}</td>
@@ -66,11 +83,11 @@
             </tr>
         {% empty %}
             <tr>
-                <td colspan="8">
+                <td colspan='9'>
                     {% if q %}
-                        No se encontró ningún pedido con el código "{{ q }}".
+                        No se Encontró Ningún Pedido con el Código "{{ q }}"
                     {% else %}
-                        No hay pedidos registrados.
+                        No hay Pedidos Registrados
                     {% endif %}
                 </td>
             </tr>

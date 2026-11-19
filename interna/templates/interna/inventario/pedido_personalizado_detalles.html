@@ -1,0 +1,115 @@
+{% extends 'interna/base.html' %}
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>PEDIDO PERSONALIZADO #{{ pedido.pk }}</h1>
+            <p>Código: {{ pedido.id_compra }}</p>
+        </div>
+        <a href="{% url 'pedido_listar' %}">Volver al Listado</a>
+    </header>
+
+    <section class='inventario-panel'>
+        <h2>Contacto y Entrega</h2>
+        <p><strong>Nombre:</strong> {{ pedido.nombre_invitado }}</p>
+        <p><strong>Correo:</strong> {{ pedido.email_invitado }}</p>
+        <p><strong>Teléfono:</strong> {{ pedido.telefono_invitado }}</p>
+        <p><strong>RUT:</strong> {{ pedido.rut_invitado|default:'Sin registrar' }}</p>
+        <p><strong>Entrega:</strong> {{ pedido.get_tipo_entrega_display }}</p>
+
+        {% if pedido.tipo_entrega == 'envio' %}
+            <p><strong>Dirección:</strong> {{ pedido.direccion_invitado }}</p>
+        {% endif %}
+
+        <p>
+            <strong>Fecha acordada:</strong>
+            {{ pedido.fecha_compromiso|date:'d/m/Y' }}
+        </p>
+
+        <h2>Encargo y Receta</h2>
+
+        {% if puede_editar_encargo and perms.interna.change_pedido %}
+            <p>
+                <a href="{% url 'pedido_personalizado_articulo_agregar' pedido.pk %}" class="boton-crear">Agregar otro artículo</a>
+            </p>
+        {% endif %}
+
+        {% for detalle in pedido.detalles_personalizados.all %}
+            <article>
+                <h3>Artículo Personalizado</h3>
+
+                {% if puede_editar_encargo and perms.interna.change_pedido %}
+                    <p>
+                        <a href="{% url 'pedido_personalizado_articulo_editar' pedido.pk detalle.pk %}">Editar Artículo y Receta</a>
+                    </p>
+                {% endif %}
+
+                <div>{{ detalle.descripcion|linebreaks }}</div>
+
+                {% if detalle.imagen_referencia %}
+                    <img src='{{ detalle.imagen_referencia.url }}' alt='Referencia del Encargo' width='250'>
+                {% endif %}
+
+                <p><strong>Cantidad:</strong> {{ detalle.cantidad }}</p>
+                <p>
+                    <strong>Precio por Unidad:</strong>
+                    ${{ detalle.precio_unitario|floatformat:'0g' }}
+                </p>
+                <p>
+                    <strong>Subtotal:</strong>
+                    ${{ detalle.subtotal|floatformat:'0g' }}
+                </p>
+                <p>
+                    <strong>Fabricadas:</strong>
+                    {{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}
+                </p>
+
+                <table class='tabla'>
+                    <thead>
+                        <tr>
+                            <th>Materia Prima</th>
+                            <th>Cantidad por Unidad</th>
+                            <th>Unidad de Medida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for material in detalle.materiales.all %}
+                            <tr>
+                                <td>{{ material.materia_prima.nombre }}</td>
+                                <td>{{ material.cantidad_por_unidad }}</td>
+                                <td>{{ material.materia_prima.get_unidad_de_medida_display }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan='3'>Sin Receta Registrada</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </article>
+        {% endfor %}
+
+        <h2>Resumen de Pago</h2>
+        <p><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
+        <p><strong>Total Acordado:</strong> ${{ pedido.total|floatformat:'0g' }}</p>
+        <p>
+            <strong>Adelanto Requerido:</strong>
+            ${{ pedido.adelanto_requerido|floatformat:'0g' }}
+        </p>
+        <p>
+            <strong>Abonos Aprobados:</strong>
+            ${{ total_abonado|floatformat:'0g' }}
+        </p>
+        <p>
+            <strong>Saldo Pendiente:</strong>
+            ${{ saldo_pendiente|floatformat:'0g' }}
+        </p>
+    </section>
+</main>
+{% endblock %}

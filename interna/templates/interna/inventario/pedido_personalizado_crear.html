@@ -1,0 +1,55 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>CREAR PEDIDO PERSONALIZADO</h1>
+            <p>Registra el encargo, las condiciones acordadas y su receta</p>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+        <form method='post' enctype='multipart/form-data'>
+            {% csrf_token %}
+
+            <h2>Contacto, Entrega y Adelanto</h2>
+            {{ form_pedido.as_p }}
+
+            <h2>Artículos del Pedido</h2>
+            <p>
+                <strong>
+                    Guardar el Pedido y sus Recetas no Descuenta Inventario
+                </strong>
+            </p>
+            {{ articulos.management_form }}
+            {{ articulos.non_form_errors }}
+
+            <div id='articulos-personalizados'>
+                {% for fila in articulos %}
+                    {% include 'interna/inventario/_pedido_personalizado_articulo.html' with fila=fila only %}
+                {% endfor %}
+            </div>
+            <template id='articulo-personalizado-vacio'>
+                {% include 'interna/inventario/_pedido_personalizado_articulo.html' with fila=articulos.empty_form only %}
+            </template>
+
+            <button type='button' id='agregar-articulo-personalizado'>Agregar otro Artículo</button>
+
+            <div class='detalle-acciones'>
+                <button type='submit' class='boton-crear'>Guardar Pedido Personalizado</button>
+                <a href="{% url 'pedido_listar' %}">Cancelar</a>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'interna/js/pedido_personalizado_crear.js' %}"></script>
+{% endblock %}
