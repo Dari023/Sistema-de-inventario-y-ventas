@@ -1,0 +1,91 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="inventario">
+
+    <header class="inventario-cabecera">
+        <div>
+            <h1>CONSULTAS</h1>
+            <p>Revisa los mensajes enviados desde el formulario de contacto</p>
+        </div>
+    </header>
+
+    <section class="inventario-panel">
+
+        <div class="filtro-estado">
+            <label for="filtro-consultas-estado">Estado:</label>
+            <select id="filtro-consultas-estado">
+                <option value="">Todos</option>
+                <option value="Pendiente">Pendientes</option>
+                <option value="Respondida">Respondidas</option>
+            </select>
+        </div>
+
+        <table id="tabla-consultas"
+               class="js-datatable"
+               data-orden="desc"
+               data-filtro-estado="filtro-consultas-estado"
+               data-columna-estado="6"
+               data-columna-acciones="7">
+
+            <thead>
+                <tr>
+                    <th>Fecha y hora</th>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Asunto</th>
+                    <th>Mensaje</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for consulta in consultas %}
+                    <tr>
+                        <td data-order="{{ consulta.fecha|date:'YmdHis' }}">
+                            {{ consulta.fecha|date:'d/m/Y H:i' }}
+                        </td>
+                        <td>{{ consulta.nombre }}</td>
+                        <td>{{ consulta.correo }}</td>
+                        <td>{{ consulta.asunto }}</td>
+
+                        <td data-search="{{ consulta.mensaje }}"
+                            style="max-width: 24rem; overflow-wrap: anywhere;">
+                            {{ consulta.mensaje|truncatechars:100 }}
+                        </td>
+
+                        <td>
+                            {% if consulta.es_personalizado %}
+                                Pedido personalizado
+                            {% else %}
+                                Consulta general
+                            {% endif %}
+                        </td>
+
+                        <td data-search="{{ consulta.get_estado_display }}">
+                            <span class="estado {% if consulta.estado == 'respondida' %}estado-activo{% else %}estado-deshabilitado{% endif %}">
+                                {{ consulta.get_estado_display }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <a href="{% url 'consulta_detalle' consulta.pk %}"
+                               class="formulario-boton formulario-boton-secundario">
+                                Ver detalle
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+    </section>
+</main>
+{% endblock %}

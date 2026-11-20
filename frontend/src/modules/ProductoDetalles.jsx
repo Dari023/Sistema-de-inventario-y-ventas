@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../api/Api";
 import { toast } from 'react-toastify';
 import { ResenasProducto } from "./Resenas";
+import "../styles/ProductoDetalles.css";
 
 const formatoPrecio = new Intl.NumberFormat("es-CL", {
   style: "currency",
@@ -66,13 +67,24 @@ export const ProductoDetalles = () => {
   };
 
   return (
-    <div>
-      <h2>{producto.nombre}</h2>
-      
-      <div>
-        {producto.imagen && (<img src={producto.imagen} alt={producto.nombre} width="250" />)}
-        
-        <div>
+    <div className="detalle-producto">
+      <nav className="detalle-ruta" aria-label="Ruta de navegación">
+        <Link to="/">Inicio</Link>
+        <span aria-hidden="true">/</span>
+        <Link to="/catalogo">Catálogo</Link>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{producto.nombre}</span>
+      </nav>
+      <div className="detalle-contenido">
+        <div className="detalle-imagen-contenedor">
+          {producto.imagen ? (
+            <img src={producto.imagen} alt={producto.nombre} className="detalle-imagen"/>
+          ) : (
+            <p>Imagen no disponible</p>
+          )}
+        </div>
+      <div className="detalle-informacion">
+        <h1>{producto.nombre}</h1>
           {tieneTallas && (
             <div>
               <label htmlFor="talla-producto">Talla</label>
@@ -87,19 +99,26 @@ export const ProductoDetalles = () => {
             </div>
           )}
 
-          <p>
-            <strong>{tieneTallas && !variante ? "Desde: " : "Precio: "}</strong>
-            {formatoPrecio.format(Number(precio))}
+          <p className="detalle-precio">
+            <span className="detalle-precio-etiqueta">
+              {tieneTallas && !variante ? "Desde" : "Precio:          "}
+            </span>
+            <strong>{formatoPrecio.format(Number(precio))}</strong>
           </p>
 
           {(!tieneTallas || variante) && (
-            <p>
-              {stock > 0
-                ? `Stock disponible: ${stock}`
-                : variante?.a_pedido
-                  ? "Disponible a pedido"
-                  : "Agotado"}
-            </p>
+            <div className="detalle-talla">
+              <label htmlFor="talla-producto">Talla</label>
+              <select
+                id="talla-producto"
+                value={varianteId}
+                onChange={(e) => setVarianteId(e.target.value)}>
+                <option value="">Selecciona una talla</option>
+                {variantes.map((v) => (
+                  <option key={v.id} value={v.id}> {v.talla} </option>
+                ))}
+              </select>
+            </div>
           )}
           <p><strong>Modalidad de Venta:</strong> {producto.modalidad_de_venta}</p>
           <div>
@@ -107,16 +126,17 @@ export const ProductoDetalles = () => {
             <p>{producto.descripcion}</p>
           </div>
           {producto.admite_personalizacion && (
-            <div>
+            <div className="detalle-personalizacion">
+              <h2>Personaliza este producto</h2>
               <p>
                 ¿Te gustaría este producto en otro color o con un diseño diferente?
                 Cuéntanos tu idea y te responderemos a la brevedad.
               </p>
-              <Link to="/contacto">Consultar Personalización</Link>
+              <Link to="/contacto" className="btn boton-secundario">Consultar Personalización</Link>
             </div>
           )}
           {(!tieneTallas || variante) && stock > 0 && (
-            <button type='button' onClick={agregarAlCarrito}>
+            <button type='button' onClick={agregarAlCarrito} className="btn boton-principal detalle-boton-carrito">
               Agregar al carrito
             </button>
           )}
