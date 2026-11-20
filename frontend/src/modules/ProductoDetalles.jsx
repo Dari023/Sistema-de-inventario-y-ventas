@@ -126,12 +126,13 @@ export const ProductoDetalles = () => {
             <p>{producto.descripcion}</p>
           </div>
           {producto.admite_personalizacion && (
-            <div>
+            <div className="detalle-personalizacion">
+              <h2>Personaliza este producto</h2>
               <p>
                 ¿Te gustaría este producto en otro color o con un diseño diferente?
                 Cuéntanos tu idea y te responderemos a la brevedad.
               </p>
-              <Link to="/contacto">Consultar Personalización</Link>
+              <Link to="/contacto" className="btn boton-secundario">Consultar Personalización</Link>
             </div>
           )}
           {(!tieneTallas || variante) && stock > 0 && (
