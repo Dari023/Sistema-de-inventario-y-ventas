@@ -59,11 +59,16 @@ export const ProductoListar = () => {
       (producto) => producto.categoria === categoriaSeleccionada.id
     ): productos;
 
-  const agregarAlCarrito = (id) => {
-    api.post("carrito/", { producto_id: id, cantidad: 1 })
-      .then(() => toast.success("Producto se Añadio al Carrito"))
-      .catch((error) => toast.error(error.response?.data?.error || "Error al Agregar"));
-  };
+const agregarAlCarrito = (id) => {
+  api.post("carrito/", { producto_id: id, cantidad: 1 })
+    .then(() => {
+      toast.success("Producto se Añadió al Carrito");
+      window.dispatchEvent(new Event("carrito-actualizado"));
+    })
+    .catch((error) =>
+      toast.error(error.response?.data?.error || "Error al Agregar")
+    );
+};
 
   return (
     <section>
