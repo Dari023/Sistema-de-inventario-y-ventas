@@ -14,11 +14,6 @@ def UsuarioListView(request):
         'rol'
     ).all()
 
-    clientes = Cliente.objects.select_related(
-        'usuario',
-    ).filter(
-        usuario__usuarios__isnull = True,
-    )
     
     if query:
         usuarios = usuarios.filter(
@@ -28,16 +23,9 @@ def UsuarioListView(request):
             Q(rut__incontains=query)
         )
 
-        clientes = clientes.filter(
-            Q(usuario__email__icontains=query) | 
-            Q(usuario__first_name__incontains = query) |
-            Q(usuario__last_name__icontains=query) |
-            Q(rut__incontains=query)
-        )
             
     contexto = {
         'usuarios': usuarios,
-        'clientes': clientes,
         'query': query
     }
     return render(request, 'usuarios/usuario_list.html', contexto)
