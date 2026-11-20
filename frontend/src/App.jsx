@@ -21,6 +21,7 @@ export const App = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -70,10 +71,39 @@ export const App = () => {
                   
                 </>
               ) : (
-                <>
-                  <NavLink to="/mi-cuenta" className="nav-link tienda-enlace d-flex align-items-center gap-2"><i className="bi bi-person fs-4" aria-hidden="true"></i></NavLink>
-                  <button onClick={cerrarSesion} className="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</button>
-                </>
+                <div className="tienda-menu-usuario">
+                  <button
+                    type="button"
+                    className="nav-link tienda-enlace"
+                    aria-label="Opciones de mi cuenta"
+                    aria-expanded={menuAbierto}
+                    aria-controls="menu-cuenta"
+                    onClick={() => setMenuAbierto(!menuAbierto)}
+                  >
+                    <i className="bi bi-person fs-4" aria-hidden="true"></i>
+                  </button>
+
+                  {menuAbierto && (
+                    <div id="menu-cuenta" className="tienda-menu-desplegable">
+                      <Link
+                        to="/mi-cuenta"
+                        onClick={() => setMenuAbierto(false)}
+                      >
+                        Mi cuenta
+                      </Link>
+
+                      <button
+                        type="button" 
+                        onClick={() => {
+                          setMenuAbierto(false);
+                          cerrarSesion();
+                        }}
+                      >
+                        Cerrar sesión
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               <NavLink   to="/carrito" className="nav-link tienda-enlace" aria-label="Mi carrito" title="Mi carrito"><i className="bi bi-cart3 fs-4" aria-hidden="true"></i></NavLink>
             </nav>
