@@ -63,7 +63,6 @@ export const App = () => {
             <nav className="nav gap-2 align-items-center">
               <NavLink to="/" end className="nav-link tienda-enlace">Inicio</NavLink>
               <Link to="/catalogo" className="nav-link tienda-enlace">Catálogo</Link>
-              <NavLink to="/carrito" className="nav-link tienda-enlace">Mi carrito</NavLink>
               {!isAuthenticated ? (
                 <>
                   <Link to="/login" className="nav-link tienda-enlace">Iniciar Sesión</Link>
@@ -72,10 +71,11 @@ export const App = () => {
                 </>
               ) : (
                 <>
-                  <NavLink to="/mi-cuenta" className="nav-link tienda-enlace">Mi cuenta</NavLink>
+                  <NavLink to="/mi-cuenta" className="nav-link tienda-enlace d-flex align-items-center gap-2"><i className="bi bi-person fs-4" aria-hidden="true"></i></NavLink>
                   <button onClick={cerrarSesion} className="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</button>
                 </>
               )}
+              <NavLink   to="/carrito" className="nav-link tienda-enlace" aria-label="Mi carrito" title="Mi carrito"><i className="bi bi-cart3 fs-4" aria-hidden="true"></i></NavLink>
             </nav>
           </div>
         </div>
