@@ -8,7 +8,10 @@ export const Carrito = () => {
 
   const cargarCarrito = () => {
     api.get("carrito/")
-      .then((response) => setCarrito(response.data))
+      .then((response) => { setCarrito(response.data);
+        window.dispatchEvent(new Event("carrito-actualizado"));
+      })
+
       .catch((error) => console.log(error));
   };
 

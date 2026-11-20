@@ -1,0 +1,123 @@
+.pedido-detalle .inventario-cabecera {
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.pedido-detalle .inventario-cabecera p {
+    line-height: 2;
+}
+
+.pedido-detalle code {
+    overflow-wrap: anywhere;
+}
+
+.pedido-detalle-panel {
+    margin-bottom: 24px;
+    overflow-x: auto;
+}
+
+.pedido-detalle-panel h2 {
+    margin: 0 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee2dc;
+    color: #3d344f;
+    font-size: 20px;
+}
+
+.pedido-detalle-panel p {
+    margin: 0 0 12px;
+    color: #554d61;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.pedido-detalle-panel p:last-child {
+    margin-bottom: 0;
+}
+
+.pedido-detalle-panel p strong {
+    color: #3d344f;
+}
+
+.pedido-detalle .tabla {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.pedido-detalle .tabla th,
+.pedido-detalle .tabla td {
+    padding: 14px 16px;
+    text-align: left;
+}
+
+.pedido-detalle .tabla thead {
+    background-color: #3d344f;
+    color: #fff;
+}
+
+.pedido-detalle .tabla tbody td {
+    border-bottom: 1px solid #eee2dc;
+    color: #554d61;
+}
+
+.pedido-detalle .tabla tbody tr:nth-child(even) {
+    background-color: #fff8f4;
+}
+
+.pedido-detalle .tabla tfoot {
+    background-color: #fff0e9;
+    color: #3d344f;
+}
+
+.pedido-detalle .tabla tfoot th {
+    border-top: 2px solid #ff896b;
+}
+
+.pedido-detalle select {
+    max-width: 100%;
+    border: 1px solid #d9cede;
+    background-color: #fff;
+    color: #3d344f;
+    font: inherit;
+}
+
+.pedido-detalle select:focus-visible {
+    outline: 2px solid #ff896b;
+    outline-offset: 2px;
+}
+
+.pedido-detalle .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.pedido-detalle .badge.bg-success {
+    background-color: #e2efdc !important;
+    color: #2d632c !important;
+}
+
+.pedido-detalle .badge.bg-warning {
+    background-color: #fff0d6 !important;
+    color: #805518 !important;
+}
+
+.pedido-detalle .badge.bg-info {
+    background-color: #eee8f5 !important;
+    color: #534369 !important;
+}
+
+@media (max-width: 600px) {
+    .pedido-detalle .tabla th,
+    .pedido-detalle .tabla td {
+        padding: 10px;
+    }
+
+    .pedido-detalle .inventario-cabecera h1 {
+        font-size: 24px;
+    }
+}
