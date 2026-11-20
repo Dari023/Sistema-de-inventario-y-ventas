@@ -99,19 +99,26 @@ export const ProductoDetalles = () => {
             </div>
           )}
 
-          <p>
-            <strong>{tieneTallas && !variante ? "Desde: " : "Precio: "}</strong>
-            {formatoPrecio.format(Number(precio))}
+          <p className="detalle-precio">
+            <span className="detalle-precio-etiqueta">
+              {tieneTallas && !variante ? "Desde" : "Precio:          "}
+            </span>
+            <strong>{formatoPrecio.format(Number(precio))}</strong>
           </p>
 
           {(!tieneTallas || variante) && (
-            <p>
-              {stock > 0
-                ? `Stock disponible: ${stock}`
-                : variante?.a_pedido
-                  ? "Disponible a pedido"
-                  : "Agotado"}
-            </p>
+            <div className="detalle-talla">
+              <label htmlFor="talla-producto">Talla</label>
+              <select
+                id="talla-producto"
+                value={varianteId}
+                onChange={(e) => setVarianteId(e.target.value)}>
+                <option value="">Selecciona una talla</option>
+                {variantes.map((v) => (
+                  <option key={v.id} value={v.id}> {v.talla} </option>
+                ))}
+              </select>
+            </div>
           )}
           <p><strong>Modalidad de Venta:</strong> {producto.modalidad_de_venta}</p>
           <div>
