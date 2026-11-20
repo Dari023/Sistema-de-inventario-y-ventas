@@ -71,7 +71,7 @@ export const App = () => {
                 </>
               ) : (
                 <>
-                  <NavLink to="/mi-cuenta" className="nav-link tienda-enlace">Mi cuenta</NavLink>
+                  <NavLink to="/mi-cuenta" className="nav-link tienda-enlace d-flex align-items-center gap-2"><i className="bi bi-person fs-4" aria-hidden="true"></i></NavLink>
                   <button onClick={cerrarSesion} className="btn btn-outline-danger btn-sm ms-2">Cerrar Sesión</button>
                 </>
               )}
