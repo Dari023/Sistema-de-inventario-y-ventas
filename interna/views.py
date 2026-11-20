@@ -9,6 +9,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q
+from .models import Pedido
+from .models import Consulta
 from .models import (Producto, 
     ProductoMateriaPrima, 
     MateriaPrima, 
@@ -843,6 +845,48 @@ def pedido_cambiar_estado(request, pk):
     return redirect('pedido_detalles', pk=pedido.pk)
 
 @login_required
+@permission_required("interna.view_consulta", raise_exception=True)
+@require_http_methods(["GET"])
+def consultas_listar(request):
+    q = request.GET.get("q", "").strip()
+    estado = request.GET.get("estado", "")
+
+    consultas = Consulta.objects.all().order_by("-fecha", "-pk")
+
+    if q:
+        consultas = consultas.filter(
+            Q(nombre__icontains=q)
+            | Q(correo__icontains=q)
+            | Q(asunto__icontains=q)
+            | Q(mensaje__icontains=q)
+        )
+
+    if estado in ("pendiente", "respondida"):
+        consultas = consultas.filter(estado=estado)
+    else:
+        estado = ""
+
+    return render(
+        request,
+        "interna/inventario/consulta_listar.html",
+        {
+            "consultas": consultas,
+            "q": q,
+            "estado": estado,
+        },
+    )
+@login_required
+@permission_required("interna.view_consulta", raise_exception=True)
+@require_http_methods(["GET"])
+def consulta_detalle(request, pk):
+    consulta = get_object_or_404(Consulta, pk=pk)
+
+    return render(
+        request,
+        "interna/inventario/consulta_detalle.html",
+        {"consulta": consulta},
+    )
+@login_required
 @permission_required('interna.add_pedido', raise_exception=True)
 def pedido_personalizado_crear(request):
     es_post = request.method == 'POST'
@@ -922,7 +966,7 @@ def _puede_editar_encargo(pedido):
         and not pedido.detalles_personalizados.filter(unidades_fabricadas__gt=0).exists()
     )
 
-@transaction.atomic
+@transaction.atomic 
 def _formulario_articulo_personalizado(request, pedido_pk, detalle_pk=None):
     es_post = request.method == 'POST'
 
