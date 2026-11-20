@@ -109,3 +109,43 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
+.resenas-confirmacion {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    background-color: var(--tienda-superficie);
+    border: 1px solid var(--tienda-borde);
+    border-radius: 1rem;
+}
+.resenas-confirmacion-icono {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    background-color: var(--estado-verde-fondo);
+    color: var(--estado-verde-texto);
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.resenas-confirmacion h2 {
+    margin-bottom: 1rem;
+    font-size: 1.6rem;
+    color: var(--tienda-texto);
+}
+
+.resenas-confirmacion p {
+    color: var(--tienda-texto-suave);
+    line-height: 1.6;
+}
+
+.resenas-confirmacion .btn {
+    margin-top: 0.75rem;
+}
+.resenas > h1,
+.resenas > h1 + p {
+    text-align: center;
+}
