@@ -127,7 +127,7 @@ export const Resenas = () => {
       <main className='resenas'>
         <h1>VALORA TU COMPRA</h1>
         {error ? (<p role='alert'>{error}</p>) : (<p role='status'>Cargando Productos</p>)}
-        <Link to='/catalogo'>Volver al Catálogo</Link>
+        <Link to='/catalogo' className='btn boton-principal'>Volver al Catálogo</Link>
       </main>
     );
   }
@@ -141,7 +141,7 @@ export const Resenas = () => {
       <h1>VALORA TU COMPRA</h1>
       <p>Puedes dejar una Reseña por cada Producto Comprado</p>
 
-      {mensaje && (
+      {mensaje && pendientes.length > 0 &&(
         <p className='resenas-exito' role='status'>{mensaje}</p>
       )}
 
@@ -150,7 +150,21 @@ export const Resenas = () => {
       )}
 
       {pendientes.length === 0 ? (
-        <p>No Quedan Productos Pendientes de Valorar en esta Compra</p>
+        <section className='resenas-confirmacion' role='status'>
+          <span className='resenas-confirmacion-icono' aria-hidden='true'>
+            ✓
+          </span>
+
+          <h2>¡Gracias por tu opinión!</h2>
+
+          {mensaje && <p>Tu reseña fue publicada correctamente.</p>}
+
+          <p>Ya valoraste todos los productos de esta compra.</p>
+
+          <Link to='/catalogo' className='btn boton-principal'>
+            Volver al catálogo
+          </Link>
+        </section>
       ) : (
         <form className='resenas-tarjeta' onSubmit={enviarResena}>
           <label htmlFor='producto-resena'>
@@ -198,8 +212,6 @@ export const Resenas = () => {
           </button>
         </form>
       )}
-
-      <Link to='/catalogo'>Volver al Catálogo</Link>
     </main>
   );
 };
