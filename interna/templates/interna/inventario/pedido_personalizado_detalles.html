@@ -95,6 +95,18 @@
             </article>
         {% endfor %}
 
+        <h2>Acceso del cliente</h2>
+        <p>
+            Este enlace permite consultar el encargo sin iniciar sesión, tiene una vigencia de 30 días desde su generación.
+        </p>
+
+        <p>
+            <a href='{{ enlace_cliente }}' target='_blank' rel='noopener noreferrer'>Abrir la Página del Cliente</a>
+        </p>
+
+        <label for='enlace-cliente'>Enlace para Compartir</label>
+        <input id='enlace-cliente' type='text' value='{{ enlace_cliente }}' readonly>
+
         <h2>Resumen de Pago</h2>
         <p><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
         <p><strong>Total Acordado:</strong> ${{ pedido.total|floatformat:'0g' }}</p>

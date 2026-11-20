@@ -1,0 +1,26 @@
+{% load l10n %}
+<!DOCTYPE html>
+<html lang='es'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta name='referrer' content='strict-origin-when-cross-origin'>
+    <title>Continuar a Webpay | Amigos del Vuelo</title>
+</head>
+<body>
+    <main>
+        <h1>CONTINUAR AL PAGO</h1>
+
+        <p>Monto: ${{ monto|floatformat:'0g' }}</p>
+
+        <form id='formulario-webpay' method='post' action='{{ url_webpay }}'>
+            <input type='hidden' name='token_ws' value='{{ token_webpay }}'>
+            <button type='submit'>Continuar a Webpay</button>
+        </form>
+    </main>
+
+    <script>
+        document.getElementById('formulario-webpay').submit();
+    </script>
+</body>
+</html>

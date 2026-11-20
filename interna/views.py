@@ -6,11 +6,14 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
 from decimal import Decimal, ROUND_HALF_UP
-from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.http import require_POST, require_http_methods, require_GET
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q
-from .models import Pedido
-from .models import Consulta
+from django.views.decorators.cache import never_cache
+from .pedidos_personalizados import (
+    crear_enlace_pedido_personalizado,
+    obtener_pedido_personalizado_por_token,
+    resumen_pagos_personalizado)
 from .models import (Producto, 
     ProductoMateriaPrima, 
     MateriaPrima, 
@@ -22,6 +25,7 @@ from .models import (Producto,
     HistorialEtapaPedido,
     ProductoVariante,
     Pedido,
+    Consulta,
     DetallePedidoPersonalizado)
 from .forms import (
     ProductoForm, 
@@ -725,7 +729,8 @@ def pedido_detalles(request, pk):
                 {'pedido': pedido, 
                 'total_abonado': total_abonado, 
                 'saldo_pendiente': pedido.total - total_abonado, 
-                'puede_editar_encargo': _puede_editar_encargo(pedido)})
+                'puede_editar_encargo': _puede_editar_encargo(pedido),
+                'enlace_cliente': crear_enlace_pedido_personalizado(request, pedido)})
     
     return render(request, 'interna/inventario/pedido_detalles.html', {'pedido': pedido})
 
@@ -826,6 +831,9 @@ def pregunta_frecuente_estado(request, pk):
 
     return redirect('preguntas_frecuentes_listar')
 
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+@require_POST
 def pedido_cambiar_estado(request, pk):
     pedido = get_object_or_404(Pedido, pk=pk)
     nueva_etapa = request.POST.get('etapa')    
@@ -1045,3 +1053,39 @@ def pedido_personalizado_articulo_agregar(request, pk):
 @permission_required('interna.change_pedido', raise_exception=True)
 def pedido_personalizado_articulo_editar(request, pk, detalle_pk):
     return _formulario_articulo_personalizado(request, pedido_pk=pk, detalle_pk=detalle_pk)
+
+@never_cache
+@require_GET
+def pedido_personalizado_publico(request, token):
+    pedido = obtener_pedido_personalizado_por_token(token)
+    resumen = resumen_pagos_personalizado(pedido)
+
+    avisos = {
+        'actualizado': 'Revisa el Resultado en el Registro de Pagos',
+        'rechazado': 'El Intento no se Completó, Puedes Revisar el Registro y Volver a Intentar',
+        'sin_confirmar': 'No Pudimos Confirmar el Resultado del Pago',
+        'pago_en_tramite': 'Ya Existe un Pago Pendiente o un Comprobante en Revisión',
+        'sin_saldo': 'Este Pedido no tiene Saldo Pendiente',
+        'sin_monto': 'El Importe Seleccionado ya está Cubierto',
+        'total_cambiado': 'El Total Cambió, Revisa los Importes antes de Continuar',
+        'opcion_invalida': 'Selecciona una Opción de Pago Válida',
+        'error_inicio': 'No Pudimos Iniciar Webpay, Inténtalo Nuevamente',
+        'condiciones_invalidas': 'Contacta a la Tienda para Revisar las Condiciones de Pago',
+        'monto_fuera_de_rango': 'Contacta a la Tienda para Revisar el Importe del Pago'
+    }
+
+    respuesta = render(request, 'interna/inventario/pedido_personalizado_publico.html',
+        {
+            'pedido': pedido,
+            'resumen': resumen,
+            'token': token,
+            'aviso': avisos.get(request.GET.get('aviso')),
+            'pago_webpay_pendiente': pedido.pagos.filter(metodo='webpay', estado='pendiente').first(),
+            'hay_pago_en_tramite': pedido.pagos.filter(estado__in=["pendiente", "en_revision"]).exists()
+        }
+    )
+
+    respuesta['Referrer-Policy'] = 'same-origin'
+    respuesta['X-Robots-Tag'] = 'noindex, nofollow'
+
+    return respuesta
