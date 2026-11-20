@@ -618,3 +618,26 @@ body {
     justify-content: space-between;
   }
 }
+.tienda-menu-usuario {
+    position: relative;
+}
+
+.tienda-menu-usuario > button {
+    border: 0;
+    background: transparent;
+}
+
+.tienda-menu-desplegable {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 200px;
+    padding: 1rem;
+    background-color: var(--tienda-superficie);
+    border: 1px solid var(--tienda-borde);
+    border-radius: 0.75rem;
+}
