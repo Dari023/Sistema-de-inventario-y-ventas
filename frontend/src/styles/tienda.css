@@ -641,3 +641,31 @@ body {
     border: 1px solid var(--tienda-borde);
     border-radius: 0.75rem;
 }
+.cuenta-menu {
+  --bs-list-group-color: var(--tienda-texto);
+  --bs-list-group-bg: var(--tienda-superficie);
+  --bs-list-group-border-color: var(--tienda-borde);
+
+  --bs-list-group-action-color: var(--tienda-texto);
+  --bs-list-group-action-hover-color: var(--tienda-texto);
+  --bs-list-group-action-hover-bg: var(--tienda-naranjo-suave);
+
+  --bs-list-group-active-color: var(--tienda-texto);
+  --bs-list-group-active-bg: var(--tienda-naranjo-suave);
+  --bs-list-group-active-border-color: var(--tienda-borde);
+  
+  border-radius: 12px;
+}
+
+.cuenta-menu .list-group-item {
+  padding: 14px 16px;
+}
+
+.cuenta-menu .list-group-item.active {
+  font-weight: 600;
+}
+
+.cuenta-menu i {
+  font-size: 20px;
+  vertical-align: middle;
+}

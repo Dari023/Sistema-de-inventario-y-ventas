@@ -88,12 +88,14 @@ export const MiCuenta = () => {
       </header>
 
       <div className="row">
-        <aside className="col-md-3">
-          <div className="list-group">
-            <button type="button" className={`list-group-item list-group-item-action ${seccion === "cuenta" ? "active" : ""}`} onClick={() => setSeccion("cuenta")}>
+        <aside className="col-md-3 mb-4">
+          <div className="list-group cuenta-menu">
+            <button type="button" className={`list-group-item list-group-item-action ${seccion === "cuenta" ? "active" : ""}`} onClick={() => setSeccion("cuenta")} aria-pressed={seccion === "cuenta"}>
+              <i className="bi bi-person me-2" aria-hidden="true"></i>
               Mi Cuenta
             </button>
-            <button type="button" className={`list-group-item list-group-item-action ${seccion === "pedidos" ? "active" : ""}`} onClick={() => setSeccion("pedidos")}>
+            <button type="button" className={`list-group-item list-group-item-action ${seccion === "pedidos" ? "active" : ""}`} onClick={() => setSeccion("pedidos")} aria-pressed={seccion === "pedidos"}>
+              <i className="bi bi-bag me-2" aria-hidden="true"></i>
               Pedidos
             </button>
           </div>
