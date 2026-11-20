@@ -135,7 +135,7 @@ export const ProductoDetalles = () => {
             </div>
           )}
           {(!tieneTallas || variante) && stock > 0 && (
-            <button type='button' onClick={agregarAlCarrito}>
+            <button type='button' onClick={agregarAlCarrito} className="btn boton-principal detalle-boton-carrito">
               Agregar al carrito
             </button>
           )}
