@@ -233,10 +233,7 @@ class PagoPedido(models.Model):
         constraints = [models.CheckConstraint(condition=models.Q(monto__gt=0), name='pago_pedido_monto_positivo')]
 
     def __str__(self):
-        return (
-            f"Pago {self.pk} - Pedido {self.pedido_id} "
-            f"- {self.get_estado_display()}"
-        )
+        return (f"Pago {self.pk} - Pedido {self.pedido_id} " f"- {self.get_estado_display()}")
 
 class DetallePedido(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
