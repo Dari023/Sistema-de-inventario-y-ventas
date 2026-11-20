@@ -16,17 +16,60 @@ import 'react-toastify/dist/ReactToastify.css';
 import Logo from "./assets/Logo.jpeg";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { Contacto } from "./modules/Contacto";
+import { api } from "./api/Api";
 
 export const App = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [cantidadCarrito, setCantidadCarrito] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     setIsAuthenticated(!!token);
   }, [location]);
+  useEffect(() => {
+  let activo = true;
+  let ultimaConsulta = 0;
+
+  const actualizarContador = async () => {
+    console.log("Actualizandooooo contador");
+    const consulta = ++ultimaConsulta;
+
+    if (!localStorage.getItem("access_token")) {
+      setCantidadCarrito(0);
+      return;
+    }
+
+    try {
+      const { data } = await api.get("carrito/");
+      console.log("Datos del carrito:", data);
+
+      if (!activo || consulta !== ultimaConsulta) return;
+
+      const total = (data.detalles ?? []).reduce(
+        (suma, item) => suma + Number(item.cantidad),
+        0
+      );
+
+      setCantidadCarrito(total);
+    } catch {
+      console.error("Error al consultar el contador:", error);
+      if (activo && consulta === ultimaConsulta) {
+        setCantidadCarrito(0);
+      }
+    }
+  };
+
+  actualizarContador();
+  window.addEventListener("carrito-actualizado", actualizarContador);
+
+  return () => {
+    activo = false;
+    window.removeEventListener("carrito-actualizado", actualizarContador);
+  };
+}, [location]);
 
   const cerrarSesion = () => {
     localStorage.removeItem("access_token");
@@ -105,7 +148,12 @@ export const App = () => {
                   )}
                 </div>
               )}
-              <NavLink   to="/carrito" className="nav-link tienda-enlace" aria-label="Mi carrito" title="Mi carrito"><i className="bi bi-cart3 fs-4" aria-hidden="true"></i></NavLink>
+              <NavLink to="/carrito" className="nav-link tienda-enlace tienda-carrito" aria-label={`Mi carrito: ${cantidadCarrito} unidades`}><i className="bi bi-cart3 fs-4" aria-hidden="true"></i>  {cantidadCarrito > 0 && (
+              <span className="tienda-carrito-contador" aria-hidden="true">
+                {cantidadCarrito > 99 ? "99+" : cantidadCarrito}
+              </span>
+              )}
+              </NavLink>
             </nav>
           </div>
         </div>

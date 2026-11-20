@@ -60,7 +60,9 @@ export const ProductoDetalles = () => {
     }
 
     api.post('carrito/', datos)
-      .then(() => toast.success('El Producto se Añadió Correctamente al Carrito'))
+      .then(() => {toast.success('El Producto se Añadió Correctamente al Carrito');
+        window.dispatchEvent(new Event("carrito-actualizado"));
+      })
       .catch((error) =>
         toast.error(error.response?.data?.error || 'Error al Agregar')
       );
