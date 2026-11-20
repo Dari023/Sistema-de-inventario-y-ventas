@@ -1,10 +1,10 @@
-from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.db.models import F
+from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
 from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required, permission_required
@@ -19,7 +19,10 @@ from .models import (Producto,
     ConfiguracionPrecio,
     Resena,
     PreguntaFrecuente,
-    HistorialEtapaPedido)
+    HistorialEtapaPedido,
+    ProductoVariante,
+    Pedido,
+    DetallePedidoPersonalizado)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -31,8 +34,12 @@ from .forms import (
     ConfiguracionPrecioForm,
     PrecioMaterialesFormSet,
     TiempoPrecioForm,
-    PreguntaFrecuenteForm)
-
+    PreguntaFrecuenteForm,
+    ProductoVarianteForm,
+    PedidoPersonalizadoForm,
+    DetallePedidoPersonalizadoForm,
+    MaterialPedidoPersonalizadoFormSet,
+    ArticulosPedidoPersonalizadoFormSet)
 
 @login_required
 def home(request):
@@ -56,66 +63,172 @@ def home(request):
         "total_alertas": len(materias_criticas) + len(productos_criticos),
     })
 
-
-
 @login_required
 def inventario(request):
     return render(request, 'interna/inventario/inventario.html')
 
 @login_required
+@permission_required('interna.view_producto', raise_exception=True)
 def producto_listar(request):
-    productos = Producto.objects.all()
+    productos = Producto.objects.prefetch_related('variantes')
     return render(request, 'interna/producto/producto_listar.html', {'productos': productos})
+
+def _categoria_admite_tallas(categoria):
+    return categoria.nombre.strip().casefold() == 'chaleco'
 
 def _formulario_producto(request, producto):
     editando = producto.pk is not None
-    if request.method == "POST":
-        form = ProductoForm(
-            request.POST,
-            request.FILES,
-            instance=producto,
-        )
-        materiales = ProductoMateriaPrimaFormSet(
-            request.POST,
-            instance=producto,
-            prefix="materiales",
+    es_post = request.method == "POST"
+    datos = request.POST if es_post else None
+    archivos = request.FILES if es_post else None
+
+    form = ProductoForm(datos, archivos, instance=producto)
+    materiales = ProductoMateriaPrimaFormSet(datos, instance=producto, prefix='materiales')
+    variantes_guardadas = {}
+    if editando:
+        variantes_guardadas = {
+            variante.talla: variante for variante in producto.variantes.all()
+        }
+
+    filas_tallas = []
+    for talla, etiqueta in ProductoVariante.TALLAS:
+        variante = variantes_guardadas.get(talla)
+        fila = ProductoVarianteForm(
+            datos,
+            prefix=f"talla-{talla}",
+            initial={
+                'ofrecer': variante is not None,
+                'precio': variante.precio if variante else None,
+                'a_pedido': variante.a_pedido if variante else False,
+                'tiempo_minutos': variante.tiempo_minutos if variante else None
+            }
         )
 
+        if variante is not None:
+            fila.fields['ofrecer'].disabled = True
+
+        filas_tallas.append((talla, etiqueta, fila))
+
+    tallas_ofrecidas = [
+        talla for talla, _, fila in filas_tallas
+        if fila['ofrecer'].value()
+    ]
+    tiene_tallas = bool(tallas_ofrecidas)
+
+    campo_precio = form.fields['precio']
+    campo_precio.required = not tiene_tallas
+    campo_precio.disabled = tiene_tallas
+
+    for fila_material in materiales.forms:
+        campo_cantidad = fila_material.fields['cantidad_requerida']
+        campo_cantidad.required = not tiene_tallas
+        campo_cantidad.disabled = tiene_tallas
+
+    campo_tiempo = form.fields['tiempo_fabricacion_minutos']
+    campo_tiempo.required = not tiene_tallas
+    campo_tiempo.disabled = tiene_tallas
+
+    if es_post:
         producto_valido = form.is_valid()
         materiales_validos = materiales.is_valid()
+        tallas_validas = all([fila.is_valid() for _, _, fila in filas_tallas])
 
-        if producto_valido and materiales_validos:
+        if tiene_tallas and materiales_validos:
+            campos_tallas = [
+                f"cantidad_{talla.lower()}" for talla in tallas_ofrecidas
+            ]
+
+            for fila_material in materiales.forms:
+                receta = fila_material.cleaned_data
+
+                if receta.get('DELETE') or not receta.get('materia_prima'):
+                    continue
+
+                if not any(receta.get(campo) is not None for campo in campos_tallas):
+                    fila_material.add_error(
+                        campos_tallas[0],
+                        'Indica Cuánto se usa de este Material en al Menos una Talla'
+                    )
+                    materiales_validos = False
+
+        if producto_valido:
+            categoria = form.cleaned_data['categoria']
+
+            if not _categoria_admite_tallas(categoria) and (variantes_guardadas or tiene_tallas):
+                mensaje = (
+                    'Este producto ya tiene Tallas Registradas, debe Mantenerse en la Categoría Chaleco'
+                    if variantes_guardadas
+                    else 'Solo la Categoría Chaleco Admite Tallas'
+                )
+                form.add_error('categoria', mensaje)
+                producto_valido = False
+
+        if producto_valido and materiales_validos and tallas_validas:
             with transaction.atomic():
-                producto = form.save()
+
+                producto = form.save(commit=False)
+                if tiene_tallas:
+                    producto.precio = min(
+                        fila.cleaned_data['precio']
+                        for _, _, fila in filas_tallas
+                        if fila.cleaned_data['ofrecer']
+                    )
+
+                producto.save()
+                form.save_m2m()
+
                 materiales.instance = producto
                 materiales.save()
-            return redirect("producto_listar")
-    else:
-        form = ProductoForm(instance=producto)
-        materiales = ProductoMateriaPrimaFormSet(
-            instance=producto,
-            prefix="materiales",
-        )
 
-    configuracion, creada = ConfiguracionPrecio.objects.get_or_create(pk=1)
+                for talla, _, fila in filas_tallas:
+                    if fila.cleaned_data['ofrecer']:
+                        ProductoVariante.objects.update_or_create(
+                            producto=producto,
+                            talla=talla,
+                            defaults={
+                                'precio': fila.cleaned_data['precio'],
+                                'a_pedido': fila.cleaned_data['a_pedido'],
+                                'tiempo_minutos': fila.cleaned_data['tiempo_minutos']
+                            }
+                        )
+
+            return redirect("producto_listar")
+
+    configuracion, _ = ConfiguracionPrecio.objects.get_or_create(pk=1)
 
     parametros_precio = {
-    'costo_hora': str(configuracion.costo_hora),
-    'costo_bolsa': str(configuracion.costo_bolsa),
-    'costo_stickers': str(configuracion.costo_stickers),
-    'margen_ganancia': str(configuracion.margen_ganancia),
-    'porcentaje_iva': str(configuracion.porcentaje_iva),
-    'porcentaje_comision': str(configuracion.porcentaje_comision),
-    'comision_afecta_iva': configuracion.comision_afecta_iva,
+        "costo_hora": str(configuracion.costo_hora),
+        "costo_bolsa": str(configuracion.costo_bolsa),
+        "costo_stickers": str(configuracion.costo_stickers),
+        "margen_ganancia": str(configuracion.margen_ganancia),
+        "porcentaje_iva": str(configuracion.porcentaje_iva),
+        "porcentaje_comision": str(configuracion.porcentaje_comision),
+        "comision_afecta_iva": configuracion.comision_afecta_iva
     }
 
+    mostrar_tallas = bool(variantes_guardadas)
+    if es_post:
+        mostrar_tallas = mostrar_tallas or any(
+            fila["ofrecer"].value() or fila.errors for _, _, fila in filas_tallas
+        )
+
     return render(
-        request, "interna/producto/producto_crear.html",
+        request,
+        "interna/producto/producto_crear.html",
         {
             "form": form,
             "producto": producto if editando else None,
             "materiales": materiales,
-            'parametros_precio': parametros_precio
+            "filas_tallas": filas_tallas,
+            "mostrar_tallas": mostrar_tallas,
+            "parametros_precio": parametros_precio,
+            "tiene_tallas": tiene_tallas,
+            'categorias_con_tallas': [
+                categoria.pk
+                for categoria in form.fields['categoria'].queryset
+                if _categoria_admite_tallas(categoria)
+            ],
+            'hay_variantes_guardadas': bool(variantes_guardadas),
         }
     )
 
@@ -137,81 +250,159 @@ def producto_editar(request, pk):
 )
 
 @login_required
+@permission_required('interna.fabricar_producto', raise_exception=True)
 def producto_fabricar(request, pk):
     producto = get_object_or_404(Producto, pk=pk)
-    datos = request.POST if request.method == "POST" else None
-    form = FabricacionForm(datos)
+    es_post = request.method == "POST"
+    form = FabricacionForm(request.POST if es_post else None)
+    variantes = producto.variantes.order_by("talla")
+    tiene_tallas = variantes.exists()
+    campo_variante = form.fields["variante"]
+    campo_variante.queryset = variantes
+    campo_variante.required = tiene_tallas
 
-    if request.method == "POST" and form.is_valid():
-        cantidad = form.cleaned_data["cantidad"]
+    if not tiene_tallas:
+        campo_variante.widget = forms.HiddenInput()
+
+    if es_post and form.is_valid():
+        cantidad = form.cleaned_data['cantidad']
+        variante_elegida = form.cleaned_data['variante']
+
         with transaction.atomic():
-            producto = Producto.objects.select_for_update().get(pk=pk)
-            materiales = list(
-                ProductoMateriaPrima.objects
-                .select_for_update()
-                .filter(producto=producto)
-                .select_related("materia_prima")
-                .order_by("materia_prima_id")
-            )
-            if not materiales:
-                form.add_error(None, "El Producto no Tiene Materiales Asociados.")
-            elif any(
-                not material.materia_prima.estado
-                or material.cantidad_requerida <= 0
-                for material in materiales
-            ):
-                form.add_error(None, "Revisa los Materiales de la Receta.")
+            producto = get_object_or_404(Producto.objects.select_for_update(), pk=pk)
+            variantes_actuales = producto.variantes.select_for_update()
+            variante = None
 
-            elif any(
-                material.materia_prima.cantidad_actual
-                < material.cantidad_requerida * cantidad
-                for material in materiales
-            ):
-                form.add_error(None, "No hay Suficientes Materias Primas.")
+            if variante_elegida is not None:
+                variante = variantes_actuales.filter(pk=variante_elegida.pk,).first()
 
-            else:
+                if variante is None:
+                    form.add_error("variante", "Esta talla ya no está disponible.")
+            elif variantes_actuales.exists():
+                form.add_error("variante", "Selecciona la talla que vas a fabricar.")
+
+            if not form.errors:
+                campo_cantidad = (
+                    f"cantidad_{variante.talla.lower()}"
+                    if variante is not None
+                    else "cantidad_requerida"
+                )
+
+                materiales = (
+                    ProductoMateriaPrima.objects
+                    .select_for_update()
+                    .filter(producto=producto)
+                    .select_related("materia_prima")
+                    .order_by("materia_prima_id")
+                )
+
+                consumos = []
+
                 for material in materiales:
+                    cantidad_por_unidad = getattr(material, campo_cantidad)
+
+                    if variante is not None and cantidad_por_unidad is None:
+                        continue
+
                     materia_prima = material.materia_prima
-                    consumo = material.cantidad_requerida * cantidad
-                    materia_prima.cantidad_actual -= consumo
-                    materia_prima.save(update_fields=["cantidad_actual"])
 
-                    MovimientoMateriaPrima.objects.create(
-                        materia_prima=materia_prima,
-                        tipo="SALIDA",
-                        motivo="FABRICACION",
-                        cantidad=consumo,
-                        saldo_resultante=materia_prima.cantidad_actual,
-                        responsable=request.user,
-                        observacion=(
-                            f"Fabricación de {cantidad} Unidad(es) "
-                            f"de {producto.nombre} (ID {producto.pk})."
-                        ),
+                    if (
+                        not materia_prima.estado
+                        or cantidad_por_unidad is None
+                        or cantidad_por_unidad <= 0
+                    ):
+                        form.add_error(
+                            None,
+                            f"Revisa la cantidad o el estado de {materia_prima.nombre}.",
+                        )
+                        break
+
+                    consumo = cantidad_por_unidad * cantidad
+
+                    if materia_prima.cantidad_actual < consumo:
+                        form.add_error(None, f"No hay stock suficiente de {materia_prima.nombre}")
+                        break
+
+                    consumos.append((materia_prima, consumo))
+
+                if not form.errors and not consumos:
+                    mensaje = (
+                        f"La talla {variante.talla} no tiene materiales en su receta."
+                        if variante is not None
+                        else "El producto no tiene materiales en su receta."
                     )
-                producto.stock_actual += cantidad
-                producto.save(update_fields=["stock_actual"])
+                    form.add_error(None, mensaje)
 
-                return redirect("producto_detalles", producto.pk)
+                if not form.errors:
+                    nombre = (
+                        f"{producto.nombre}, talla {variante.talla}"
+                        if variante is not None
+                        else producto.nombre
+                    )
+
+                    for materia_prima, consumo in consumos:
+                        materia_prima.cantidad_actual -= consumo
+                        materia_prima.save(update_fields=["cantidad_actual"])
+
+                        MovimientoMateriaPrima.objects.create(
+                            materia_prima=materia_prima,
+                            tipo="SALIDA",
+                            motivo="FABRICACION",
+                            cantidad=consumo,
+                            saldo_resultante=materia_prima.cantidad_actual,
+                            responsable=request.user,
+                            observacion=(
+                                f"Fabricación de {cantidad} unidad(es) de "
+                                f"{nombre} (ID {producto.pk})."
+                            ),
+                        )
+
+                    destino_stock = variante if variante is not None else producto
+                    destino_stock.stock_actual += cantidad
+                    destino_stock.save(update_fields=["stock_actual"])
+
+                    return redirect("producto_detalles", producto.pk)
 
     return render(
         request,
         "interna/producto/producto_fabricar.html",
-        {"form": form, "producto": producto},
+        {"form": form, "producto": producto, "tiene_tallas": tiene_tallas},
     )
 
+@login_required
+@permission_required('interna.view_producto', raise_exception=True)
 def producto_detalles(request, pk):
-    producto = get_object_or_404(Producto, pk=pk)
-    return render(request, 'interna/producto/producto_detalles.html', {'producto': producto})
+    producto = get_object_or_404(Producto.objects.select_related('categoria').prefetch_related('variantes'), pk=pk)
 
+    variantes = list(producto.variantes.all())
+    materiales = ProductoMateriaPrima.objects.filter(producto=producto).select_related('materia_prima').order_by('materia_prima__nombre')
+    receta = [
+        {
+            'materia_prima': material.materia_prima,
+            'cantidad_general': material.cantidad_requerida,
+            'cantidades_por_talla': [getattr(material, f"cantidad_{variante.talla.lower()}")
+                for variante in variantes
+            ]
+        }
+        for material in materiales
+    ]
+
+    return render(request, 'interna/producto/producto_detalles.html', {'producto': producto, 'variantes':variantes, 'receta':receta})
+
+@login_required
+@permission_required('interna.view_materiaprima', raise_exception=True)
 def materia_prima_listar(request):
     materia_prima = MateriaPrima.objects.all()
     return render(request, 'interna/inventario/materia_prima_listar.html', {'materia_prima': materia_prima})
 
+@login_required
+@permission_required('interna.view_materiaprima', raise_exception=True)
 def materia_prima_detalles(request, pk):
     materia_prima = get_object_or_404(MateriaPrima, pk=pk)
     return render(request, 'interna/inventario/materia_prima_detalles.html', {'materia_prima': materia_prima})
 
 @login_required
+@permission_required('interna.add_materiaprima', raise_exception=True)
 def materia_prima_crear(request):
     if request.method == "POST":
         form = MateriaPrimaForm(request.POST)
@@ -247,12 +438,13 @@ def materia_prima_editar(request, pk):
     consulta = MateriaPrima.objects.all()
     if request.method == 'POST':
         consulta = consulta.select_for_update()
-    materia_prima = get_object_or_404(MateriaPrima, pk=pk)
+    materia_prima = get_object_or_404(consulta, pk=pk)
     cantidad_anterior = materia_prima.cantidad_actual
     datos = request.POST if request.method == 'POST' else None
     form = MateriaPrimaForm(datos, instance=materia_prima)
 
-    form.fields['cantidad_actual'].widget.attrs.update({'data-cantidad-inicial': str(cantidad_anterior),})
+    form.fields['cantidad_actual'].widget.attrs.update({'data-cantidad-inicial': str(cantidad_anterior)})
+    form.fields['unidad_de_medida'].disabled = True
 
     if materia_prima.movimientos.exists():
         form.fields['unidad_de_medida'].disabled = True
@@ -269,9 +461,9 @@ def materia_prima_editar(request, pk):
                 cantidad=abs(diferencia),
                 saldo_resultante=materia_prima.cantidad_actual,
                 responsable=request.user,
-                observacion=form.cleaned_data['observacion'],
+                observacion=form.cleaned_data['observacion']
             )
-            return redirect ('materia_prima_listar')
+        return redirect ('materia_prima_listar')
     return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
 
 @login_required
@@ -311,10 +503,13 @@ def movimiento_observacion_editar(request, pk):
     )
 
 @login_required
+@permission_required('interna.view_categoriaproducto', raise_exception=True)
 def categoria_listar(request):
     categorias = CategoriaProducto.objects.all()
     return render(request, 'interna/inventario/categoria_listar.html', {'categorias': categorias})
 
+@login_required
+@permission_required('interna.add_categoriaproducto', raise_exception=True)
 def categoria_crear(request):
     if request.method == 'POST':
         form = CategoriaProductoForm(request.POST, request.FILES)
@@ -325,6 +520,8 @@ def categoria_crear(request):
         form = CategoriaProductoForm()
     return render(request, 'interna/inventario/categoria_crear.html', {'form': form})
 
+@login_required
+@permission_required('interna.change_categoriaproducto', raise_exception=True)
 def categoria_editar(request, pk):
     categoria = get_object_or_404(CategoriaProducto, pk=pk)
     if request.method == 'POST':
@@ -487,13 +684,15 @@ def calcular_sugerencia(minutos, materiales, configuracion):
         'iva': iva,
     }
 
+@login_required
+@permission_required('interna.view_pedido', raise_exception=True)
 def pedido_listar(request):
     q = request.GET.get('q', '').strip()
     pedidos = (
         Pedido.objects
-        .filter(estado='pagado')
+        .filter(Q(tipo_pedido='normal', estado='pagado') | (Q(tipo_pedido='personalizado')))
         .select_related('cliente')
-        .prefetch_related('detallepedido_set__producto')
+        .prefetch_related('detallepedido_set__producto', 'detalles_personalizados')
         .order_by('-fecha_pedido')
     )
     if q:
@@ -501,26 +700,34 @@ def pedido_listar(request):
             pedidos = pedidos.filter(pk=int(q))
         else:
             pedidos = pedidos.filter(id_compra__icontains=q)
-    return render(
-        request,
-        'interna/inventario/pedido_listar.html',
-        {'pedidos': pedidos, 'q': q},
-    )
+    return render(request, 'interna/inventario/pedido_listar.html', {'pedidos': pedidos, 'q': q})
 
-
+@login_required
+@permission_required('interna.view_pedido', raise_exception=True)
 def pedido_detalles(request, pk):
     pedido = get_object_or_404(
         Pedido.objects
         .select_related('cliente')
-        .prefetch_related('detallepedido_set__producto'),
-        pk=pk
-    )
+        .prefetch_related('detallepedido_set__producto', 'detalles_personalizados__materiales__materia_prima', 
+        'pagos', 'historial_etapas__responsable'), pk=pk)
+
+    if pedido.tipo_pedido == 'personalizado':
+        total_abonado = sum(
+            (
+                pago.monto
+                for pago in pedido.pagos.all()
+                if pago.estado == 'aprobado'
+            ),
+            Decimal('0')
+        )
+
+        return render(request, 'interna/inventario/pedido_personalizado_detalles.html',
+                {'pedido': pedido, 
+                'total_abonado': total_abonado, 
+                'saldo_pendiente': pedido.total - total_abonado, 
+                'puede_editar_encargo': _puede_editar_encargo(pedido)})
     
-    return render(
-        request,
-        'interna/inventario/pedido_detalles.html',
-        {'pedido': pedido},
-    )
+    return render(request, 'interna/inventario/pedido_detalles.html', {'pedido': pedido})
 
 @login_required
 @permission_required('interna.view_resena', raise_exception=True)
@@ -623,6 +830,10 @@ def pedido_cambiar_estado(request, pk):
     pedido = get_object_or_404(Pedido, pk=pk)
     nueva_etapa = request.POST.get('etapa')    
     etapas_validas = [e[0] for e in Pedido.ETAPAS]
+
+    if pedido.tipo_pedido == 'personalizado':
+        return HttpResponseForbidden('La Gestión de Etapas de pedidos Personalizados aún no está Habilitada')
+
     if nueva_etapa in etapas_validas:
         pedido.etapa = nueva_etapa
         pedido.save(update_fields=['etapa'])
@@ -675,3 +886,162 @@ def consulta_detalle(request, pk):
         "interna/inventario/consulta_detalle.html",
         {"consulta": consulta},
     )
+@login_required
+@permission_required('interna.add_pedido', raise_exception=True)
+def pedido_personalizado_crear(request):
+    es_post = request.method == 'POST'
+    datos = request.POST if es_post else None
+    archivos = request.FILES if es_post else None
+    pedido = Pedido(tipo_pedido='personalizado')
+    form_pedido = PedidoPersonalizadoForm(datos, instance=pedido, prefix='pedido')
+    articulos = ArticulosPedidoPersonalizadoFormSet(datos, archivos, instance=pedido, prefix='articulos', queryset=DetallePedidoPersonalizado.objects.none())
+
+    if es_post:
+        pedido_valido = form_pedido.is_valid()
+        articulos_validos = articulos.is_valid()
+        recetas_validas = True
+
+        for fila in articulos.forms:
+            if fila.cleaned_data.get('DELETE'):
+                continue
+
+            if fila.empty_permitted and not fila.has_changed():
+                if fila.materiales.has_changed():
+                    fila.add_error(None, 'Completa las Características del Artículo al que Pertenecen estos Materiales')
+                    articulos_validos = False
+                else:
+                    continue
+
+            if not fila.materiales.is_valid():
+                recetas_validas = False
+
+        filas_a_guardar= []
+
+        if articulos_validos:
+            filas_a_guardar = [
+                fila
+                for fila in articulos.forms
+                if fila.cleaned_data
+                and not fila.cleaned_data.get('DELETE')
+            ]
+
+        if pedido_valido and articulos_validos:
+            total = sum(
+                (fila.cleaned_data['cantidad']* fila.cleaned_data['precio_unitario'] for fila in filas_a_guardar), Decimal('0'))
+
+            if form_pedido.cleaned_data['adelanto_requerido'] > total:
+                form_pedido.add_error('adelanto_requerido', 'El Adelanto no puede Superar el Total de Todos los Artículos del Pedido')
+                pedido_valido = False
+
+        if pedido_valido and articulos_validos and recetas_validas:
+            with transaction.atomic():
+                pedido = form_pedido.save(commit=False)
+                pedido.tipo_pedido = 'personalizado'
+                pedido.estado = 'pendiente'
+                pedido.etapa = None
+                pedido.save()
+
+                for fila in filas_a_guardar:
+                    detalle = fila.save(commit=False)
+                    detalle.pedido = pedido
+                    detalle.save()
+
+                    fila.materiales.instance = detalle
+                    fila.materiales.save()
+
+            return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_crear.html',
+        {
+            'form_pedido': form_pedido,
+            'articulos': articulos
+        }
+    )
+
+def _puede_editar_encargo(pedido):
+    return (
+        pedido.estado == 'pendiente'
+        and not pedido.etapa
+        and not pedido.pagos.exclude(estado="rechazado").exists()
+        and not pedido.detalles_personalizados.filter(unidades_fabricadas__gt=0).exists()
+    )
+
+@transaction.atomic 
+def _formulario_articulo_personalizado(request, pedido_pk, detalle_pk=None):
+    es_post = request.method == 'POST'
+
+    consulta = Pedido.objects.filter(tipo_pedido='personalizado')
+    if es_post:
+        consulta = consulta.select_for_update()
+
+    pedido = get_object_or_404(consulta, pk=pedido_pk)
+
+    if not _puede_editar_encargo(pedido):
+        return HttpResponseForbidden(
+            'No puedes modificar los artículos de un pedido'
+            "con pagos en trámite, pagos aprobados o fabricación iniciada"
+        )
+
+    if detalle_pk is None:
+        detalle = DetallePedidoPersonalizado(pedido=pedido)
+        subtotal_anterior = 0
+    else:
+        detalle = get_object_or_404(DetallePedidoPersonalizado, pk=detalle_pk, pedido=pedido)
+        subtotal_anterior = detalle.subtotal
+
+    editando = detalle.pk is not None
+    datos = request.POST if es_post else None
+    archivos = request.FILES if es_post else None
+
+    form_detalle = DetallePedidoPersonalizadoForm(datos, archivos, instance=detalle, prefix='encargo')
+    materiales = MaterialPedidoPersonalizadoFormSet(datos, instance=detalle, prefix='materiales')
+
+    for fila in materiales.forms:
+        disponibles = Q(estado=True)
+
+        if fila.instance.pk:
+            disponibles |= Q(pk=fila.instance.materia_prima_id)
+
+        fila.fields['materia_prima'].queryset = (
+            MateriaPrima.objects
+            .filter(disponibles)
+            .order_by('nombre')
+        )
+
+    if es_post:
+        detalle_valido = form_detalle.is_valid()
+        materiales_validos = materiales.is_valid()
+
+        if detalle_valido:
+            nuevo_subtotal = (form_detalle.cleaned_data['cantidad'] * form_detalle.cleaned_data['precio_unitario'])
+            nuevo_total = pedido.total - subtotal_anterior + nuevo_subtotal
+
+            if nuevo_total < pedido.adelanto_requerido:
+                form_detalle.add_error(None,
+                    'El total resultante del pedido no puede ser '
+                    'menor que el adelanto requerido'
+                )
+                detalle_valido = False
+
+        if detalle_valido and materiales_validos:
+            detalle = form_detalle.save(commit=False)
+            detalle.pedido = pedido
+            detalle.save()
+
+            materiales.instance = detalle
+            materiales.save()
+
+            return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_articulo_form.html',
+        {'pedido': pedido, 'form_detalle': form_detalle, 'materiales': materiales, 'editando': editando})
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+def pedido_personalizado_articulo_agregar(request, pk):
+    return _formulario_articulo_personalizado(request, pedido_pk=pk)
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+def pedido_personalizado_articulo_editar(request, pk, detalle_pk):
+    return _formulario_articulo_personalizado(request, pedido_pk=pk, detalle_pk=detalle_pk)

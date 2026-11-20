@@ -1,0 +1,33 @@
+<fieldset data-articulo>
+    <legend>Artículo personalizado</legend>
+
+    {{ fila.as_p }}
+
+    <h3>Materiales Para una Unidad de este Artículo</h3>
+
+    <p>
+        Esta Receta Corresponde Únicamente a este Diseño
+        Si dos artículos requieren materiales diferentes, regístralos en bloques separados.
+    </p>
+
+    {{ fila.materiales.management_form }}
+    {{ fila.materiales.non_form_errors }}
+
+    <div data-lista-materiales>
+        {% for material in fila.materiales %}
+            <fieldset>
+                <legend>Material</legend>
+                {{ material.as_p }}
+            </fieldset>
+        {% endfor %}
+    </div>
+
+    <template data-plantilla-material>
+        <fieldset>
+            <legend>Material</legend>
+            {{ fila.materiales.empty_form.as_p }}
+        </fieldset>
+    </template>
+
+    <button type='button' data-agregar-material data-prefijo='{{ fila.materiales.prefix }}'>Agregar material</button>
+</fieldset>

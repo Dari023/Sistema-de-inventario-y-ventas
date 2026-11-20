@@ -2,26 +2,26 @@ from django import forms
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.forms import BaseInlineFormSet, inlineformset_factory
-from django.forms import BaseFormSet, formset_factory
+from django.forms import BaseInlineFormSet, BaseFormSet, inlineformset_factory, formset_factory
 from .models import (Producto, 
     MateriaPrima, 
     ProductoMateriaPrima, 
     CategoriaProducto, 
     MovimientoMateriaPrima, 
     ConfiguracionPrecio,
-    PreguntaFrecuente)
+    PreguntaFrecuente,
+    ProductoVariante,
+    DetallePedidoPersonalizado,
+    MaterialPedidoPersonalizado,
+    Pedido)
 
 class ProductoForm(forms.ModelForm):
     tiempo_fabricacion_minutos = forms.IntegerField(
         label='Tiempo de Trabajo por Unidad (Minutos)',
+        required= False,
         min_value=1,
         help_text='Por Ejemplo: 90 Minutos Equivalen a una Hora y Media',
-        widget=forms.NumberInput(attrs={
-            'class':'form-control',
-            'min':'1',
-            'step':'1'
-        })
+        widget=forms.NumberInput(attrs={'class':'form-control', 'min':'1','step':'1'})
     )
 
     class Meta:
@@ -41,16 +41,32 @@ class ProductoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         self.fields["categoria"].queryset = (
-        CategoriaProducto.objects
-        .filter(activo=True)
-        .order_by("nombre")
-        )
+        CategoriaProducto.objects.filter(activo=True).order_by("nombre"))
         self.fields["categoria"].empty_label = "Selecciona una Opción"
         self.fields["categoria"].error_messages["invalid_choice"] = (
         "Selecciona una Categoría que se Encuentre Activa."
         )
         if not self.instance.pk:
             self.fields["activo"].initial = False
+
+class ProductoVarianteForm(forms.Form):
+    ofrecer = forms.BooleanField(required=False)
+    precio = forms.DecimalField(required=False, min_value=1, max_digits=10, decimal_places=0)
+    tiempo_minutos = forms.IntegerField(required=False, min_value=1, max_value=2147483647,label='Minutos de confección')
+    a_pedido = forms.BooleanField(required=False)
+
+    def clean(self):
+        datos = super().clean()
+
+        if datos.get('ofrecer'):
+            if 'tiempo_minutos' in datos and datos['tiempo_minutos'] is None:
+                self.add_error('tiempo_minutos', 'Ingresa los Minutos de esta Talla')
+            if 'precio' in datos and datos['precio'] is None:
+                self.add_error('precio', 'Ingresa el Precio de esta Talla')
+        elif datos.get('precio') is not None or datos.get('a_pedido') or datos.get('tiempo_minutos') is not None:
+            self.add_error('ofrecer', 'Marca esta Talla para Guardarla')
+
+        return datos
 
 class MateriaPrimaForm(forms.ModelForm):
     observacion = forms.CharField(
@@ -131,7 +147,7 @@ class ProductoMateriaPrimaForm(forms.ModelForm):
 
     class Meta:
         model = ProductoMateriaPrima
-        fields = ["materia_prima", "cantidad_requerida"]
+        fields = ["materia_prima", "cantidad_requerida", "cantidad_s", "cantidad_m", "cantidad_l"]
         labels = {
             "materia_prima": "Materia prima",
         }
@@ -173,16 +189,10 @@ class BaseMaterialesFormSet(BaseInlineFormSet):
             and not formulario.cleaned_data.get("DELETE")
         ]
 
-        if self.instance.activo:
-            if not materiales:
-                raise ValidationError(
-                    "Asocia Materiales o Guarda el Producto Deshabilitado."
-                )
-
-            if any(not material.estado for material in materiales):
-                raise ValidationError(
-                    "Un Producto Activo Necesita Materias Primas Habilitadas."
-                )
+        if self.instance.activo and not materiales:
+            raise ValidationError(
+                "Asocia Materiales o Guarda el Producto Deshabilitado."
+            )
 
 ProductoMateriaPrimaFormSet = inlineformset_factory(
     Producto,
@@ -195,8 +205,14 @@ ProductoMateriaPrimaFormSet = inlineformset_factory(
 
 class FabricacionForm(forms.Form):
     cantidad = forms.IntegerField(
-        label="Unidades fabricadas",
-        min_value=1,
+        label="Unidades Fabricadas",
+        min_value=1
+    )
+    variante = forms.ModelChoiceField(
+    queryset=ProductoVariante.objects.none(),
+    required=False,
+    label='Talla a Fabricar',
+    empty_label='Selecciona una Talla'
     )
 
 class MovimientoObservacionForm(forms.ModelForm):
@@ -319,3 +335,109 @@ class PreguntaFrecuenteForm(forms.ModelForm):
         widgets = {
             'respuesta': forms.Textarea(attrs={'rows': 6})
         }
+
+class PedidoPersonalizadoForm(forms.ModelForm):
+    nombre_invitado = forms.CharField(label='Nombre de Contacto', max_length=150)
+    email_invitado = forms.EmailField(label='Correo de Contacto')
+    telefono_invitado = forms.CharField(label='Teléfono de contacto', max_length=20)
+    adelanto_requerido = forms.DecimalField(label='Adelanto requerido (CLP)', max_digits=10, decimal_places=0, min_value=1)
+    fecha_compromiso = forms.DateField(label='Fecha Acordada de Entrega', widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={"type": "date"}
+        )
+    )
+
+    class Meta:
+        model = Pedido
+        fields = [
+            'nombre_invitado',
+            'rut_invitado',
+            'email_invitado',
+            'telefono_invitado',
+            'tipo_entrega',
+            'direccion_invitado',
+            'fecha_compromiso',
+            'adelanto_requerido'
+        ]
+        labels = {
+            'rut_invitado': 'RUT',
+            'tipo_entrega': 'Tipo de Entrega',
+            'direccion_invitado': 'Dirección de Entrega'
+        }
+
+    def clean(self):
+        datos = super().clean()
+        direccion = (datos.get('direccion_invitado') or '').strip()
+
+        if datos.get('tipo_entrega') == 'envio':
+            if not direccion:
+                self.add_error('direccion_invitado', 'Indica la Dirección de Envío')
+        else:
+            direccion = None
+
+        datos['direccion_invitado'] = direccion
+        return datos
+
+class DetallePedidoPersonalizadoForm(forms.ModelForm):
+    class Meta:
+        model = DetallePedidoPersonalizado
+        fields = [
+            'descripcion',
+            'imagen_referencia',
+            'cantidad',
+            'precio_unitario'
+        ]
+        labels = {
+            'descripcion': 'Descripción y Características Acordadas',
+            'imagen_referencia': 'Imagen de Referencia',
+            'cantidad': 'Unidades Encargadas',
+            'precio_unitario': 'Precio Acordado por Unidad (CLP)'
+        }
+        widgets = {
+            'descripcion': forms.Textarea(attrs={'rows': 4})
+        }
+
+class MaterialPedidoPersonalizadoForm(forms.ModelForm):
+    materia_prima = forms.ModelChoiceField(label='Materia Prima', queryset=MateriaPrima.objects.filter(estado=True,).order_by('nombre'))
+
+    class Meta:
+        model = MaterialPedidoPersonalizado
+        fields = ['materia_prima', 'cantidad_por_unidad']
+        labels = {
+            'cantidad_por_unidad': 'Cantidad Necesaria por Unidad'
+        }
+
+MaterialPedidoPersonalizadoFormSet = inlineformset_factory(
+    DetallePedidoPersonalizado,
+    MaterialPedidoPersonalizado,
+    form=MaterialPedidoPersonalizadoForm,
+    extra=0,
+    min_num=1,
+    validate_min=True,
+    can_delete=True
+)
+
+class BaseArticulosPedidoPersonalizadoFormSet(BaseInlineFormSet):
+    def add_fields(self, form, index):
+        super().add_fields(form, index)
+
+        form.fields['DELETE'].label = 'Quitar este Artículo'
+
+        datos = self.data if form.is_bound else None
+        archivos = self.files if form.is_bound else None
+
+        form.materiales = MaterialPedidoPersonalizadoFormSet(datos, archivos, instance=form.instance, prefix=f"{form.prefix}-materiales")
+
+        for fila_material in form.materiales.forms:
+            fila_material.fields['DELETE'].label = 'Quitar este Material'
+
+ArticulosPedidoPersonalizadoFormSet = inlineformset_factory(
+    Pedido,
+    DetallePedidoPersonalizado,
+    form=DetallePedidoPersonalizadoForm,
+    formset=BaseArticulosPedidoPersonalizadoFormSet,
+    extra=0,
+    min_num=1,
+    validate_min=True,
+    can_delete=True,
+)

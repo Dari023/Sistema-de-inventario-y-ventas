@@ -17,7 +17,7 @@ from transbank.common.integration_commerce_codes import IntegrationCommerceCodes
 from transbank.common.integration_api_keys import IntegrationApiKeys
 from uuid import UUID
 from urllib.parse import quote
-from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente
+from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente, ProductoVariante
 from .models import Cliente
 from .serializers import ConsultaCrearSerializer
 from .serializers import (
@@ -34,10 +34,10 @@ from .serializers import (
 
 class ProductoViewSet(viewsets.ModelViewSet):
     serializer_class = ProductoSerializer
-    queryset = Producto.objects.all()
+    queryset = Producto.objects.filter(activo=True)
 
 def obtener_carrito(request, crear=False):
-    filtros = {"estado": "pendiente"}
+    filtros = {"estado": "pendiente", 'tipo_pedido':'normal'}
 
     if request.user.is_authenticated:
         filtros["cliente"] = get_object_or_404(
@@ -85,50 +85,54 @@ class CarritoAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        producto_id = request.data.get("producto_id")
-
         try:
-            cambio = int(request.data.get("cantidad", 1))
+            producto_id = int(str(request.data.get('producto_id')))
+            cambio = int(str(request.data.get('cantidad', 1)))
+            variante_id = request.data.get('variante_id')
+            if variante_id is not None:
+                variante_id = int(str(variante_id))
         except (TypeError, ValueError):
-            return Response(
-                {"error": "La Cantidad debe ser un Número Entero"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({'error': 'Revisa el Producto, Talla y Cantidad'}, status=status.HTTP_400_BAD_REQUEST)
 
-        producto = get_object_or_404(Producto, pk=producto_id)
+        producto = get_object_or_404(Producto, pk=producto_id, activo=True)
+        variante = None
+
+        if variante_id is not None:
+            variante = producto.variantes.filter(pk=variante_id).first()
+            if variante is None:
+                return Response({'error': 'La Talla Seleccionada no Existe'}, status=status.HTTP_400_BAD_REQUEST)
+        elif producto.variantes.exists():
+            return Response({'error': 'Selecciona una Talla antes de Agregar el Producto'}, status=status.HTTP_400_BAD_REQUEST)
+
+        stock = variante.stock_actual if variante else producto.stock_actual
+        precio = variante.precio_final if variante else producto.precio_final
+
         pedido = obtener_carrito(request, crear=True)
-
-        detalle = pedido.detallepedido_set.filter(
-            producto=producto,
-        ).first()
-
+        detalle = pedido.detallepedido_set.filter(producto=producto, variante=variante).first()
         cantidad_actual = detalle.cantidad if detalle else 0
         nueva_cantidad = cantidad_actual + cambio
 
         if nueva_cantidad <= 0:
-            return Response(
-                {"error": "La Cantidad debe ser Mayor que Cero"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({'error': 'La Cantidad debe ser Mayor que Cero'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if nueva_cantidad > producto.stock_actual:
-            return Response(
-                {"error": "No hay Suficiente Stock Disponible"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if nueva_cantidad > stock:
+            return Response({'error': 'No hay Stock Suficiente para esta Selección'}, status=status.HTTP_400_BAD_REQUEST)
 
         if detalle:
             detalle.cantidad = nueva_cantidad
-            detalle.save(update_fields=["cantidad"])
+            detalle.precio_unitario = precio
+            detalle.save(update_fields=['cantidad', 'precio_unitario'])
         else:
             DetallePedido.objects.create(
                 pedido=pedido,
                 producto=producto,
+                variante=variante,
                 cantidad=nueva_cantidad,
-                precio_unitario=producto.precio_final
+                precio_unitario=precio
             )
 
-        serializer = PedidoSerializer(pedido,context={'es_carrito': True, 'request': request})
+        serializer = PedidoSerializer(pedido, context={'es_carrito': True, 'request': request})
+
         return Response(serializer.data)
 
     def delete(self, request):
@@ -137,19 +141,33 @@ class CarritoAPIView(APIView):
         if pedido is None:
             return Response({"mensaje": "El Carrito Está Vacío."})
 
+        if 'detalle_id' in request.data:
+            try:
+                detalle_id = int(str(request.data['detalle_id']))
+            except (TypeError, ValueError):
+                return Response({'error': 'Este Objeto del Carrito no es Válido'}, status=status.HTTP_400_BAD_REQUEST)
+
+            detalle = get_object_or_404(pedido.detallepedido_set.all(), pk=detalle_id)
+            detalle.delete()
+            return Response({'mensaje': 'Producto eliminado del carrito'})
+
         producto_id = request.data.get("producto_id")
 
-        if producto_id:
-            pedido.detallepedido_set.filter(
-                producto_id=producto_id,
-            ).delete()
+        if 'producto_id' in request.data:
+            try:
+                producto_id = int(str(request.data['producto_id']))
+            except (TypeError, ValueError):
+                return Response({'error': 'El Producto no es Válido'}, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response({
-                "mensaje": "Producto Eliminado del Carrito"
-            })
+            pedido.detallepedido_set.filter(producto_id=producto_id, variante__isnull=True).delete()
+
+            return Response({'mensaje': 'Producto Eliminado del Carrito'})
+
+        if request.data:
+            return Response({'error': 'Envía el Detalle del Producto que Quieres Quitar'}, status=status.HTTP_400_BAD_REQUEST)
 
         pedido.detallepedido_set.all().delete()
-        return Response({"mensaje": "Se Vació el Carrito."})
+        return Response({'mensaje': 'Se Vació el Carrito'})
 
 class WebpayIniciarView(APIView):
     permission_classes = [AllowAny]
@@ -179,10 +197,30 @@ class WebpayIniciarView(APIView):
         pedido.save()
 
         with transaction.atomic():
-            detalles = list(pedido.detallepedido_set.select_related('producto'))
+            detalles = list(
+                pedido.detallepedido_set
+                .select_related('producto', 'variante__producto')
+                .prefetch_related('producto__variantes')
+            )
 
             for detalle in detalles:
-                detalle.precio_unitario = detalle.producto.precio_final
+                producto = detalle.producto
+                variante = detalle.variante
+
+                if not producto.activo or (
+                    variante is not None and variante.producto_id != producto.pk
+                ):
+                    return Response({'error': 'Hay un Producto que ya no Está Disponible'}, status=status.HTTP_409_CONFLICT)
+
+                if variante is None and producto.variantes.exists():
+                    return Response({'error': f"Selecciona una Talla para {producto.nombre}."}, status=status.HTTP_409_CONFLICT)
+
+                stock = variante.stock_actual if variante else producto.stock_actual
+                if detalle.cantidad > stock:
+                    talla = f" (talla {variante.talla})" if variante else ""
+                    return Response({"error": f"No hay Stock Suficiente de {producto.nombre}{talla}."}, status=status.HTTP_409_CONFLICT)
+
+                detalle.precio_unitario = detalle.precio_vigente
 
             total = sum(detalle.subtotal for detalle in detalles)
 
@@ -301,12 +339,16 @@ class WebpayRetornoView(APIView):
                 transaction.set_rollback(True)
                 return redirect(f"{frontend}/carrito?pago=error")
 
-            for detalle in pedido.detallepedido_set.order_by("producto_id"):
-                stock_actualizado = Producto.objects.filter(
-                    pk=detalle.producto_id,
-                    stock_actual__gte=detalle.cantidad,
+            for detalle in pedido.detallepedido_set.order_by('producto_id', 'variante_id'):
+                if detalle.variante_id is not None:
+                    inventario = ProductoVariante.objects.filter(pk = detalle.variante_id, producto_id = detalle.producto_id)
+                else:
+                    inventario = Producto.objects.filter(pk = detalle.producto_id, variantes__isnull = True)
+
+                stock_actualizado = inventario.filter(
+                    stock_actual__gte = detalle.cantidad,
                 ).update(
-                    stock_actual=F("stock_actual") - detalle.cantidad,
+                    stock_actual = F("stock_actual") - detalle.cantidad,
                 )
 
                 if not stock_actualizado:
