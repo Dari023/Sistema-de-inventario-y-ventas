@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../api/Api";
 import { toast } from 'react-toastify';
 import { ResenasProducto } from "./Resenas";
+import "../styles/ProductoDetalles.css";
 
 const formatoPrecio = new Intl.NumberFormat("es-CL", {
   style: "currency",
@@ -66,13 +67,24 @@ export const ProductoDetalles = () => {
   };
 
   return (
-    <div>
-      <h2>{producto.nombre}</h2>
-      
-      <div>
-        {producto.imagen && (<img src={producto.imagen} alt={producto.nombre} width="250" />)}
-        
-        <div>
+    <div className="detalle-producto">
+      <nav className="detalle-ruta" aria-label="Ruta de navegación">
+        <Link to="/">Inicio</Link>
+        <span aria-hidden="true">/</span>
+        <Link to="/catalogo">Catálogo</Link>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{producto.nombre}</span>
+      </nav>
+      <div className="detalle-contenido">
+        <div className="detalle-imagen-contenedor">
+          {producto.imagen ? (
+            <img src={producto.imagen} alt={producto.nombre} className="detalle-imagen"/>
+          ) : (
+            <p>Imagen no disponible</p>
+          )}
+        </div>
+      <div className="detalle-informacion">
+        <h1>{producto.nombre}</h1>
           {tieneTallas && (
             <div>
               <label htmlFor="talla-producto">Talla</label>
