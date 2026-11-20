@@ -69,3 +69,83 @@
     gap: 1.5rem;
   }
 }
+.detalle-precio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.detalle-precio-etiqueta {
+  color: var(--tienda-texto-suave);
+  font-size: 0.9rem;
+}
+
+.detalle-precio strong {
+  color: var(--tienda-naranjo-oscuro);
+  font-size: clamp(1.8rem, 3vw, 2.3rem);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.detalle-talla {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.detalle-talla label {
+  font-weight: 700;
+}
+
+.detalle-talla select {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--tienda-borde);
+  border-radius: 0.75rem;
+  background-color: var(--tienda-superficie);
+  color: var(--tienda-texto);
+  font: inherit;
+}
+
+.detalle-talla select:focus-visible {
+  outline: 2px solid var(--tienda-naranjo-oscuro);
+  outline-offset: 3px;
+}
+
+.detalle-boton-carrito {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.detalle-boton-carrito:focus-visible {
+  outline: 2px solid var(--tienda-naranjo-oscuro);
+  outline-offset: 3px;
+}
+/* para productos lo personalizados */
+.detalle-personalizacion {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--tienda-borde);
+  border-radius: 1rem;
+  background-color: var(--tienda-naranjo-suave);
+}
+
+.detalle-personalizacion h2 {
+  margin: 0 0 0.5rem;
+  color: var(--tienda-texto);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.detalle-personalizacion p {
+  margin: 0 0 1rem;
+  line-height: 1.6;
+}
+
+.detalle-personalizacion .btn {
+  max-width: 100%;
+  white-space: normal;
+}
