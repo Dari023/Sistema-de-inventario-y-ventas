@@ -34,5 +34,6 @@ urlpatterns = [
     path('pedidos/<int:pk>/cambiar-estado/', views.pedido_cambiar_estado, name='pedido_cambiar_estado'),
     path('pedidos/personalizado/crear/', views.pedido_personalizado_crear, name='pedido_personalizado_crear'),
     path('pedidos/<int:pk>/articulos/agregar/', views.pedido_personalizado_articulo_agregar, name='pedido_personalizado_articulo_agregar'),
-    path('pedidos/<int:pk>/articulos/<int:detalle_pk>/editar/', views.pedido_personalizado_articulo_editar, name='pedido_personalizado_articulo_editar')
+    path('pedidos/<int:pk>/articulos/<int:detalle_pk>/editar/', views.pedido_personalizado_articulo_editar, name='pedido_personalizado_articulo_editar'),
+    path('encargos/<str:token>/', views.pedido_personalizado_publico, name='pedido_personalizado_publico')
 ]

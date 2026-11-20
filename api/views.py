@@ -64,10 +64,7 @@ def _webpay_tx():
     key = getattr(settings, 'WEBPAY_API_KEY', '')
     if getattr(settings, 'WEBPAY_ENV', 'integration') == 'production' and cc and key:
         return WpTx.build_for_production(cc, key)
-    return WpTx.build_for_integration(
-        IntegrationCommerceCodes.WEBPAY_PLUS,
-        IntegrationApiKeys.WEBPAY,
-    )
+    return WpTx.build_for_integration(IntegrationCommerceCodes.WEBPAY_PLUS, IntegrationApiKeys.WEBPAY)
 
 class CarritoAPIView(APIView):
     permission_classes = [AllowAny]

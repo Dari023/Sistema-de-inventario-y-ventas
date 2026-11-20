@@ -1,0 +1,148 @@
+{% load static l10n %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Tu Pedido Personalizado | Amigos del Vuelo</title>
+    <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+</head>
+
+<body>
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <p>Amigos del Vuelo</p>
+            <h1>Tu pedido Personalizado</h1>
+            <p>Revisa el detalle, los pagos y el avance de tu encargo.</p>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+        <h2>Información del Pedido</h2>
+
+        <p>
+            <strong>Código:</strong>
+            {{ pedido.id_compra }}
+        </p>
+        <p>
+            <strong>A Nombre de:</strong>
+            {{ pedido.nombre_invitado }}
+        </p>
+        <p>
+            <strong>Fecha del Pedido:</strong>
+            {{ pedido.fecha_pedido|date:"d/m/Y" }}
+        </p>
+        <p>
+            <strong>Fecha Acordada de Entrega:</strong>
+            {{ pedido.fecha_compromiso|date:"d/m/Y" }}
+        </p>
+
+        <h2>Artículos Encargados</h2>
+
+        {% for detalle in pedido.detalles_personalizados.all %}
+            <article>
+                <h3>Artículo {{ forloop.counter }}</h3>
+
+                {{ detalle.descripcion|linebreaks }}
+
+                {% if detalle.imagen_referencia %}
+                    <img src='{{ detalle.imagen_referencia.url }}' alt='Referencia del artículo personalizado' width='250'>
+                {% endif %}
+
+                <p>
+                    <strong>Cantidad:</strong>
+                    {{ detalle.cantidad }}
+                </p>
+                <p>
+                    <strong>Precio por Unidad:</strong>
+                    ${{ detalle.precio_unitario|floatformat:"0g" }}
+                </p>
+                <p>
+                    <strong>Subtotal:</strong>
+                    ${{ detalle.subtotal|floatformat:"0g" }}
+                </p>
+                <p>
+                    <strong>Unidades Fabricadas:</strong>
+                    {{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}
+                </p>
+            </article>
+        {% endfor %}
+
+        <h2>Resumen de Pagos</h2>
+
+        <p>
+            <strong>Total Acordado:</strong>
+            ${{ resumen.total|floatformat:"0g" }}
+        </p>
+        <p>
+            <strong>Adelanto Requerido:</strong>
+            ${{ pedido.adelanto_requerido|floatformat:"0g" }}
+        </p>
+        <p>
+            <strong>Pagos Confirmados:</strong>
+            ${{ resumen.abonado|floatformat:"0g" }}
+        </p>
+        <p>
+            <strong>Saldo Pendiente:</strong>
+            ${{ resumen.saldo|floatformat:"0g" }}
+        </p>
+
+        {% if resumen.adelanto_pendiente > 0 %}
+            <p>
+                Falta confirmar
+                <strong>
+                    ${{ resumen.adelanto_pendiente|floatformat:"0g" }}
+                </strong>
+                para completar el adelanto.
+            </p>
+        {% elif resumen.saldo > 0 %}
+            <p>El adelanto está cubierto, aún queda un saldo pendiente.</p>
+        {% else %}
+            <p>El total del pedido está pagado.</p>
+        {% endif %}
+
+        <h3>Registro de Pagos</h3>
+
+        <ul>
+            {% for pago in pedido.pagos.all %}
+                <li>
+                    {{ pago.fecha_creacion|date:"d/m/Y H:i" }}
+                    — {{ pago.get_metodo_display }}
+                    — ${{ pago.monto|floatformat:"0g" }}
+                    — {{ pago.get_estado_display }}
+                </li>
+            {% empty %}
+                <li>Todavía no hay pagos registrados.</li>
+            {% endfor %}
+        </ul>
+
+        <h2>Seguimiento y Entrega</h2>
+
+        <p>
+            <strong>Avance:</strong>
+            {% if pedido.etapa %}
+                {{ pedido.get_etapa_display }}
+            {% elif resumen.adelanto_pendiente > 0 %}
+                Pendiente de confirmar el adelanto
+            {% else %}
+                Adelanto confirmado, preparación pendiente
+            {% endif %}
+        </p>
+
+        <p>
+            <strong>Entrega:</strong>
+            {{ pedido.get_tipo_entrega_display }}
+        </p>
+
+        {% if pedido.tipo_entrega == 'envio' %}
+            <p>
+                <strong>Dirección:</strong>
+                {{ pedido.direccion_invitado }}
+            </p>
+        {% endif %}
+    </section>
+</main>
+</body>
+</html>

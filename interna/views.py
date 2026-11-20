@@ -6,9 +6,11 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
 from decimal import Decimal, ROUND_HALF_UP
-from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.http import require_POST, require_http_methods, require_GET
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Q
+from django.views.decorators.cache import never_cache
+from .pedidos_personalizados import crear_enlace_pedido_personalizado, obtener_pedido_personalizado_por_token, resumen_pagos_personalizado
 from .models import (Producto, 
     ProductoMateriaPrima, 
     MateriaPrima, 
@@ -723,7 +725,8 @@ def pedido_detalles(request, pk):
                 {'pedido': pedido, 
                 'total_abonado': total_abonado, 
                 'saldo_pendiente': pedido.total - total_abonado, 
-                'puede_editar_encargo': _puede_editar_encargo(pedido)})
+                'puede_editar_encargo': _puede_editar_encargo(pedido),
+                'enlace_cliente': crear_enlace_pedido_personalizado(request, pedido)})
     
     return render(request, 'interna/inventario/pedido_detalles.html', {'pedido': pedido})
 
@@ -1001,3 +1004,21 @@ def pedido_personalizado_articulo_agregar(request, pk):
 @permission_required('interna.change_pedido', raise_exception=True)
 def pedido_personalizado_articulo_editar(request, pk, detalle_pk):
     return _formulario_articulo_personalizado(request, pedido_pk=pk, detalle_pk=detalle_pk)
+
+@never_cache
+@require_GET
+def pedido_personalizado_publico(request, token):
+    pedido = obtener_pedido_personalizado_por_token(token)
+    resumen = resumen_pagos_personalizado(pedido)
+
+    respuesta = render(request, 'interna/inventario/pedido_personalizado_publico.html',
+        {
+            'pedido': pedido,
+            'resumen': resumen,
+        }
+    )
+
+    respuesta['Referrer-Policy'] = 'no-referrer'
+    respuesta['X-Robots-Tag'] = 'noindex, nofollow'
+
+    return respuesta
