@@ -154,12 +154,8 @@ def pedido_personalizado_webpay_iniciar(request, token):
         pago.orden_webpay = f'pp-{pago.pk}'
         pago.save(update_fields=['orden_webpay'])
 
-    ruta_retorno = reverse('pedido_personalizado_webpay_retorno')
-    return_url = (
-        request.build_absolute_uri(ruta_retorno)
-        + '?'
-        + urlencode({'acceso': token})
-    )
+    ruta_retorno = reverse('pedido_personalizado_webpay_retorno', kwargs={'token': token})
+    return_url = request.build_absolute_uri(ruta_retorno)
 
     try:
         respuesta = _transaccion_webpay().create(
@@ -189,19 +185,22 @@ def pedido_personalizado_webpay_iniciar(request, token):
 
     PagoPedido.objects.filter(pk=pago.pk).update(token_webpay=token_webpay)
 
-    return render(request, 'interna/inventario/pedido_personalizado_webpay.html',
+    respuesta_html = render(request, 'interna/inventario/pedido_personalizado_webpay.html',
         {
             'url_webpay': url_webpay,
             'token_webpay': token_webpay,
-            'monto': monto,
-        }
-    )
+            'monto': monto
+        })
+
+    respuesta_html['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+    return respuesta_html
 
 @csrf_exempt
 @never_cache
 @require_http_methods(['GET', 'POST'])
-def pedido_personalizado_webpay_retorno(request):
-    token_acceso = request.GET.get('acceso', '')
+def pedido_personalizado_webpay_retorno(request, token):
+    token_acceso = token
     pedido = obtener_pedido_personalizado_por_token(token_acceso)
     parametros = request.POST if request.method == 'POST' else request.GET
     token_webpay = (parametros.get('token_ws') or parametros.get('TBK_TOKEN'))

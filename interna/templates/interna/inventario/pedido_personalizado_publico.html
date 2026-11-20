@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="referrer" content="no-referrer">
+    <meta name="referrer" content="same-origin">
     <title>Tu Pedido Personalizado | Amigos del Vuelo</title>
     <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
 </head>
@@ -101,6 +101,43 @@
             <p>El adelanto está cubierto, aún queda un saldo pendiente.</p>
         {% else %}
             <p>El total del pedido está pagado.</p>
+        {% endif %}
+
+        {% if aviso %}
+            <p role='status'>{{ aviso }}</p>
+        {% endif %}
+
+        {% if pago_webpay_pendiente %}
+            <p>
+                Hay un intento de Webpay pendiente de resolver, consulta su resultado antes de iniciar otro pago
+            </p>
+
+            <form method='post' action="{% url 'pedido_personalizado_webpay_consultar' token pago_webpay_pendiente.pk %}">
+                {% csrf_token %}
+                <button type='submit'>Consultar Resultado del Pago</button>
+            </form>
+
+        {% elif hay_pago_en_tramite %}
+            <p>Hay un Pago Pendiente de Revisión</p>
+
+        {% elif resumen.saldo > 0 %}
+            <form method='post' action="{% url 'pedido_personalizado_webpay_iniciar' token %}">
+                {% csrf_token %}
+
+                <input type='hidden' name='total_esperado' value='{{ resumen.total|unlocalize }}'>
+
+                {% if resumen.adelanto_pendiente > 0 %}
+                    <button type='submit' name='opcion' value='adelanto'>
+                        Pagar Adelanto:
+                        ${{ resumen.adelanto_pendiente|floatformat:"0g" }}
+                    </button>
+                {% endif %}
+
+                <button type='submit' name='opcion' value='saldo'>
+                    Pagar Saldo Completo:
+                    ${{ resumen.saldo|floatformat:"0g" }}
+                </button>
+            </form>
         {% endif %}
 
         <h3>Registro de Pagos</h3>
