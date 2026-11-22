@@ -40,5 +40,6 @@ urlpatterns = [
     path('encargos/<str:token>/', views.pedido_personalizado_publico, name='pedido_personalizado_publico'),
     path('encargos/<str:token>/webpay/iniciar/', pagos_personalizados.pedido_personalizado_webpay_iniciar, name='pedido_personalizado_webpay_iniciar'),
     path('encargos/<str:token>/webpay/retorno/', pagos_personalizados.pedido_personalizado_webpay_retorno,name='pedido_personalizado_webpay_retorno',),
-    path('encargos/<str:token>/webpay/<int:pago_pk>/consultar/', pagos_personalizados.pedido_personalizado_webpay_consultar, name='pedido_personalizado_webpay_consultar')
+    path('encargos/<str:token>/webpay/<int:pago_pk>/consultar/', pagos_personalizados.pedido_personalizado_webpay_consultar, name='pedido_personalizado_webpay_consultar'),
+    path('pedidos/<int:pk>/articulos/<int:detalle_pk>/fabricar/', views.pedido_personalizado_fabricar, name='pedido_personalizado_fabricar')
 ]

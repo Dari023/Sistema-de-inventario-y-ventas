@@ -441,3 +441,7 @@ ArticulosPedidoPersonalizadoFormSet = inlineformset_factory(
     validate_min=True,
     can_delete=True,
 )
+
+class FabricacionPedidoPersonalizadoForm(forms.Form):
+    cantidad = forms.IntegerField(label='Unidades a Fabricar', min_value=1)
+    fabricadas_iniciales = forms.IntegerField(min_value=0, widget=forms.HiddenInput())

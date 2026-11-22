@@ -70,6 +70,14 @@
                     {{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}
                 </p>
 
+                {% if puede_fabricar_encargo and perms.interna.fabricar_producto and detalle.unidades_pendientes > 0 %}
+                    <p>
+                        <a href="{% url 'pedido_personalizado_fabricar' pedido.pk detalle.pk %}" class='boton-crear'>
+                            Registrar fabricación
+                        </a>
+                    </p>
+                {% endif %}
+
                 <table class='tabla'>
                     <thead>
                         <tr>
@@ -92,13 +100,37 @@
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <h4>Historial de Fabricación</h4>
+                <table class='tabla'>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Unidades Fabricadas</th>
+                            <th>Responsable</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for fabricacion in detalle.fabricaciones.all %}
+                            <tr>
+                                <td>{{ fabricacion.fecha|date:'d/m/Y H:i' }}</td>
+                                <td>{{ fabricacion.cantidad }}</td>
+                                <td>{{ fabricacion.responsable.username|default:'Sin registro' }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan='3'>No hay Fabricaciones Registradas para este Artículo</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
             </article>
         {% endfor %}
 
-        <h2>Acceso del cliente</h2>
-        <p>
-            Este enlace permite consultar el encargo sin iniciar sesión, tiene una vigencia de 30 días desde su generación.
-        </p>
+        <h2>Acceso del Cliente</h2>
+        <p>Este enlace permite consultar el encargo sin iniciar sesión, tiene una vigencia de 30 días desde su generación</p>
 
         <p>
             <a href='{{ enlace_cliente }}' target='_blank' rel='noopener noreferrer'>Abrir la Página del Cliente</a>
@@ -123,5 +155,6 @@
             ${{ saldo_pendiente|floatformat:'0g' }}
         </p>
     </section>
+    {% include 'interna/inventario/_pedido_etapas.html' %}
 </main>
 {% endblock %}
