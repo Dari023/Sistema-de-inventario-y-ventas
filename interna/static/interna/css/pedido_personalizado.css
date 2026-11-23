@@ -1,0 +1,173 @@
+.pedido-personalizado {
+    color: #3d344f;
+}
+
+.pedido-personalizado h2 {
+    margin: 0 0 20px;
+    font-size: 22px;
+}
+
+.pedido-personalizado form > h2:not(:first-of-type) {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #eee2dc;
+}
+
+.pedido-personalizado h3 {
+    margin: 24px 0 12px;
+    font-size: 18px;
+}
+
+.pedido-personalizado p {
+    margin: 0 0 18px;
+    line-height: 1.6;
+}
+
+.pedido-personalizado label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: 600;
+}
+
+.pedido-personalizado input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.pedido-personalizado select,
+.pedido-personalizado textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d9cede;
+    border-radius: 8px;
+    background-color: #fff;
+    color: #3d344f;
+    font: inherit;
+}
+
+.pedido-personalizado textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.pedido-personalizado input[type="checkbox"],
+.pedido-personalizado input[type="radio"] {
+    width: 17px;
+    height: 17px;
+    accent-color: #3d344f;
+    vertical-align: middle;
+}
+
+.pedido-personalizado input:focus-visible,
+.pedido-personalizado select:focus-visible,
+.pedido-personalizado textarea:focus-visible,
+.pedido-personalizado button:focus-visible,
+.pedido-personalizado a:focus-visible {
+    outline: 2px solid #ff896b;
+    outline-offset: 2px;
+}
+
+.pedido-personalizado input[type="file"]::file-selector-button {
+    margin-right: 12px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 6px;
+    background-color: #eee8f5;
+    color: #3d344f;
+    font: inherit;
+    cursor: pointer;
+}
+
+.pedido-personalizado [data-articulo] {
+    min-width: 0;
+    margin: 24px 0;
+    padding: 24px;
+    border: 1px solid #e2d8e8;
+    border-radius: 12px;
+    background-color: #fffaf7;
+}
+
+.pedido-personalizado legend {
+    float: none;
+    width: auto;
+    margin-bottom: 12px;
+    padding: 0 8px;
+    color: #3d344f;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.pedido-personalizado [data-lista-materiales] {
+    display: grid;
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.pedido-personalizado [data-lista-materiales] > fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 20px;
+    border: 1px solid #e2d8e8;
+    border-radius: 10px;
+    background-color: #fff;
+}
+
+.pedido-personalizado [data-lista-materiales] legend {
+    font-size: 16px;
+}
+
+.pedido-personalizado [data-agregar-material],
+.pedido-personalizado #agregar-articulo-personalizado {
+    padding: 10px 16px;
+    border: 1px solid #bfb1cc;
+    border-radius: 8px;
+    background-color: #fff;
+    color: #3d344f;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pedido-personalizado [data-agregar-material]:hover,
+.pedido-personalizado #agregar-articulo-personalizado:hover {
+    background-color: #eee8f5;
+}
+
+.pedido-personalizado .detalle-acciones {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #eee2dc;
+}
+
+.pedido-personalizado .detalle-acciones a {
+    color: #3d344f;
+    text-underline-offset: 3px;
+}
+
+.pedido-personalizado .helptext {
+    display: block;
+    margin-top: 6px;
+    color: #756b7e;
+    font-size: 13px;
+}
+
+.pedido-personalizado .errorlist {
+    margin: 8px 0 16px;
+    padding-left: 20px;
+    color: #a12f2a;
+}
+
+@media (max-width: 600px) {
+    .pedido-personalizado [data-articulo] {
+        padding: 16px;
+    }
+
+    .pedido-personalizado [data-lista-materiales] > fieldset {
+        padding: 14px;
+    }
+
+    .pedido-personalizado .detalle-acciones .boton-crear {
+        width: 100%;
+    }
+}

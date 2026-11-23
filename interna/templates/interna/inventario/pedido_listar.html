@@ -1,4 +1,9 @@
 {% extends 'interna/base.html' %}
+{% load static l10n %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+<link rel="stylesheet" href="{% static 'interna/css/detalles.css' %}">
+{% endblock %}
 
 {% block content %}
 <main class="inventario">
@@ -14,6 +19,7 @@
         {% endif %}
     </header>
 
+    <section class="inventario-panel">
     <form method="get" class="filtros">
         <input type="text"
                name="q"
@@ -26,14 +32,15 @@
         {% endif %}
     </form>
 
-    <table class="tabla">
+    <table id="tabla-pedidos"
+            class="js-datatable"
+            data-columna-acciones="7">
         <thead>
             <tr>
                 <th>ID</th>
                 <th>Fecha</th>
                 <th>Comprador</th>
                 <th>Productos</th>
-                <th>Cantidades</th>
                 <th>Total</th>
                 <th>Estado</th>
                 <th>Etapa</th>
@@ -44,7 +51,11 @@
         {% for pedido in pedidos %}
             <tr>
                 <td><code>{{ pedido.id }}</code></td>
-                <td>{{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</td>
+                <td data-order="{{ pedido.fecha_pedido|date:'Y-m-d H:i:s' }}">
+                    {{ pedido.fecha_pedido|date:"d/m/Y" }}
+                    <br>
+                    <small>{{ pedido.fecha_pedido|date:"H:i" }}</small>
+                </td>
                 <td>
                     {% if pedido.cliente %}
                         {{ pedido.cliente.nombre }} {{ pedido.cliente.apellido }}
@@ -54,45 +65,59 @@
                 </td>
                 <td>
                     {% if pedido.tipo_pedido == 'personalizado' %}
-                        {% for d in pedido.detalles_personalizados.all %}
-                            {{ d.descripcion|truncatechars:70 }}{% if not forloop.last %}, {% endif %}
-                        {% empty %}—{% endfor %}
+                        {% with detalles=pedido.detalles_personalizados.all %}
+                            {% for d in detalles %}
+                                {% if forloop.first %}
+                                    <div>
+                                        {{ d.descripcion|truncatechars:45 }}
+                                        <strong>×{{ d.cantidad }}</strong>
+                                    </div>
+                                {% endif %}
+                            {% empty %}—{% endfor %}
+                            {% if detalles|length > 1 %}
+                                <small>+{{ detalles|length|add:"-1" }} producto{{ detalles|length|add:"-1"|pluralize }} más</small>
+                            {% endif %}
+                        {% endwith %}
                     {% else %}
-                        {% for d in pedido.detallepedido_set.all %}
-                            {{ d.producto.nombre }}{% if not forloop.last %}, {% endif %}
-                        {% empty %}—{% endfor %}
+                        {% with detalles=pedido.detallepedido_set.all %}
+                            {% for d in detalles %}
+                                {% if forloop.first %}
+                                    <div>
+                                        {{ d.producto.nombre|truncatechars:45 }}
+                                        <strong>×{{ d.cantidad }}</strong>
+                                    </div>
+                                {% endif %}
+                            {% empty %}—{% endfor %}
+                            {% if detalles|length > 1 %}
+                                <small>+{{ detalles|length|add:"-1" }} producto{{ detalles|length|add:"-1"|pluralize }} más</small>
+                            {% endif %}
+                        {% endwith %}
                     {% endif %}
                 </td>
-                <td>
-                    {% if pedido.tipo_pedido == 'personalizado' %}
-                        {% for d in pedido.detalles_personalizados.all %}
-                            ×{{ d.cantidad }}{% if not forloop.last %}, {% endif %}
-                        {% empty %}—{% endfor %}
-                    {% else %}
-                        {% for d in pedido.detallepedido_set.all %}
-                            ×{{ d.cantidad }}{% if not forloop.last %}, {% endif %}
-                        {% empty %}—{% endfor %}
-                    {% endif %}
+                <td data-order="{{ pedido.total|unlocalize }}">
+                    ${{ pedido.total|floatformat:"0g" }}
                 </td>
-                <td>${{ pedido.total }}</td>
                 <td>{{ pedido.get_estado_display }}</td>
                 <td>{{ pedido.get_etapa_display|default:"—" }}</td>
                 <td>
-                    <a href="{% url 'pedido_detalles' pk=pedido.pk %}" class="btn btn-primary">Ver Detalles</a>
-                </td>
-            </tr>
-        {% empty %}
-            <tr>
-                <td colspan='9'>
-                    {% if q %}
-                        No se Encontró Ningún Pedido con el Código "{{ q }}"
-                    {% else %}
-                        No hay Pedidos Registrados
-                    {% endif %}
+                    <div class="acciones">
+                        <a href="{% url 'pedido_detalles' pk=pedido.pk %}">Ver Detalles</a>
+                    </div>
                 </td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
+
+        {% if not pedidos %}
+            <p>
+                {% if q %}
+                    No se Encontró Ningún Pedido con el Código "{{ q }}"
+                {% else %}
+                    No hay Pedidos Registrados
+                {% endif %}
+            </p>
+        {% endif %}
+    </section>
 </main>
 {% endblock %}
