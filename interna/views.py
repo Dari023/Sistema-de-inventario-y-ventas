@@ -46,7 +46,8 @@ from .forms import (
     DetallePedidoPersonalizadoForm,
     MaterialPedidoPersonalizadoFormSet,
     ArticulosPedidoPersonalizadoFormSet,
-    FabricacionPedidoPersonalizadoForm)
+    FabricacionPedidoPersonalizadoForm,
+    PedidoPersonalizadoDatosForm)
 
 @login_required
 def home(request):
@@ -1341,3 +1342,99 @@ def _registrar_etapa_pedido(pedido_pk, nueva_etapa, etapa_anterior, responsable)
     HistorialEtapaPedido.objects.create(pedido=pedido, etapa=nueva_etapa, responsable=responsable)
 
     return True
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def pedido_personalizado_datos_editar(request, pk):
+    consulta = Pedido.objects
+
+    if request.method == 'POST':
+        consulta = consulta.select_for_update()
+
+    pedido = get_object_or_404(consulta, pk=pk, tipo_pedido='personalizado')
+
+    if pedido.etapa == 'entregado':
+        messages.error(request, 'No se Pueden Modificar los Datos de un Pedido Entregado')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    datos = request.POST if request.method == 'POST' else None
+
+    form = PedidoPersonalizadoDatosForm(data=datos, instance=pedido)
+
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Datos del Pedido Actualizados')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_datos_editar.html',
+        {
+            'form': form,
+            'pedido': pedido,
+        }
+    )
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def pedido_personalizado_receta_editar(request, pk, detalle_pk):
+    es_post = request.method == 'POST'
+    pedidos = Pedido.objects.filter(tipo_pedido='personalizado')
+    detalles = DetallePedidoPersonalizado.objects.all()
+
+    if es_post:
+        pedidos = pedidos.select_for_update()
+        detalles = detalles.select_for_update()
+
+    pedido = get_object_or_404(pedidos, pk=pk)
+    detalle = get_object_or_404(detalles, pk=detalle_pk, pedido=pedido)
+
+    receta_bloqueada = (
+        pedido.estado not in ('pendiente', 'pagado')
+        or pedido.etapa not in (None, '', 'en_confeccion')
+        or detalle.unidades_fabricadas > 0
+        or detalle.fabricaciones.exists()
+    )
+
+    if receta_bloqueada:
+        messages.error(request, 'La receta no se puede modificar, el artículo ya tiene fabricaciones o la etapa del pedido no permite cambios')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    materiales = MaterialPedidoPersonalizadoFormSet(data=request.POST if es_post else None, instance=detalle, prefix='materiales')
+
+    fila_vacia = materiales.empty_form
+    filas = list(materiales.forms)
+    filas.append(fila_vacia)
+
+    for fila in filas:
+        disponibles = Q(estado=True)
+
+        if fila.instance.pk:
+            disponibles |= Q(pk=fila.instance.materia_prima_id)
+
+        fila.fields['materia_prima'].queryset = (
+            MateriaPrima.objects
+            .filter(disponibles)
+            .order_by('nombre')
+        )
+
+        fila.fields['materia_prima'].widget.attrs['class'] = 'form-select'
+        fila.fields['cantidad_por_unidad'].widget.attrs['class'] = 'form-control'
+        fila.fields['DELETE'].widget.attrs['class'] = 'form-check-input'
+        fila.fields['DELETE'].label = 'Quitar este material'
+
+    if es_post and materiales.is_valid():
+        materiales.save()
+        messages.success(request, 'Receta del artículo actualizada.')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_receta_editar.html',
+        {
+            'pedido': pedido,
+            'detalle': detalle,
+            'materiales': materiales,
+            'fila_vacia': fila_vacia,
+        }
+    )

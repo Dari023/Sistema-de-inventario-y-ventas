@@ -445,3 +445,42 @@ ArticulosPedidoPersonalizadoFormSet = inlineformset_factory(
 class FabricacionPedidoPersonalizadoForm(forms.Form):
     cantidad = forms.IntegerField(label='Unidades a Fabricar', min_value=1)
     fabricadas_iniciales = forms.IntegerField(min_value=0, widget=forms.HiddenInput())
+
+class PedidoPersonalizadoDatosForm(PedidoPersonalizadoForm):
+    def __init__(self, data=None, instance=None):
+        super().__init__(data=data, instance=instance)
+
+        pedido = self.instance
+
+        entrega_bloqueada = pedido.etapa in ('enviado', 'disponible_retiro', 'entregado')
+
+        if entrega_bloqueada:
+            for nombre in ('tipo_entrega', 'direccion_invitado', 'fecha_compromiso'):
+                self.fields[nombre].disabled = True
+                self.fields[nombre].help_text = ('No se Puede Modificar en Esta Etapa del Pedido')
+
+        adelanto_bloqueado = (
+            pedido.estado != 'pendiente'
+            or bool(pedido.etapa)
+            or pedido.pagos.exclude(estado='rechazado').exists()
+            or pedido.detalles_personalizados.filter(unidades_fabricadas__gt=0).exists()
+        )
+
+        if adelanto_bloqueado:
+            self.fields['adelanto_requerido'].disabled = True
+            self.fields['adelanto_requerido'].help_text = ('El Adelanto Queda Fijado al Iniciar el Pago o la Preparación')
+
+        for campo in self.fields.values():
+            if isinstance(campo.widget, forms.Select):
+                campo.widget.attrs['class'] = 'form-select'
+            else:
+                campo.widget.attrs['class'] = 'form-control'
+
+    def clean_adelanto_requerido(self):
+        adelanto = self.cleaned_data['adelanto_requerido']
+        campo = self.fields['adelanto_requerido']
+
+        if not campo.disabled and adelanto > self.instance.total:
+            raise forms.ValidationError('El Adelanto no Puede Superar el Total del Pedido')
+
+        return adelanto

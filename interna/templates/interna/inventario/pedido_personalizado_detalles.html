@@ -1,160 +1,205 @@
 {% extends 'interna/base.html' %}
-{% load static l10n %}
-
-{% block extra_css %}
-<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
-{% endblock %}
+{% load l10n %}
 
 {% block content %}
-<main class='inventario'>
-    <header class='inventario-cabecera'>
+<main class='container py-4'>
+    <header class='d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4'>
         <div>
-            <h1>PEDIDO PERSONALIZADO #{{ pedido.pk }}</h1>
-            <p>Código: {{ pedido.id_compra }}</p>
+            <h1 class='h3 mb-1'>PEDIDO PERSONALIZADO #{{ pedido.pk }}</h1>
+            <p class='text-secondary small mb-0'>
+                {{ pedido.fecha_pedido|date:'d/m/Y H:i' }} ·
+                <span class='text-break'>{{ pedido.id_compra }}</span>
+            </p>
         </div>
-        <a href="{% url 'pedido_listar' %}">Volver al Listado</a>
+        <a href="{% url 'pedido_listar' %}" class='btn btn-outline-secondary'>Volver al Listado</a>
     </header>
 
-    <section class='inventario-panel'>
-        <h2>Contacto y Entrega</h2>
-        <p><strong>Nombre:</strong> {{ pedido.nombre_invitado }}</p>
-        <p><strong>Correo:</strong> {{ pedido.email_invitado }}</p>
-        <p><strong>Teléfono:</strong> {{ pedido.telefono_invitado }}</p>
-        <p><strong>RUT:</strong> {{ pedido.rut_invitado|default:'Sin registrar' }}</p>
-        <p><strong>Entrega:</strong> {{ pedido.get_tipo_entrega_display }}</p>
-
-        {% if pedido.tipo_entrega == 'envio' %}
-            <p><strong>Dirección:</strong> {{ pedido.direccion_invitado }}</p>
-        {% endif %}
-
-        <p>
-            <strong>Fecha acordada:</strong>
-            {{ pedido.fecha_compromiso|date:'d/m/Y' }}
-        </p>
-
-        <h2>Encargo y Receta</h2>
-
-        {% if puede_editar_encargo and perms.interna.change_pedido %}
-            <p>
-                <a href="{% url 'pedido_personalizado_articulo_agregar' pedido.pk %}" class="boton-crear">Agregar otro artículo</a>
-            </p>
-        {% endif %}
-
-        {% for detalle in pedido.detalles_personalizados.all %}
-            <article>
-                <h3>Artículo Personalizado</h3>
-
-                {% if puede_editar_encargo and perms.interna.change_pedido %}
-                    <p>
-                        <a href="{% url 'pedido_personalizado_articulo_editar' pedido.pk detalle.pk %}">Editar Artículo y Receta</a>
-                    </p>
-                {% endif %}
-
-                <div>{{ detalle.descripcion|linebreaks }}</div>
-
-                {% if detalle.imagen_referencia %}
-                    <img src='{{ detalle.imagen_referencia.url }}' alt='Referencia del Encargo' width='250'>
-                {% endif %}
-
-                <p><strong>Cantidad:</strong> {{ detalle.cantidad }}</p>
-                <p>
-                    <strong>Precio por Unidad:</strong>
-                    ${{ detalle.precio_unitario|floatformat:'0g' }}
-                </p>
-                <p>
-                    <strong>Subtotal:</strong>
-                    ${{ detalle.subtotal|floatformat:'0g' }}
-                </p>
-                <p>
-                    <strong>Fabricadas:</strong>
-                    {{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}
-                </p>
-
-                {% if puede_fabricar_encargo and perms.interna.fabricar_producto and detalle.unidades_pendientes > 0 %}
-                    <p>
-                        <a href="{% url 'pedido_personalizado_fabricar' pedido.pk detalle.pk %}" class='boton-crear'>
-                            Registrar fabricación
-                        </a>
-                    </p>
-                {% endif %}
-
-                <table class='tabla'>
-                    <thead>
-                        <tr>
-                            <th>Materia Prima</th>
-                            <th>Cantidad por Unidad</th>
-                            <th>Unidad de Medida</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for material in detalle.materiales.all %}
-                            <tr>
-                                <td>{{ material.materia_prima.nombre }}</td>
-                                <td>{{ material.cantidad_por_unidad }}</td>
-                                <td>{{ material.materia_prima.get_unidad_de_medida_display }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan='3'>Sin Receta Registrada</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-
-                <h4>Historial de Fabricación</h4>
-                <table class='tabla'>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Unidades Fabricadas</th>
-                            <th>Responsable</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {% for fabricacion in detalle.fabricaciones.all %}
-                            <tr>
-                                <td>{{ fabricacion.fecha|date:'d/m/Y H:i' }}</td>
-                                <td>{{ fabricacion.cantidad }}</td>
-                                <td>{{ fabricacion.responsable.username|default:'Sin registro' }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan='3'>No hay Fabricaciones Registradas para este Artículo</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-
-            </article>
-        {% endfor %}
-
-        <h2>Acceso del Cliente</h2>
-        <p>Este enlace permite consultar el encargo sin iniciar sesión, tiene una vigencia de 30 días desde su generación</p>
-
-        <p>
-            <a href='{{ enlace_cliente }}' target='_blank' rel='noopener noreferrer'>Abrir la Página del Cliente</a>
-        </p>
-
-        <label for='enlace-cliente'>Enlace para Compartir</label>
-        <input id='enlace-cliente' type='text' value='{{ enlace_cliente }}' readonly>
-
-        <h2>Resumen de Pago</h2>
-        <p><strong>Estado:</strong> {{ pedido.get_estado_display }}</p>
-        <p><strong>Total Acordado:</strong> ${{ pedido.total|floatformat:'0g' }}</p>
-        <p>
-            <strong>Adelanto Requerido:</strong>
-            ${{ pedido.adelanto_requerido|floatformat:'0g' }}
-        </p>
-        <p>
-            <strong>Abonos Aprobados:</strong>
-            ${{ total_abonado|floatformat:'0g' }}
-        </p>
-        <p>
-            <strong>Saldo Pendiente:</strong>
-            ${{ saldo_pendiente|floatformat:'0g' }}
-        </p>
+    <section class='card border-0 shadow-sm mb-4'>
+        <div class='card-body p-4'>
+            <div class='d-flex justify-content-between align-items-center mb-3'>
+                <h2 class='h5 mb-0'>Resumen de Pago</h2>
+                <span class="badge {% if pedido.estado == 'pagado' %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                    {{ pedido.get_estado_display }}
+                </span>
+            </div>
+            <div class='row g-3'>
+                <div class='col-6 col-lg-3'>
+                    <div class='bg-dark text-white rounded-3 p-3 h-100'>
+                        <small>Total Acordado</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ pedido.total|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+                <div class='col-6 col-lg-3'>
+                    <div class='bg-light rounded-3 p-3 h-100'>
+                        <small class='text-secondary'>Adelanto Requerido</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ pedido.adelanto_requerido|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+                <div class='col-6 col-lg-3'>
+                    <div class='bg-success-subtle rounded-3 p-3 h-100'>
+                        <small>Abonos Aprobados</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ total_abonado|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+                <div class='col-6 col-lg-3'>
+                    <div class='bg-warning-subtle rounded-3 p-3 h-100'>
+                        <small>Saldo Pendiente</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ saldo_pendiente|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
+
     {% include 'interna/inventario/_pedido_etapas.html' %}
+
+    <div class='row g-4'>
+        <div class='col-lg-8'>
+            <div class='d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3'>
+                <h2 class='h5 mb-0'>Artículos del Encargo</h2>
+                {% if puede_editar_encargo and perms.interna.change_pedido %}
+                    <a href="{% url 'pedido_personalizado_articulo_agregar' pedido.pk %}" class='btn btn-dark btn-sm'>Agregar Artículo</a>
+                {% endif %}
+            </div>
+
+            {% for detalle in pedido.detalles_personalizados.all %}
+                <article class='card border-0 shadow-sm mb-4'>
+                    <div class='card-body p-4'>
+                        <div class='d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3'>
+                            <h3 class='h5 mb-0'>Artículo {{ forloop.counter }}</h3>
+                            <div class='d-flex flex-wrap gap-2'>
+                                {% if puede_editar_encargo and perms.interna.change_pedido %}
+                                    <a href="{% url 'pedido_personalizado_articulo_editar' pedido.pk detalle.pk %}" class='btn btn-outline-secondary btn-sm'>
+                                        Editar
+                                    </a>
+                                {% endif %}
+                                {% if perms.interna.change_pedido and not puede_editar_encargo and detalle.unidades_fabricadas == 0 and not detalle.fabricaciones.exists %}
+                                    {% if pedido.estado == 'pendiente' or pedido.estado == 'pagado' %}
+                                        {% if not pedido.etapa or pedido.etapa == 'en_confeccion' %}
+                                            <a href="{% url 'pedido_personalizado_receta_editar' pedido.pk detalle.pk %}" class='btn btn-outline-secondary btn-sm'>
+                                                Editar Receta
+                                            </a>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                                {% if puede_fabricar_encargo and perms.interna.fabricar_producto and detalle.unidades_pendientes > 0 %}
+                                    <a href="{% url 'pedido_personalizado_fabricar' pedido.pk detalle.pk %}" class='btn btn-dark btn-sm'>
+                                        Registrar Fabricación
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if detalle.imagen_referencia %}
+                            <a href='{{ detalle.imagen_referencia.url }}' target='_blank' rel='noopener noreferrer'>
+                                <img src='{{ detalle.imagen_referencia.url }}' alt='Referencia del encargo' width='150' class='img-thumbnail float-md-end ms-md-3 mb-3'>
+                            </a>
+                        {% endif %}
+                        <div class='text-break clearfix'>{{ detalle.descripcion|linebreaks }}</div>
+
+                        <div class='row g-3 bg-light rounded-3 p-2 my-3'>
+                            <div class='col-6 col-md-3'>
+                                <small class='text-secondary'>Cantidad</small>
+                                <p class='fw-semibold mb-0'>{{ detalle.cantidad }}</p>
+                            </div>
+                            <div class='col-6 col-md-3'>
+                                <small class='text-secondary'>Fabricadas</small>
+                                <p class='fw-semibold mb-0'>{{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}</p>
+                            </div>
+                            <div class='col-6 col-md-3'>
+                                <small class='text-secondary'>Precio Unitario</small>
+                                <p class='fw-semibold mb-0'>${{ detalle.precio_unitario|floatformat:'0g' }}</p>
+                            </div>
+                            <div class='col-6 col-md-3'>
+                                <small class='text-secondary'>Subtotal</small>
+                                <p class='fw-semibold mb-0'>${{ detalle.subtotal|floatformat:'0g' }}</p>
+                            </div>
+                        </div>
+
+                        <details class='border-top pt-3'>
+                            <summary class='fw-semibold'>Receta del Artículo</summary>
+                            <div class='table-responsive mt-3'>
+                                <table class='table table-sm align-middle mb-0'>
+                                    <thead class='table-light'>
+                                        <tr><th>Materia Prima</th><th class='text-end'>Por Unidad</th><th>Medida</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for material in detalle.materiales.all %}
+                                            <tr>
+                                                <td>{{ material.materia_prima.nombre }}</td>
+                                                <td class='text-end'>{{ material.cantidad_por_unidad }}</td>
+                                                <td>{{ material.materia_prima.get_unidad_de_medida_display }}</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr><td colspan='3' class='text-secondary'>Sin Receta Registrada</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+
+                        <details class='border-top pt-3 mt-3'>
+                            <summary class='fw-semibold'>Historial de Fabricación</summary>
+                            <div class='table-responsive mt-3'>
+                                <table class='table table-sm align-middle mb-0'>
+                                    <thead class='table-light'>
+                                        <tr><th>Fecha</th><th class='text-center'>Unidades</th><th>Responsable</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for fabricacion in detalle.fabricaciones.all %}
+                                            <tr>
+                                                <td class='text-nowrap'>{{ fabricacion.fecha|date:'d/m/Y H:i' }}</td>
+                                                <td class='text-center'>{{ fabricacion.cantidad }}</td>
+                                                <td>{{ fabricacion.responsable.username|default:'Sin registro' }}</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr><td colspan='3' class='text-secondary'>No hay Fabricaciones Registradas</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                </article>
+            {% empty %}
+                <p class='text-secondary'>Este Pedido no Tiene Artículos Registrados</p>
+            {% endfor %}
+        </div>
+
+        <aside class='col-lg-4'>
+            <section class='card border-0 shadow-sm mb-4'>
+                <div class='card-body p-4'>
+                    <h2 class='h5 mb-3'>Contacto y Entrega</h2>
+                    {% if perms.interna.change_pedido and pedido.etapa != 'entregado' %}
+                        <a href="{% url 'pedido_personalizado_datos_editar' pedido.pk %}" class='btn btn-outline-dark btn-sm mb-3'>
+                            Editar Datos
+                        </a>
+                    {% endif %}
+                    <p class='mb-2'><strong>Nombre:</strong> {{ pedido.nombre_invitado }}</p>
+                    <p class='mb-2 text-break'><strong>Correo:</strong> {{ pedido.email_invitado }}</p>
+                    <p class='mb-2'><strong>Teléfono:</strong> {{ pedido.telefono_invitado }}</p>
+                    <p class='mb-3'><strong>RUT:</strong> {{ pedido.rut_invitado|default:'Sin registrar' }}</p>
+                    <hr>
+                    <p class='mb-2'><strong>Entrega:</strong> {{ pedido.get_tipo_entrega_display }}</p>
+                    {% if pedido.tipo_entrega == 'envio' %}
+                        <p class='mb-2 text-break'><strong>Dirección:</strong> {{ pedido.direccion_invitado }}</p>
+                    {% endif %}
+                    <p class='mb-0'><strong>Fecha Acordada:</strong> {{ pedido.fecha_compromiso|date:'d/m/Y'|default:'Sin registrar' }}</p>
+                </div>
+            </section>
+
+            <section class='card border-0 shadow-sm'>
+                <div class='card-body p-4'>
+                    <h2 class='h5 mb-3'>Acceso del Cliente</h2>
+                    <p class='text-secondary small'>Permite consultar y pagar el encargo sin iniciar sesión con vigencia de 30 días desde su generación</p>
+                    <a href='{{ enlace_cliente }}' target='_blank' rel='noopener noreferrer' class='btn btn-outline-dark w-100 mb-3'>
+                        Abrir Página del Cliente 
+                    </a>
+                    <label for='enlace-cliente' class='form-label small'>Enlace para Compartir</label>
+                    <input id='enlace-cliente' class='form-control form-control-sm' type='text' value='{{ enlace_cliente }}' readonly>
+                </div>
+            </section>
+        </aside>
+    </div>
 </main>
 {% endblock %}

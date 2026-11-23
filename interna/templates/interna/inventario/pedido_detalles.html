@@ -1,95 +1,108 @@
 {% extends 'interna/base.html' %}
+{% load l10n %}
 
 {% block content %}
-<main class="inventario">
-    <header class="inventario-cabecera">
+<main class='container py-4'>
+    <header class='d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4'>
         <div>
-            <h1>DETALLE DEL PEDIDO #{{ pedido.pk }}</h1>
-            <p>
-                <strong>Código:</strong> <code>{{ pedido.id_compra }}</code><br>
-                <strong>Fecha:</strong> {{ pedido.fecha_pedido|date:"d/m/Y H:i" }}<br>
-                <strong>Estado:</strong> 
-                <span class="badge {% if pedido.estado == 'pagado' %}bg-success{% else %}bg-warning{% endif %}">
-                    {{ pedido.get_estado_display }}
-                </span><br>
-                <strong>Etapa Actual:</strong> 
-                <span class="badge bg-info text-dark">
-                    {{ pedido.get_etapa_display|default:"Sin etapa asignada" }}
-                </span>
+            <h1 class='h3 mb-1'>PEDIDO #{{ pedido.pk }}</h1>
+            <p class='text-secondary small mb-0'>
+                {{ pedido.fecha_pedido|date:'d/m/Y H:i' }} ·
+                <span class='text-break'>{{ pedido.id_compra }}</span>
             </p>
         </div>
-        <div>
-            <a href="{% url 'pedido_listar' %}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Volver al listado
-            </a>
-        </div>
+        <a href="{% url 'pedido_listar' %}" class='btn btn-outline-secondary'>
+            <i class='bi bi-arrow-left'></i> Volver al Listado
+        </a>
     </header>
 
-    <section class="bloque">
-        <h2>Datos del Comprador</h2>
-        <div>
-            {% if pedido.cliente %}
-                <p><strong>Tipo:</strong> Cliente Registrado</p>
-                <p><strong>Nombre:</strong> {{ pedido.cliente.nombre }} {{ pedido.cliente.apellido }}</p>
-                <p><strong>Correo:</strong> {{ pedido.cliente.correo|default:pedido.cliente.usuario.email|default:"No registrado" }}</p>
-                <p><strong>RUT:</strong> {{ pedido.cliente.rut|default:"No registrado" }}</p>
-                <p><strong>Teléfono:</strong> {{ pedido.cliente.telefono|default:"No registrado" }}</p>
-                <p><strong>Dirección:</strong> {{ pedido.cliente.direccion|default:"No registrada" }}</p>
-            {% else %}
-                <p><strong>Tipo:</strong> Invitado (Compra sin cuenta)</p>
-                <p><strong>Nombre:</strong> {{ pedido.nombre_invitado|default:"No registrado" }}</p>
-                <p><strong>RUT:</strong> {{ pedido.rut_invitado|default:"No registrado" }}</p>
-                <p><strong>Correo:</strong> {{ pedido.email_invitado|default:"No registrado" }}</p>
-                <p><strong>Teléfono:</strong> {{ pedido.telefono_invitado|default:"No registrado" }}</p>
-                <p><strong>Dirección:</strong> {{ pedido.direccion_invitado|default:"No registrada" }}</p>
-            {% endif %}
+    <div class='row g-4 mb-4'>
+        <div class='col-md-8'>
+            <section class='card border-0 shadow-sm h-100'>
+                <div class='card-body p-4'>
+                    <h2 class='h5 mb-3'>Datos del Comprador</h2>
+                    {% if pedido.cliente %}
+                        <p class='mb-2'><strong>Nombre:</strong> {{ pedido.cliente.nombre }} {{ pedido.cliente.apellido }}</p>
+                        <p class='mb-2 text-break'><strong>Correo:</strong> {{ pedido.cliente.correo|default:pedido.cliente.usuario.email|default:'No registrado' }}</p>
+                        <p class='mb-2'><strong>RUT:</strong> {{ pedido.cliente.rut|default:'No registrado' }}</p>
+                        <p class='mb-0'><strong>Teléfono:</strong> {{ pedido.cliente.telefono|default:'No registrado' }}</p>
+                    {% else %}
+                        <p class='mb-2'><strong>Nombre:</strong> {{ pedido.nombre_invitado|default:'Invitado' }}</p>
+                        <p class='mb-2 text-break'><strong>Correo:</strong> {{ pedido.email_invitado|default:'No registrado' }}</p>
+                        <p class='mb-2'><strong>RUT:</strong> {{ pedido.rut_invitado|default:'No registrado' }}</p>
+                        <p class='mb-0'><strong>Teléfono:</strong> {{ pedido.telefono_invitado|default:'No registrado' }}</p>
+                    {% endif %}
+                </div>
+            </section>
         </div>
-    </section>
-    <section class="bloque">
-        <h2>Entrega</h2>
-        <div>
-            <p><strong>Tipo:</strong> {{ pedido.get_tipo_entrega_display }}</p>
-            {% if pedido.tipo_entrega == 'envio' %}
-                <p><strong>Dirección:</strong> {{ pedido.direccion_invitado }}</p>
-            {% else %}
-                <p>El comprador retirará en tienda.</p>
-            {% endif %}
+        <div class='col-md-4'>
+            <section class='card border-0 shadow-sm h-100'>
+                <div class='card-body p-4'>
+                    <h2 class='h5 mb-3'>Pago y Entrega</h2>
+                    <span class="badge {% if pedido.estado == 'pagado' %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                        {{ pedido.get_estado_display }}
+                    </span>
+                    <p class='fs-3 fw-semibold my-3'>${{ pedido.total|floatformat:'0g' }}</p>
+                    <p class='mb-2'><strong>{{ pedido.get_tipo_entrega_display }}</strong></p>
+                    {% if pedido.tipo_entrega == 'envio' %}
+                        <p class='text-secondary text-break mb-0'>
+                            {% if pedido.direccion_invitado %}
+                                {{ pedido.direccion_invitado }}
+                            {% elif pedido.cliente %}
+                                {{ pedido.cliente.direccion|default:'Dirección no registrada' }}
+                            {% else %}
+                                Dirección no Registrada
+                            {% endif %}
+                        </p>
+                    {% else %}
+                        <p class='text-secondary mb-0'>El Comprador Retirará en Tienda</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <section class='card border-0 shadow-sm mb-4'>
+        <div class='card-body p-4'>
+            <h2 class='h5 mb-3'>Productos Comprados</h2>
+            <div class='table-responsive'>
+                <table class='table align-middle mb-0'>
+                    <thead class='table-light'>
+                        <tr>
+                            <th>Producto</th>
+                            <th class='text-center'>Cantidad</th>
+                            <th class='text-end'>Precio Unitario</th>
+                            <th class='text-end'>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detalle in pedido.detallepedido_set.all %}
+                            <tr>
+                                <td>
+                                    {{ detalle.producto.nombre }}
+                                    {% if detalle.variante %}
+                                        <small class='d-block text-secondary'>Talla {{ detalle.variante.get_talla_display }}</small>
+                                    {% endif %}
+                                </td>
+                                <td class='text-center'>{{ detalle.cantidad }}</td>
+                                <td class='text-end text-nowrap'>${{ detalle.precio_unitario|default_if_none:detalle.producto.precio|floatformat:'0g' }}</td>
+                                <td class='text-end text-nowrap'>${{ detalle.subtotal|floatformat:'0g' }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan='4' class='text-center text-secondary py-4'>No hay Productos Registrados</td></tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan='3'>Total del Pedido</th>
+                            <th class='text-end text-nowrap'>${{ pedido.total|floatformat:'0g' }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </div>
     </section>
 
-    <section class="bloque">
-        <h2>Productos Comprados</h2>
-        <table class="tabla">
-            <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Precio Unitario</th>
-                    <th>Subtotal</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for detalle in pedido.detallepedido_set.all %}
-                <tr>
-                    <td>{{ detalle.producto.nombre }}</td>
-                    <td>{{ detalle.cantidad }}</td>
-                    <td>${{ detalle.precio_unitario|default:detalle.producto.precio }}</td>
-                    <td>${{ detalle.subtotal }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4">Este pedido no tiene productos registrados.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr>
-                    <th colspan="3">Total Pagado:</th>
-                    <th>${{ pedido.total }}</th>
-                </tr>
-            </tfoot>
-        </table>
-    </section>
     {% include 'interna/inventario/_pedido_etapas.html' %}
 </main>
 {% endblock %}
