@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -26,7 +27,9 @@ from .models import (Producto,
     ProductoVariante,
     Pedido,
     Consulta,
-    DetallePedidoPersonalizado)
+    DetallePedidoPersonalizado,
+    MaterialPedidoPersonalizado,
+    FabricacionPedidoPersonalizado)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -43,7 +46,10 @@ from .forms import (
     PedidoPersonalizadoForm,
     DetallePedidoPersonalizadoForm,
     MaterialPedidoPersonalizadoFormSet,
-    ArticulosPedidoPersonalizadoFormSet)
+    ArticulosPedidoPersonalizadoFormSet,
+    FabricacionPedidoPersonalizadoForm,
+    PedidoPersonalizadoDatosForm,
+    CancelacionPedidoPersonalizadoForm)
 
 @login_required
 def home(request):
@@ -712,27 +718,37 @@ def pedido_detalles(request, pk):
     pedido = get_object_or_404(
         Pedido.objects
         .select_related('cliente')
-        .prefetch_related('detallepedido_set__producto', 'detalles_personalizados__materiales__materia_prima', 
-        'pagos', 'historial_etapas__responsable'), pk=pk)
+        .prefetch_related('detallepedido_set__producto', 'detalles_personalizados__materiales__materia_prima',
+            'detalles_personalizados__fabricaciones__responsable', 'pagos', 'historial_etapas__responsable',
+        ), pk=pk)
+
+    contexto = {'pedido': pedido}
+    contexto.update(_contexto_etapas_pedido(pedido))
 
     if pedido.tipo_pedido == 'personalizado':
-        total_abonado = sum(
-            (
-                pago.monto
-                for pago in pedido.pagos.all()
-                if pago.estado == 'aprobado'
+        resumen = resumen_pagos_personalizado(pedido)
+        contexto.update({
+            'total_abonado': resumen['abonado'],
+            'saldo_pendiente': resumen['saldo'],
+            'puede_editar_encargo': (_puede_editar_encargo(pedido)),
+            'puede_fabricar_encargo': (
+                pedido.estado in ('pendiente', 'pagado')
+                and pedido.etapa in (
+                    None, '', 'en_confeccion'
+                )
+                and (
+                    0 < pedido.adelanto_requerido
+                    <= resumen['total']
+                )
+                and resumen['adelanto_pendiente'] == 0
             ),
-            Decimal('0')
-        )
+            'enlace_cliente': (crear_enlace_pedido_personalizado(request, pedido)
+            )
+        })
 
-        return render(request, 'interna/inventario/pedido_personalizado_detalles.html',
-                {'pedido': pedido, 
-                'total_abonado': total_abonado, 
-                'saldo_pendiente': pedido.total - total_abonado, 
-                'puede_editar_encargo': _puede_editar_encargo(pedido),
-                'enlace_cliente': crear_enlace_pedido_personalizado(request, pedido)})
-    
-    return render(request, 'interna/inventario/pedido_detalles.html', {'pedido': pedido})
+        return render(request, 'interna/inventario/pedido_personalizado_detalles.html', contexto)
+
+    return render(request, 'interna/inventario/pedido_detalles.html', contexto)
 
 @login_required
 @permission_required('interna.view_resena', raise_exception=True)
@@ -835,22 +851,19 @@ def pregunta_frecuente_estado(request, pk):
 @permission_required('interna.change_pedido', raise_exception=True)
 @require_POST
 def pedido_cambiar_estado(request, pk):
-    pedido = get_object_or_404(Pedido, pk=pk)
-    nueva_etapa = request.POST.get('etapa')    
-    etapas_validas = [e[0] for e in Pedido.ETAPAS]
+    try:
+        actualizado = _registrar_etapa_pedido(pk, request.POST.get('etapa', ''), request.POST.get('etapa_anterior'), request.user)
 
-    if pedido.tipo_pedido == 'personalizado':
-        return HttpResponseForbidden('La Gestión de Etapas de pedidos Personalizados aún no está Habilitada')
+    except ValidationError as error:
+        messages.error(request, ' '.join(error.messages))
 
-    if nueva_etapa in etapas_validas:
-        pedido.etapa = nueva_etapa
-        pedido.save(update_fields=['etapa'])
-        HistorialEtapaPedido.objects.create(
-            pedido=pedido,
-            etapa=nueva_etapa,
-            responsable=request.user
-        )
-    return redirect('pedido_detalles', pk=pedido.pk)
+    else:
+        if actualizado:
+            messages.success(request, 'Etapa del Pedido Actualizada')
+        else:
+            messages.info(request, 'La Etapa ya Estaba Registrada')
+
+    return redirect('pedido_detalles', pk=pk)
 
 @login_required
 @permission_required("interna.view_consulta", raise_exception=True)
@@ -883,6 +896,7 @@ def consultas_listar(request):
             "estado": estado,
         },
     )
+
 @login_required
 @permission_required("interna.view_consulta", raise_exception=True)
 @require_http_methods(["GET"])
@@ -894,6 +908,7 @@ def consulta_detalle(request, pk):
         "interna/inventario/consulta_detalle.html",
         {"consulta": consulta},
     )
+
 @login_required
 @permission_required('interna.add_pedido', raise_exception=True)
 def pedido_personalizado_crear(request):
@@ -968,7 +983,8 @@ def pedido_personalizado_crear(request):
 
 def _puede_editar_encargo(pedido):
     return (
-        pedido.estado == 'pendiente'
+        not pedido.cancelado
+        and pedido.estado == 'pendiente'
         and not pedido.etapa
         and not pedido.pagos.exclude(estado="rechazado").exists()
         and not pedido.detalles_personalizados.filter(unidades_fabricadas__gt=0).exists()
@@ -1071,7 +1087,8 @@ def pedido_personalizado_publico(request, token):
         'opcion_invalida': 'Selecciona una Opción de Pago Válida',
         'error_inicio': 'No Pudimos Iniciar Webpay, Inténtalo Nuevamente',
         'condiciones_invalidas': 'Contacta a la Tienda para Revisar las Condiciones de Pago',
-        'monto_fuera_de_rango': 'Contacta a la Tienda para Revisar el Importe del Pago'
+        'monto_fuera_de_rango': 'Contacta a la Tienda para Revisar el Importe del Pago',
+        'pedido_cancelado': 'Este Pedido Está Cancelado y no Admite Nuevos Pagos'
     }
 
     respuesta = render(request, 'interna/inventario/pedido_personalizado_publico.html',
@@ -1089,3 +1106,381 @@ def pedido_personalizado_publico(request, token):
     respuesta['X-Robots-Tag'] = 'noindex, nofollow'
 
     return respuesta
+
+@transaction.atomic
+def _registrar_fabricacion_personalizada(pedido_pk, detalle_pk, cantidad, fabricadas_iniciales, responsable):
+    pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pedido_pk, tipo_pedido='personalizado')
+
+    if pedido.cancelado:
+        raise ValidationError('No se Puede Fabricar para un Pedido Cancelado')
+
+    detalle = get_object_or_404(DetallePedidoPersonalizado.objects.select_for_update(), pk=detalle_pk, pedido=pedido)
+    resumen = resumen_pagos_personalizado(pedido)
+
+    if pedido.estado not in ('pendiente', 'pagado') or pedido.etapa not in (None, '', 'en_confeccion'):
+        raise ValidationError('Este Pedido ya no Admite Fabricación')
+
+    if not (0 < pedido.adelanto_requerido <= resumen['total']):
+        raise ValidationError('Revisa el Total y el Adelanto Requerido del Pedido')
+
+    if resumen['adelanto_pendiente'] > 0:
+        raise ValidationError('El Adelanto debe estar Cubierto por Pagos Aprobados')
+
+    if detalle.unidades_fabricadas != fabricadas_iniciales:
+        raise ValidationError('La Fabricación de este Artículo Cambió, Vuelve a abrir el Formulario')
+
+    if cantidad <= 0 or cantidad > detalle.unidades_pendientes:
+        raise ValidationError(f'Puedes Fabricar entre 1 y ' f'{detalle.unidades_pendientes} Unidades Pendientes')
+
+    receta = list(MaterialPedidoPersonalizado.objects
+        .select_for_update()
+        .filter(detalle=detalle)
+        .order_by('materia_prima_id')
+    )
+
+    if not receta:
+        raise ValidationError('El Artículo no Tiene una Receta Registrada')
+
+    materias = {materia.pk: materia
+        for materia in (MateriaPrima.objects
+            .select_for_update()
+            .filter(pk__in=[fila.materia_prima_id for fila in receta])
+            .order_by('pk')
+        )
+    }
+
+    consumos = []
+
+    for fila in receta:
+        materia = materias[fila.materia_prima_id]
+
+        if not materia.estado or fila.cantidad_por_unidad <= 0:
+            raise ValidationError(f'Revisa la Cantidad o el Estado de {materia.nombre}')
+
+        consumo = fila.cantidad_por_unidad * cantidad
+
+        if materia.cantidad_actual < consumo:
+            raise ValidationError(f'No hay Stock Suficiente de {materia.nombre}')
+
+        consumos.append((materia, consumo))
+
+    actualizado = DetallePedidoPersonalizado.objects.filter(
+        pk=detalle.pk,
+        unidades_fabricadas=fabricadas_iniciales,
+        cantidad__gte=F('unidades_fabricadas') + cantidad,
+    ).update(
+        unidades_fabricadas=F('unidades_fabricadas') + cantidad,
+    )
+
+    if not actualizado:
+        raise ValidationError('El Artículo Cambió, Vuelve a Abrir el Formulario')
+
+    fabricacion = FabricacionPedidoPersonalizado.objects.create(detalle=detalle, cantidad=cantidad, responsable=responsable)
+
+    for materia, consumo in consumos:
+        actualizado = MateriaPrima.objects.filter(pk=materia.pk, estado=True, cantidad_actual__gte=consumo).update(
+            cantidad_actual=F('cantidad_actual') - consumo)
+
+        if not actualizado:
+            raise ValidationError(f'Cambió el Stock o el Estado de {materia.nombre}')
+
+        materia.refresh_from_db(fields=['cantidad_actual'])
+
+        MovimientoMateriaPrima.objects.create(
+            materia_prima=materia,
+            tipo='SALIDA',
+            motivo='FABRICACION',
+            cantidad=consumo,
+            saldo_resultante=materia.cantidad_actual,
+            responsable=responsable,
+            fabricacion_personalizada=fabricacion,
+            observacion=(f'Pedido Personalizado #{pedido.pk}, ' f'Artículo #{detalle.pk}: ' f'Fabricación de {cantidad} Unidad(es)')
+        )
+
+    if not pedido.etapa:
+        pedido.etapa = 'en_confeccion'
+        pedido.save(update_fields=['etapa'])
+
+        HistorialEtapaPedido.objects.create(pedido=pedido, etapa='en_confeccion', responsable=responsable)
+
+    return fabricacion
+
+@login_required
+@permission_required('interna.fabricar_producto', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+def pedido_personalizado_fabricar(request, pk, detalle_pk):
+    pedido = get_object_or_404(Pedido, pk=pk, tipo_pedido='personalizado')
+    detalle = get_object_or_404(DetallePedidoPersonalizado, pk=detalle_pk, pedido=pedido)
+    form = FabricacionPedidoPersonalizadoForm(request.POST if request.method == 'POST' else None,
+        initial={
+            'cantidad': 1,
+            'fabricadas_iniciales': detalle.unidades_fabricadas
+        })
+
+    if request.method == 'POST' and form.is_valid():
+        try:
+            _registrar_fabricacion_personalizada(
+                pedido.pk,
+                detalle.pk,
+                form.cleaned_data['cantidad'],
+                form.cleaned_data['fabricadas_iniciales'],
+                request.user)
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, 'Fabricación Registrada y Materiales Descontados')
+            return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_fabricar.html',
+        {
+            'pedido': pedido,
+            'detalle': detalle,
+            'form': form,
+            'materiales': (detalle.materiales.select_related('materia_prima')
+            )
+        })
+
+def _contexto_etapas_pedido(pedido):
+    contexto = {
+        'etapas_disponibles': [],
+        'aviso_etapas': ''
+    }
+
+    if pedido.cancelado:
+        contexto['aviso_etapas'] = ('El Pedido Está Cancelado y no Admite Cambios de Etapa')
+        return contexto
+
+    flujos = {
+        ('normal', 'envio'): ['enviado', 'entregado'],
+        ('normal', 'retiro'): ['disponible_retiro', 'entregado'],
+        ('personalizado', 'envio'): ['en_confeccion', 'listo','enviado', 'entregado'],
+        ('personalizado', 'retiro'): ['en_confeccion', 'disponible_retiro', 'entregado']
+    }
+
+    flujo = flujos.get((pedido.tipo_pedido, pedido.tipo_entrega))
+
+    if flujo is None:
+        contexto['aviso_etapas'] = ('Revisa el Tipo de Pedido y de Entrega')
+        return contexto
+
+    actual = pedido.etapa or ''
+
+    if actual == 'entregado':
+        contexto['aviso_etapas'] = ('El Pedido ya fue Entregado')
+        return contexto
+
+    if not actual:
+        indice = -1
+    elif actual in flujo:
+        indice = flujo.index(actual)
+
+    elif (pedido.tipo_pedido == 'normal' and actual in ('en_confeccion', 'listo')):
+        indice = -1
+    elif (pedido.tipo_pedido == 'personalizado' and pedido.tipo_entrega == 'retiro' and actual == 'listo'):
+        indice = 0
+    else:
+        contexto['aviso_etapas'] = ('La Etapa Actual no Corresponde a este Flujo de Entrega')
+        return contexto
+
+    siguiente = flujo[indice + 1]
+
+    if pedido.tipo_pedido == 'normal':
+        if pedido.estado != 'pagado':
+            contexto['aviso_etapas'] = ('El Pedido debe estar Pagado para Gestionar su Entrega')
+            return contexto
+
+    else:
+        if pedido.estado not in ('pendiente', 'pagado'):
+            contexto['aviso_etapas'] = ('El Estado del Pedido no Permite Continuar')
+            return contexto
+
+        resumen = resumen_pagos_personalizado(pedido)
+
+        if not (
+            0 < pedido.adelanto_requerido <= resumen['total']
+        ):
+            contexto['aviso_etapas'] = ('Revisa el Total y el Adelanto Requerido')
+            return contexto
+
+        if resumen['adelanto_pendiente'] > 0:
+            contexto['aviso_etapas'] = ('Falta Cubrir el Adelanto con Pagos Aprobados')
+            return contexto
+
+        articulos = list(pedido.detalles_personalizados.all())
+
+        if siguiente != 'en_confeccion' and (
+            not articulos
+            or any(articulo.unidades_fabricadas != articulo.cantidad for articulo in articulos)
+        ):
+            contexto['aviso_etapas'] = ('Falta Completar la Fabricación de Todos los Artículos')
+            return contexto
+
+        if (siguiente == 'entregado' and resumen['saldo'] > 0):
+            contexto['aviso_etapas'] = ('Debes Confirmar el Pago del Saldo antes de Entregar')
+            return contexto
+
+    contexto['etapas_disponibles'] = [(siguiente, dict(Pedido.ETAPAS)[siguiente])]
+
+    return contexto
+
+@transaction.atomic
+def _registrar_etapa_pedido(pedido_pk, nueva_etapa, etapa_anterior, responsable):
+    pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pedido_pk)
+
+    if pedido.cancelado:
+        raise ValidationError('El Pedido Está Cancelado y no Admite Cambios de Etapa')
+
+    actual = pedido.etapa or ''
+
+    if nueva_etapa and nueva_etapa == actual:
+        return False
+
+    if etapa_anterior != actual:
+        raise ValidationError('El Pedido Cambió, Revisa su Etapa Actual e Inténtalo Nuevamente')
+
+    contexto = _contexto_etapas_pedido(pedido)
+    permitidas = [valor for valor, etiqueta in contexto['etapas_disponibles']]
+
+    if nueva_etapa not in permitidas:
+        raise ValidationError(contexto['aviso_etapas'] or 'La Etapa Seleccionada no está Permitida')
+
+    actualizado = Pedido.objects.filter(pk=pedido.pk, etapa=pedido.etapa, estado=pedido.estado, cancelado=False).update(etapa=nueva_etapa)
+
+    if not actualizado:
+        raise ValidationError('El Pedido Cambió, Vuelve a Consultar sus Detalles')
+
+    HistorialEtapaPedido.objects.create(pedido=pedido, etapa=nueva_etapa, responsable=responsable)
+
+    return True
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def pedido_personalizado_datos_editar(request, pk):
+    consulta = Pedido.objects
+
+    if request.method == 'POST':
+        consulta = consulta.select_for_update()
+
+    pedido = get_object_or_404(consulta, pk=pk, tipo_pedido='personalizado')
+
+    if pedido.etapa == 'entregado':
+        messages.error(request, 'No se Pueden Modificar los Datos de un Pedido Entregado')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    datos = request.POST if request.method == 'POST' else None
+
+    form = PedidoPersonalizadoDatosForm(data=datos, instance=pedido)
+
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Datos del Pedido Actualizados')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_datos_editar.html',
+        {
+            'form': form,
+            'pedido': pedido,
+        }
+    )
+
+@login_required
+@permission_required('interna.change_pedido', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def pedido_personalizado_receta_editar(request, pk, detalle_pk):
+    es_post = request.method == 'POST'
+    pedidos = Pedido.objects.filter(tipo_pedido='personalizado')
+    detalles = DetallePedidoPersonalizado.objects.all()
+
+    if es_post:
+        pedidos = pedidos.select_for_update()
+        detalles = detalles.select_for_update()
+
+    pedido = get_object_or_404(pedidos, pk=pk)
+    detalle = get_object_or_404(detalles, pk=detalle_pk, pedido=pedido)
+
+    receta_bloqueada = (
+        pedido.cancelado
+        or pedido.estado not in ('pendiente', 'pagado')
+        or pedido.etapa not in (None, '', 'en_confeccion')
+        or detalle.unidades_fabricadas > 0
+        or detalle.fabricaciones.exists()
+    )
+
+    if receta_bloqueada:
+        messages.error(request, 'La receta no se puede modificar, el artículo ya tiene fabricaciones o la etapa del pedido no permite cambios')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    materiales = MaterialPedidoPersonalizadoFormSet(data=request.POST if es_post else None, instance=detalle, prefix='materiales')
+
+    fila_vacia = materiales.empty_form
+    filas = list(materiales.forms)
+    filas.append(fila_vacia)
+
+    for fila in filas:
+        disponibles = Q(estado=True)
+
+        if fila.instance.pk:
+            disponibles |= Q(pk=fila.instance.materia_prima_id)
+
+        fila.fields['materia_prima'].queryset = (
+            MateriaPrima.objects
+            .filter(disponibles)
+            .order_by('nombre')
+        )
+
+        fila.fields['materia_prima'].widget.attrs['class'] = 'form-select'
+        fila.fields['cantidad_por_unidad'].widget.attrs['class'] = 'form-control'
+        fila.fields['DELETE'].widget.attrs['class'] = 'form-check-input'
+        fila.fields['DELETE'].label = 'Quitar este material'
+
+    if es_post and materiales.is_valid():
+        materiales.save()
+        messages.success(request, 'Receta del artículo actualizada.')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    return render(request, 'interna/inventario/pedido_personalizado_receta_editar.html',
+        {
+            'pedido': pedido,
+            'detalle': detalle,
+            'materiales': materiales,
+            'fila_vacia': fila_vacia,
+        }
+    )
+
+@login_required
+@permission_required('interna.cancelar_pedido', raise_exception=True)
+@require_POST
+@transaction.atomic
+def pedido_personalizado_cancelar(request, pk):
+    pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pk, tipo_pedido='personalizado')
+
+    if pedido.cancelado:
+        messages.info(request, 'Este Pedido ya Está Cancelado')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    if pedido.etapa == 'entregado':
+        messages.error(request, 'No se Puede Cancelar un Pedido que ya fue Entregado')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    if pedido.pagos.filter(estado__in=['pendiente', 'en_revision']).exists():
+        messages.error(request, 'Primero Debes Resolver los Pagos Pendientes o en Revisión')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    form = CancelacionPedidoPersonalizadoForm(data=request.POST)
+
+    if not form.is_valid():
+        messages.error(request,'Indica un Motivo Válido')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    pedido.cancelado = True
+    pedido.fecha_cancelacion = timezone.now()
+    pedido.cancelado_por = request.user
+    pedido.motivo_cancelacion = form.cleaned_data['motivo']
+
+    pedido.save(update_fields=['cancelado', 'fecha_cancelacion', 'cancelado_por', 'motivo_cancelacion'])
+
+    messages.success(request, 'Pedido cancelado correctamente.')
+    return redirect('pedido_detalles', pk=pedido.pk)

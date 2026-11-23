@@ -15,7 +15,6 @@ def crear_enlace_pedido_personalizado(request, pedido):
 
     return request.build_absolute_uri(ruta)
 
-
 def obtener_pedido_personalizado_por_token(token):
     try:
         codigo = signing.loads(token, salt=FIRMA_PEDIDO_PERSONALIZADO, max_age=VIGENCIA_ENLACE)
@@ -25,7 +24,6 @@ def obtener_pedido_personalizado_por_token(token):
 
     return get_object_or_404(
         Pedido.objects.prefetch_related('detalles_personalizados', 'pagos'), id_compra=codigo, tipo_pedido='personalizado')
-
 
 def resumen_pagos_personalizado(pedido):
     total = pedido.total

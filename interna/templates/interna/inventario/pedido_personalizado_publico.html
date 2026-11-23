@@ -1,185 +1,264 @@
 {% load static l10n %}
 <!DOCTYPE html>
-<html lang="es">
+<html lang='es'>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="referrer" content="same-origin">
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta name='referrer' content='same-origin'>
     <title>Tu Pedido Personalizado | Amigos del Vuelo</title>
-    <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
+    <link rel='stylesheet' href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/css/bootstrap.min.css">
+    <link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+    <link rel='stylesheet' href="{% static 'interna/css/pedido_publico.css' %}">
 </head>
-
 <body>
-<main class='inventario'>
-    <header class='inventario-cabecera'>
-        <div>
-            <p>Amigos del Vuelo</p>
-            <h1>Tu pedido Personalizado</h1>
-            <p>Revisa el detalle, los pagos y el avance de tu encargo.</p>
+<main class='container py-4 encargo-publico'>
+    <header class='encargo-cabecera mb-4'>
+        <div class='d-flex justify-content-between align-items-start flex-wrap gap-3'>
+            <div>
+                <p class='small text-uppercase mb-2'>Amigos del Vuelo</p>
+                <h1 class='h3 mb-2'>TU PEDIDO PERSONALIZADO</h1>
+                <p class='mb-0'>Aquí puedes revisar tu encargo y pagos
+                </p>
+            </div>
+            <span class="badge {% if pedido.cancelado %}text-bg-danger{% elif pedido.etapa == 'entregado' %}text-bg-success{% else %}text-bg-light{% endif %}">
+                {% if pedido.cancelado %}
+                    Cancelado
+                {% else %}
+                    {{ pedido.get_etapa_display|default:'Pedido registrado' }}
+                {% endif %}
+            </span>
         </div>
+        <p class='encargo-codigo small mt-3 mb-0'>
+            Código: {{ pedido.id_compra }}
+        </p>
     </header>
 
-    <section class='inventario-panel'>
-        <h2>Información del Pedido</h2>
+    {% if pedido.cancelado %}
+        <div class='alert alert-danger mb-4'>
+            <strong>Este Pedido Está Cancelado</strong>
+            <p>puedes consultar su historial, pero no realizar nuevos pagos</p>
+            <small class='d-block mt-1'>
+                Fecha de Cancelación: {{ pedido.fecha_cancelacion|date:'d/m/Y H:i' }}
+            </small>
+        </div>
+    {% endif %}
 
-        <p>
-            <strong>Código:</strong>
-            {{ pedido.id_compra }}
-        </p>
-        <p>
-            <strong>A Nombre de:</strong>
-            {{ pedido.nombre_invitado }}
-        </p>
-        <p>
-            <strong>Fecha del Pedido:</strong>
-            {{ pedido.fecha_pedido|date:"d/m/Y" }}
-        </p>
-        <p>
-            <strong>Fecha Acordada de Entrega:</strong>
-            {{ pedido.fecha_compromiso|date:"d/m/Y" }}
-        </p>
+    {% if aviso %}
+        <div class='alert alert-info mb-4'>{{ aviso }}</div>
+    {% endif %}
 
-        <h2>Artículos Encargados</h2>
-
-        {% for detalle in pedido.detalles_personalizados.all %}
-            <article>
-                <h3>Artículo {{ forloop.counter }}</h3>
-
-                {{ detalle.descripcion|linebreaks }}
-
-                {% if detalle.imagen_referencia %}
-                    <img src='{{ detalle.imagen_referencia.url }}' alt='Referencia del artículo personalizado' width='250'>
-                {% endif %}
-
-                <p>
-                    <strong>Cantidad:</strong>
-                    {{ detalle.cantidad }}
-                </p>
-                <p>
-                    <strong>Precio por Unidad:</strong>
-                    ${{ detalle.precio_unitario|floatformat:"0g" }}
-                </p>
-                <p>
-                    <strong>Subtotal:</strong>
-                    ${{ detalle.subtotal|floatformat:"0g" }}
-                </p>
-                <p>
-                    <strong>Unidades Fabricadas:</strong>
-                    {{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}
-                </p>
-            </article>
-        {% endfor %}
-
-        <h2>Resumen de Pagos</h2>
-
-        <p>
-            <strong>Total Acordado:</strong>
-            ${{ resumen.total|floatformat:"0g" }}
-        </p>
-        <p>
-            <strong>Adelanto Requerido:</strong>
-            ${{ pedido.adelanto_requerido|floatformat:"0g" }}
-        </p>
-        <p>
-            <strong>Pagos Confirmados:</strong>
-            ${{ resumen.abonado|floatformat:"0g" }}
-        </p>
-        <p>
-            <strong>Saldo Pendiente:</strong>
-            ${{ resumen.saldo|floatformat:"0g" }}
-        </p>
-
-        {% if resumen.adelanto_pendiente > 0 %}
-            <p>
-                Falta confirmar
-                <strong>
-                    ${{ resumen.adelanto_pendiente|floatformat:"0g" }}
-                </strong>
-                para completar el adelanto.
-            </p>
-        {% elif resumen.saldo > 0 %}
-            <p>El adelanto está cubierto, aún queda un saldo pendiente.</p>
-        {% else %}
-            <p>El total del pedido está pagado.</p>
-        {% endif %}
-
-        {% if aviso %}
-            <p role='status'>{{ aviso }}</p>
-        {% endif %}
-
-        {% if pago_webpay_pendiente %}
-            <p>
-                Hay un intento de Webpay pendiente de resolver, consulta su resultado antes de iniciar otro pago
-            </p>
-
-            <form method='post' action="{% url 'pedido_personalizado_webpay_consultar' token pago_webpay_pendiente.pk %}">
-                {% csrf_token %}
-                <button type='submit'>Consultar Resultado del Pago</button>
-            </form>
-
-        {% elif hay_pago_en_tramite %}
-            <p>Hay un Pago Pendiente de Revisión</p>
-
-        {% elif resumen.saldo > 0 %}
-            <form method='post' action="{% url 'pedido_personalizado_webpay_iniciar' token %}">
-                {% csrf_token %}
-
-                <input type='hidden' name='total_esperado' value='{{ resumen.total|unlocalize }}'>
-
-                {% if resumen.adelanto_pendiente > 0 %}
-                    <button type='submit' name='opcion' value='adelanto'>
-                        Pagar Adelanto:
-                        ${{ resumen.adelanto_pendiente|floatformat:"0g" }}
-                    </button>
-                {% endif %}
-
-                <button type='submit' name='opcion' value='saldo'>
-                    Pagar Saldo Completo:
-                    ${{ resumen.saldo|floatformat:"0g" }}
-                </button>
-            </form>
-        {% endif %}
-
-        <h3>Registro de Pagos</h3>
-
-        <ul>
-            {% for pago in pedido.pagos.all %}
-                <li>
-                    {{ pago.fecha_creacion|date:"d/m/Y H:i" }}
-                    — {{ pago.get_metodo_display }}
-                    — ${{ pago.monto|floatformat:"0g" }}
-                    — {{ pago.get_estado_display }}
-                </li>
-            {% empty %}
-                <li>Todavía no hay pagos registrados.</li>
-            {% endfor %}
-        </ul>
-
-        <h2>Seguimiento y Entrega</h2>
-
-        <p>
-            <strong>Avance:</strong>
-            {% if pedido.etapa %}
-                {{ pedido.get_etapa_display }}
-            {% elif resumen.adelanto_pendiente > 0 %}
-                Pendiente de confirmar el adelanto
-            {% else %}
-                Adelanto confirmado, preparación pendiente
-            {% endif %}
-        </p>
-
-        <p>
-            <strong>Entrega:</strong>
-            {{ pedido.get_tipo_entrega_display }}
-        </p>
-
-        {% if pedido.tipo_entrega == 'envio' %}
-            <p>
-                <strong>Dirección:</strong>
-                {{ pedido.direccion_invitado }}
-            </p>
-        {% endif %}
+    <section class='card mb-4'>
+        <div class='card-body p-4'>
+            <h2 class='h5 mb-3'>Resumen del Pedido</h2>
+            <div class='row g-3'>
+                <div class='col-6 col-lg-3'>
+                    <div class='encargo-metrica encargo-total h-100'>
+                        <small>Total Acordado</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ resumen.total|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+                <div class='col-6 col-lg-3'>
+                    <div class='encargo-metrica h-100'>
+                        <small>Adelanto Requerido</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ pedido.adelanto_requerido|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+                <div class='col-6 col-lg-3'>
+                    <div class='encargo-metrica bg-success-subtle h-100'>
+                        <small>Pagos Confirmados</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ resumen.abonado|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+                <div class='col-6 col-lg-3'>
+                    <div class='encargo-metrica bg-warning-subtle h-100'>
+                        <small>{% if pedido.cancelado %}Importe no Abonado{% else %}Saldo Pendiente{% endif %}</small>
+                        <p class='fs-4 fw-semibold mb-0'>${{ resumen.saldo|floatformat:'0g' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
+
+    <div class='row g-4'>
+        <div class='col-lg-8'>
+            <h2 class='h5 mb-3'>Artículos de tu Encargo</h2>
+
+            {% for detalle in pedido.detalles_personalizados.all %}
+                <article class='card mb-3'>
+                    <div class='card-body p-4'>
+                        <h3 class='h6 mb-3'>Artículo {{ forloop.counter }}</h3>
+
+                        <div class='d-flex flex-column flex-sm-row gap-3'>
+                            {% if detalle.imagen_referencia %}
+                                <img src='{{ detalle.imagen_referencia.url }}' alt='Referencia del artículo personalizado' class='encargo-foto rounded-3 flex-shrink-0'>
+                            {% endif %}
+                            <div class='text-break flex-grow-1'>
+                                {{ detalle.descripcion|linebreaks }}
+                            </div>
+                        </div>
+
+                        <div class='row g-3 bg-light rounded-3 p-2 my-3'>
+                            <div class='col-6 col-sm-4'>
+                                <small class='text-secondary'>Cantidad</small>
+                                <p class='fw-semibold mb-0'>{{ detalle.cantidad }}</p>
+                            </div>
+                            <div class='col-6 col-sm-4'>
+                                <small class='text-secondary'>Precio Unitario</small>
+                                <p class='fw-semibold mb-0'>${{ detalle.precio_unitario|floatformat:'0g' }}</p>
+                            </div>
+                            <div class='col-12 col-sm-4'>
+                                <small class='text-secondary'>Subtotal</small>
+                                <p class='fw-semibold mb-0'>${{ detalle.subtotal|floatformat:'0g' }}</p>
+                            </div>
+                        </div>
+
+                        <p class='small text-secondary mb-1'>
+                            Fabricadas: {{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}
+                        </p>
+                        <progress value='{{ detalle.unidades_fabricadas|unlocalize }}' max='{{ detalle.cantidad|unlocalize }}'>
+                            {{ detalle.unidades_fabricadas }} de {{ detalle.cantidad }}
+                        </progress>
+                    </div>
+                </article>
+            {% empty %}
+                <p class='text-secondary'>Todavía no hay Artículos Registrados</p>
+            {% endfor %}
+
+            <section class='card mt-4' id='registro-pagos'>
+                <div class='card-body p-4'>
+                    <h2 class='h5 mb-3'>Registro de Pagos</h2>
+                    <div class='table-responsive'>
+                        <table class='table align-middle small mb-0'>
+                            <thead class='table-light'>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Método</th>
+                                    <th class='text-end'>Monto</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pago in pedido.pagos.all %}
+                                    <tr>
+                                        <td class='text-nowrap'>{{ pago.fecha_creacion|date:'d/m/Y H:i' }}</td>
+                                        <td>{{ pago.get_metodo_display }}</td>
+                                        <td class='text-end text-nowrap'>${{ pago.monto|floatformat:'0g' }}</td>
+                                        <td>
+                                            <span class="badge {% if pago.estado == 'aprobado' %}text-bg-success{% elif pago.estado == 'rechazado' %}text-bg-danger{% else %}text-bg-warning{% endif %}">
+                                                {{ pago.get_estado_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan='4' class='text-secondary py-3'>
+                                            Todavía no hay Pagos Registrados
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <aside class='col-lg-4'>
+            <section class='card mb-4'>
+                <div class='card-body p-4'>
+                    <h2 class='h5 mb-3'>Pago de tu Pedido</h2>
+
+                    {% if pedido.cancelado %}
+                        <p class='text-secondary mb-0'>
+                            Los importes se conservan como referencia, este pedido no admite nuevos pagos
+                        </p>
+                    {% elif resumen.adelanto_pendiente > 0 %}
+                        <p class='text-secondary'>
+                            Faltan <strong>${{ resumen.adelanto_pendiente|floatformat:'0g' }}</strong> Para Completar el Adelanto
+                        </p>
+                    {% elif resumen.saldo > 0 %}
+                        <p class='text-secondary'>
+                            Tu Adelanto Está Confirmado, Puedes Pagar el Saldo Restante
+                        </p>
+                    {% else %}
+                        <p class='text-success fw-semibold mb-0'>
+                            El Total de tu Pedido Está Pagado
+                        </p>
+                    {% endif %}
+
+                    {% if pago_webpay_pendiente %}
+                        <p class='small text-secondary mt-3'>
+                            Hay un Intento de Pago Pendiente de Resolver, Consulta su Resultado Antes de Continuar
+                        </p>
+                        <form method='post' action="{% url 'pedido_personalizado_webpay_consultar' token pago_webpay_pendiente.pk %}">
+                            {% csrf_token %}
+                            <button type='submit' class='btn btn-outline-secondary w-100'>
+                                Consultar Resultado del Pago
+                            </button>
+                        </form>
+
+                    {% elif hay_pago_en_tramite %}
+                        <p class='small text-secondary mt-3 mb-0'>Hay un Pago Pendiente de Revisión</p>
+
+                    {% elif not pedido.cancelado and resumen.saldo > 0 %}
+                        <form method='post' action="{% url 'pedido_personalizado_webpay_iniciar' token %}" class='d-grid gap-2 mt-3'>
+                            {% csrf_token %}
+                            <input type='hidden' name='total_esperado' value='{{ resumen.total|unlocalize }}'>
+
+                            {% if resumen.adelanto_pendiente > 0 %}
+                                <button type='submit' name='opcion' value='adelanto' class='btn btn-dark'>
+                                    Pagar Adelanto · ${{ resumen.adelanto_pendiente|floatformat:'0g' }}
+                                </button>
+                            {% endif %}
+
+                            <button type='submit' name='opcion' value='saldo' class='btn {% if resumen.adelanto_pendiente > 0 %}btn-outline-secondary{% else %}btn-dark{% endif %}'>
+                                Pagar Saldo Completo · ${{ resumen.saldo|floatformat:'0g' }}
+                            </button>
+                        </form>
+                        <p class='small text-secondary mt-3 mb-0'>Continuarás a Webpay para Realizar el Pago</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class='card'>
+                <div class='card-body p-4'>
+                    <h2 class='h5 mb-3'>Seguimiento y Entrega</h2>
+                    <p class='fw-semibold'>
+                        {% if pedido.cancelado %}
+                            Pedido Cancelado
+                        {% elif pedido.etapa %}
+                            {{ pedido.get_etapa_display }}
+                        {% elif resumen.adelanto_pendiente > 0 %}
+                            Pendiente de Confirmar el Adelanto
+                        {% else %}
+                            Adelanto Confirmado, Preparación Pendiente
+                        {% endif %}
+                    </p>
+
+                    {% if pedido.cancelado and pedido.etapa %}
+                        <p class='small text-secondary'>Última Etapa Registrada: {{ pedido.get_etapa_display }}</p>
+                    {% endif %}
+
+                    <hr>
+                    <dl class='mb-0'>
+                        <dt class='small text-secondary'>Tipo de Entrega</dt>
+                        <dd>{{ pedido.get_tipo_entrega_display }}</dd>
+
+                        {% if pedido.tipo_entrega == 'envio' %}
+                            <dt class='small text-secondary'>Dirección</dt>
+                            <dd class='text-break'>{{ pedido.direccion_invitado }}</dd>
+                        {% endif %}
+
+                        <dt class='small text-secondary'>Fecha Acordada</dt>
+                        <dd>{{ pedido.fecha_compromiso|date:'d/m/Y'|default:'Sin registrar' }}</dd>
+
+                        <dt class='small text-secondary'>Fecha del Pedido</dt>
+                        <dd class='mb-0'>{{ pedido.fecha_pedido|date:'d/m/Y' }}</dd>
+                    </dl>
+                </div>
+            </section>
+        </aside>
+    </div>
 </main>
 </body>
 </html>

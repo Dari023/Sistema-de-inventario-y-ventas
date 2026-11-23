@@ -1,0 +1,66 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block content %}
+<main class='container py-4'>
+    <header class='d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4'>
+        <div>
+            <h1 class='h3 mb-1'>EDITAR RECETA DE PEDIDO #{{ pedido.pk }}</h1>
+            <p class='text-secondary mb-0'>Artículo #{{ detalle.pk }}</p>
+        </div>
+        <a href="{% url 'pedido_detalles' pedido.pk %}" class='btn btn-outline-secondary'>Volver al Pedido</a>
+    </header>
+
+    <section class='card border-0 shadow-sm'>
+        <div class='card-body p-4'>
+            <h2 class='h5'>Características del Artículo</h2>
+            <div class='text-break'>{{ detalle.descripcion|linebreaks }}</div>
+            <p><strong>Unidades Encargadas:</strong> {{ detalle.cantidad }}</p>
+
+            <div class='alert alert-light border'>
+                Indica el material necesario para fabricar una unidad, guardar la receta no descuenta inventario
+            </div>
+
+            <form method='post'>
+                {% csrf_token %}
+                {{ materiales.management_form }}
+
+                <div class='text-danger mb-3'>
+                    {{ materiales.non_form_errors }}
+                    {{ materiales.management_form.errors }}
+                </div>
+
+                <div id='lista-materiales'>
+                    {% for fila in materiales %}
+                        <div class='border rounded-3 p-3 mb-3'>
+                            {{ fila.as_p }}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <template id='material-vacio'>
+                    <div class='border rounded-3 p-3 mb-3'>
+                        {{ fila_vacia.as_p }}
+                    </div>
+                </template>
+
+                <button type='button' id='agregar-material' class='btn btn-outline-dark'>
+                    Agregar Material
+                </button>
+
+                <div class='d-flex flex-wrap gap-2 border-top pt-3 mt-4'>
+                    <button type='submit' class='btn btn-dark'>Guardar Receta</button>
+                    <a href="{% url 'pedido_detalles' pedido.pk %}" class='btn btn-outline-secondary'>
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'interna/js/pedido_personalizado_receta.js' %}" defer></script>
+{% endblock %}
