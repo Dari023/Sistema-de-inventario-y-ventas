@@ -484,3 +484,11 @@ class PedidoPersonalizadoDatosForm(PedidoPersonalizadoForm):
             raise forms.ValidationError('El Adelanto no Puede Superar el Total del Pedido')
 
         return adelanto
+
+class CancelacionPedidoPersonalizadoForm(forms.Form):
+    motivo = forms.CharField(label='Motivo de cancelación', max_length=500, widget=forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3
+            }
+        )
+    )

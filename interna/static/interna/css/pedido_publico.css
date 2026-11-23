@@ -1,0 +1,69 @@
+.encargo-publico {
+    max-width: 72rem;
+    color: #3b3446;
+}
+
+.encargo-cabecera {
+    padding: 2rem;
+    border-radius: 1rem;
+    border-bottom: 0.25rem solid #f38a6a;
+    background: #3b3446;
+    color: #fff;
+}
+
+.encargo-codigo {
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    overflow-wrap: anywhere;
+}
+
+.encargo-publico .card {
+    border: 1px solid #ede3de;
+    border-radius: 1rem;
+    box-shadow: 0 0.35rem 1.25rem rgba(59, 52, 70, 0.05);
+}
+
+.encargo-metrica {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: #f5f2f6;
+}
+
+.encargo-total {
+    background: #3b3446;
+    color: #fff;
+}
+
+.encargo-foto {
+    width: 8rem;
+    height: 8rem;
+    object-fit: contain;
+    background: #fff8f4;
+}
+
+.encargo-publico progress {
+    width: 100%;
+    height: 0.65rem;
+    accent-color: #5ba850;
+}
+
+.encargo-publico .btn-dark {
+    --bs-btn-bg: #3b3446;
+    --bs-btn-border-color: #3b3446;
+    --bs-btn-hover-bg: #55485f;
+    --bs-btn-hover-border-color: #55485f;
+    --bs-btn-active-bg: #55485f;
+    --bs-btn-active-border-color: #55485f;
+}
+
+.encargo-publico .btn {
+    padding: 0.7rem 1rem;
+    border-radius: 0.65rem;
+}
+
+@media (max-width: 36rem) {
+    .encargo-cabecera {
+        padding: 1.25rem;
+    }
+}

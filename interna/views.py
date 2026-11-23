@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.db.models import F
+from django.utils import timezone
 from django import forms
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -47,7 +48,8 @@ from .forms import (
     MaterialPedidoPersonalizadoFormSet,
     ArticulosPedidoPersonalizadoFormSet,
     FabricacionPedidoPersonalizadoForm,
-    PedidoPersonalizadoDatosForm)
+    PedidoPersonalizadoDatosForm,
+    CancelacionPedidoPersonalizadoForm)
 
 @login_required
 def home(request):
@@ -850,12 +852,7 @@ def pregunta_frecuente_estado(request, pk):
 @require_POST
 def pedido_cambiar_estado(request, pk):
     try:
-        actualizado = _registrar_etapa_pedido(
-            pk,
-            request.POST.get('etapa', ''),
-            request.POST.get('etapa_anterior'),
-            request.user
-        )
+        actualizado = _registrar_etapa_pedido(pk, request.POST.get('etapa', ''), request.POST.get('etapa_anterior'), request.user)
 
     except ValidationError as error:
         messages.error(request, ' '.join(error.messages))
@@ -986,7 +983,8 @@ def pedido_personalizado_crear(request):
 
 def _puede_editar_encargo(pedido):
     return (
-        pedido.estado == 'pendiente'
+        not pedido.cancelado
+        and pedido.estado == 'pendiente'
         and not pedido.etapa
         and not pedido.pagos.exclude(estado="rechazado").exists()
         and not pedido.detalles_personalizados.filter(unidades_fabricadas__gt=0).exists()
@@ -1089,7 +1087,8 @@ def pedido_personalizado_publico(request, token):
         'opcion_invalida': 'Selecciona una Opción de Pago Válida',
         'error_inicio': 'No Pudimos Iniciar Webpay, Inténtalo Nuevamente',
         'condiciones_invalidas': 'Contacta a la Tienda para Revisar las Condiciones de Pago',
-        'monto_fuera_de_rango': 'Contacta a la Tienda para Revisar el Importe del Pago'
+        'monto_fuera_de_rango': 'Contacta a la Tienda para Revisar el Importe del Pago',
+        'pedido_cancelado': 'Este Pedido Está Cancelado y no Admite Nuevos Pagos'
     }
 
     respuesta = render(request, 'interna/inventario/pedido_personalizado_publico.html',
@@ -1111,6 +1110,10 @@ def pedido_personalizado_publico(request, token):
 @transaction.atomic
 def _registrar_fabricacion_personalizada(pedido_pk, detalle_pk, cantidad, fabricadas_iniciales, responsable):
     pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pedido_pk, tipo_pedido='personalizado')
+
+    if pedido.cancelado:
+        raise ValidationError('No se Puede Fabricar para un Pedido Cancelado')
+
     detalle = get_object_or_404(DetallePedidoPersonalizado.objects.select_for_update(), pk=detalle_pk, pedido=pedido)
     resumen = resumen_pagos_personalizado(pedido)
 
@@ -1243,6 +1246,10 @@ def _contexto_etapas_pedido(pedido):
         'aviso_etapas': ''
     }
 
+    if pedido.cancelado:
+        contexto['aviso_etapas'] = ('El Pedido Está Cancelado y no Admite Cambios de Etapa')
+        return contexto
+
     flujos = {
         ('normal', 'envio'): ['enviado', 'entregado'],
         ('normal', 'retiro'): ['disponible_retiro', 'entregado'],
@@ -1319,6 +1326,10 @@ def _contexto_etapas_pedido(pedido):
 @transaction.atomic
 def _registrar_etapa_pedido(pedido_pk, nueva_etapa, etapa_anterior, responsable):
     pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pedido_pk)
+
+    if pedido.cancelado:
+        raise ValidationError('El Pedido Está Cancelado y no Admite Cambios de Etapa')
+
     actual = pedido.etapa or ''
 
     if nueva_etapa and nueva_etapa == actual:
@@ -1333,12 +1344,11 @@ def _registrar_etapa_pedido(pedido_pk, nueva_etapa, etapa_anterior, responsable)
     if nueva_etapa not in permitidas:
         raise ValidationError(contexto['aviso_etapas'] or 'La Etapa Seleccionada no está Permitida')
 
-    actualizado = Pedido.objects.filter(pk=pedido.pk, etapa=pedido.etapa, estado=pedido.estado).update(etapa=nueva_etapa)
+    actualizado = Pedido.objects.filter(pk=pedido.pk, etapa=pedido.etapa, estado=pedido.estado, cancelado=False).update(etapa=nueva_etapa)
 
     if not actualizado:
         raise ValidationError('El Pedido Cambió, Vuelve a Consultar sus Detalles')
 
-    pedido.etapa = nueva_etapa
     HistorialEtapaPedido.objects.create(pedido=pedido, etapa=nueva_etapa, responsable=responsable)
 
     return True
@@ -1392,7 +1402,8 @@ def pedido_personalizado_receta_editar(request, pk, detalle_pk):
     detalle = get_object_or_404(detalles, pk=detalle_pk, pedido=pedido)
 
     receta_bloqueada = (
-        pedido.estado not in ('pendiente', 'pagado')
+        pedido.cancelado
+        or pedido.estado not in ('pendiente', 'pagado')
         or pedido.etapa not in (None, '', 'en_confeccion')
         or detalle.unidades_fabricadas > 0
         or detalle.fabricaciones.exists()
@@ -1438,3 +1449,38 @@ def pedido_personalizado_receta_editar(request, pk, detalle_pk):
             'fila_vacia': fila_vacia,
         }
     )
+
+@login_required
+@permission_required('interna.cancelar_pedido', raise_exception=True)
+@require_POST
+@transaction.atomic
+def pedido_personalizado_cancelar(request, pk):
+    pedido = get_object_or_404(Pedido.objects.select_for_update(), pk=pk, tipo_pedido='personalizado')
+
+    if pedido.cancelado:
+        messages.info(request, 'Este Pedido ya Está Cancelado')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    if pedido.etapa == 'entregado':
+        messages.error(request, 'No se Puede Cancelar un Pedido que ya fue Entregado')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    if pedido.pagos.filter(estado__in=['pendiente', 'en_revision']).exists():
+        messages.error(request, 'Primero Debes Resolver los Pagos Pendientes o en Revisión')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    form = CancelacionPedidoPersonalizadoForm(data=request.POST)
+
+    if not form.is_valid():
+        messages.error(request,'Indica un Motivo Válido')
+        return redirect('pedido_detalles', pk=pedido.pk)
+
+    pedido.cancelado = True
+    pedido.fecha_cancelacion = timezone.now()
+    pedido.cancelado_por = request.user
+    pedido.motivo_cancelacion = form.cleaned_data['motivo']
+
+    pedido.save(update_fields=['cancelado', 'fecha_cancelacion', 'cancelado_por', 'motivo_cancelacion'])
+
+    messages.success(request, 'Pedido cancelado correctamente.')
+    return redirect('pedido_detalles', pk=pedido.pk)
