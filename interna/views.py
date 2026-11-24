@@ -4,6 +4,7 @@ from django.db.models import F
 from django.utils import timezone
 from django import forms
 from django.contrib import messages
+from django.template.defaultfilters import floatformat
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
 from decimal import Decimal, ROUND_HALF_UP
@@ -53,24 +54,19 @@ from .forms import (
 
 @login_required
 def home(request):
-    materias_criticas = list(
-        MateriaPrima.objects.filter(
-            estado=True,
-            cantidad_actual__lte=F("cantidad_critica")
-        ).order_by("nombre")
-    )
-
-    productos_criticos = list(
-        Producto.objects.filter(
-            activo=True,
-            stock_actual__lte=F("stock_critico")
-        ).order_by("nombre")
+    materias_criticas = list(MateriaPrima.objects.filter(estado=True, cantidad_actual__lte=F("cantidad_critica")).order_by("nombre"))
+    productos_criticos = list(Producto.objects.filter(activo=True, variantes__isnull=True, stock_actual__lte=F("stock_critico")).order_by("nombre"))
+    variantes_criticas = list(ProductoVariante.objects
+        .select_related('producto')
+        .filter(producto__activo=True, stock_actual__lte=F('producto__stock_critico'))
+        .order_by('producto__nombre', 'talla')
     )
 
     return render(request, "interna/dashboard.html", {
         "materias_criticas": materias_criticas,
         "productos_criticos": productos_criticos,
-        "total_alertas": len(materias_criticas) + len(productos_criticos),
+        'variantes_criticas': variantes_criticas,
+        'total_alertas': (len(materias_criticas) + len(productos_criticos) + len(variantes_criticas))
     })
 
 @login_required
@@ -351,21 +347,21 @@ def producto_fabricar(request, pk):
                     )
 
                     for materia_prima, consumo in consumos:
+                        stock_anterior = materia_prima.cantidad_actual
                         materia_prima.cantidad_actual -= consumo
-                        materia_prima.save(update_fields=["cantidad_actual"])
+                        materia_prima.save(update_fields=['cantidad_actual'])
 
                         MovimientoMateriaPrima.objects.create(
                             materia_prima=materia_prima,
-                            tipo="SALIDA",
-                            motivo="FABRICACION",
+                            tipo='SALIDA',
+                            motivo='FABRICACION',
                             cantidad=consumo,
                             saldo_resultante=materia_prima.cantidad_actual,
                             responsable=request.user,
-                            observacion=(
-                                f"Fabricación de {cantidad} unidad(es) de "
-                                f"{nombre} (ID {producto.pk})."
-                            ),
+                            observacion=(f'Fabricación de {cantidad} Unidad(es) de {nombre} (ID {producto.pk})')
                         )
+
+                        _avisar_stock_materia(request, materia_prima, stock_anterior, materia_prima.cantidad_actual)
 
                     destino_stock = variante if variante is not None else producto
                     destino_stock.stock_actual += cantidad
@@ -477,6 +473,7 @@ def materia_prima_editar(request, pk):
     return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
 
 @login_required
+@permission_required('interna.view_movimientomateriaprima', raise_exception=True)
 def movimientos_listar(request):
     movimientos = (
         MovimientoMateriaPrima.objects
@@ -484,11 +481,7 @@ def movimientos_listar(request):
         .all()
     )
 
-    return render(
-        request,
-        "interna/inventario/movimientos_listar.html",
-        {"movimientos": movimientos},
-    )
+    return render(request,"interna/inventario/movimientos_listar.html", {"movimientos": movimientos})
 
 @login_required
 @permission_required("interna.change_movimientomateriaprima", raise_exception=True,)
@@ -637,13 +630,21 @@ def producto_precio_sugerido(request):
 @require_http_methods(['GET', 'POST'])
 def configuracion_precio_editar(request):
     configuracion, creada = ConfiguracionPrecio.objects.get_or_create(pk=1)
+    desde_producto = request.GET.get('origen') == 'producto'
     datos = request.POST if request.method == 'POST' else None
     form = ConfiguracionPrecioForm(datos, instance=configuracion)
+
+    for campo in form.fields.values():
+        campo.widget.attrs['class'] = ('form-check-input'
+            if campo.widget.input_type == 'checkbox'
+            else 'form-control'
+    )
+
     if request.method == 'POST' and form.is_valid():
         form.save()
         messages.success(request, 'Configuración de Precios Actualizada')
-        return redirect('configuracion_precio_editar')
-    return render(request, 'interna/producto/configuracion_precio.html', {'form': form})
+        return redirect(request.get_full_path())
+    return render(request, 'interna/producto/configuracion_precio.html', {'form': form, 'desde_producto': desde_producto})
 
 def decimal_valido(valor, nombre):
     numero = Decimal(str(valor))
@@ -1219,15 +1220,20 @@ def pedido_personalizado_fabricar(request, pk, detalle_pk):
 
     if request.method == 'POST' and form.is_valid():
         try:
-            _registrar_fabricacion_personalizada(
+            fabricacion = _registrar_fabricacion_personalizada(
                 pedido.pk,
                 detalle.pk,
                 form.cleaned_data['cantidad'],
                 form.cleaned_data['fabricadas_iniciales'],
-                request.user)
+                request.user
+            )
+
         except ValidationError as error:
             form.add_error(None, error)
+
         else:
+            _avisar_materiales_fabricacion(request, fabricacion)
+
             messages.success(request, 'Fabricación Registrada y Materiales Descontados')
             return redirect('pedido_detalles', pk=pedido.pk)
 
@@ -1484,3 +1490,30 @@ def pedido_personalizado_cancelar(request, pk):
 
     messages.success(request, 'Pedido cancelado correctamente.')
     return redirect('pedido_detalles', pk=pedido.pk)
+
+def _avisar_stock_materia(request, materia, stock_anterior, stock_actual):
+    unidad = materia.get_unidad_de_medida_display()
+
+    if stock_actual <= 0 and stock_anterior > 0:
+        nivel = messages.ERROR
+        mensaje = (f'Stock Agotado Para: {materia.nombre}')
+
+    elif (
+        stock_anterior > materia.cantidad_critica
+        and 0 < stock_actual <= materia.cantidad_critica
+    ):
+        nivel = messages.WARNING
+        cantidad = floatformat(stock_actual, '-3')
+        minimo = floatformat(materia.cantidad_critica, '-3')
+        mensaje = (f'Stock Crítico Para: {materia.nombre}, Quedan {cantidad} {unidad} (Mínimo: {minimo} {unidad})')
+
+    else:
+        return
+
+    transaction.on_commit(lambda: messages.add_message(request, nivel, mensaje), robust=True)
+
+def _avisar_materiales_fabricacion(request, fabricacion):
+    movimientos = fabricacion.movimientos.select_related('materia_prima')
+
+    for movimiento in movimientos:
+        _avisar_stock_materia(request, movimiento.materia_prima, movimiento.saldo_resultante + movimiento.cantidad, movimiento.saldo_resultante)

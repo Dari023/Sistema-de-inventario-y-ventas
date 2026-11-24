@@ -8,7 +8,23 @@
     <header class="inventario-cabecera">
         <div>
             <h1>Dashboard</h1>
-            <p>Resumen del estado actual del inventario.</p>
+            <div class="alert {% if total_alertas > 0 %}alert-warning{% else %}alert-success{% endif %} d-flex align-items-center gap-3 mb-4">
+                <i class="bi {% if total_alertas > 0 %}bi-exclamation-triangle-fill{% else %}bi-check-circle-fill{% endif %} fs-4"></i>
+
+                <div>
+                    {% if total_alertas > 0 %}
+                        <strong>El Inventario Requiere Atención</strong>
+                        <p class='mb-0'>
+                            Hay {{ total_alertas }} Alertas de Productos o Materias Primas con Stock Crítico o Agotado
+                        </p>
+                    {% else %}
+                        <strong>Inventario sin Alertas</strong>
+                        <p class='mb-0'>
+                            No hay Productos ni Materias Primas con Stock Crítico
+                        </p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </header>
 
@@ -19,23 +35,14 @@
             Alertas de stock
         </h2>
 
-        <p>
-            {% if total_alertas > 0 %}
-                Hay {{ total_alertas }} productos o materiales
-                que requieren atención.
-            {% else %}
-                No hay productos ni materiales con stock crítico.
-            {% endif %}
-        </p>
-
         <table class="js-datatable"
             data-columna-acciones="5">
             <thead>
                 <tr>
                     <th>Tipo</th>
                     <th>Nombre</th>
-                    <th>Stock actual</th>
-                    <th>Stock crítico</th>
+                    <th>Stock Actual</th>
+                    <th>Stock Crítico</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
@@ -101,6 +108,39 @@
                     </td>
                 </tr>
                 {% endfor %}
+
+                {% for variante in variantes_criticas %}
+                <tr>
+                    <td>Producto</td>
+                    <td>
+                        {{ variante.producto.nombre }}
+                        <small class='d-block text-secondary'>
+                            Talla {{ variante.get_talla_display }}
+                        </small>
+                    </td>
+                    <td data-order='{{ variante.stock_actual|unlocalize }}'>
+                        {{ variante.stock_actual }}
+                    </td>
+                    <td data-order='{{ variante.producto.stock_critico|unlocalize }}'>
+                        {{ variante.producto.stock_critico }}
+                    </td>
+                    <td>
+                        {% if variante.stock_actual <= 0 %}
+                            <span class='estado estado-agotado'>Agotado</span>
+                        {% else %}
+                            <span class='estado estado-critico'>Crítico</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class='acciones'>
+                            <a href="{% url 'producto_detalles' variante.producto_id %}">
+                                Ver Detalles
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+
             </tbody>
         </table>
 

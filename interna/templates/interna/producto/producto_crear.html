@@ -244,12 +244,9 @@
                         </div>
 
                         {% if perms.interna.change_configuracionprecio %}
-                            <a class="precio-configuracion-enlace"
-                               href="{% url 'configuracion_precio_editar' %}"
-                               target="_blank" rel="noopener">
-                                Configurar fórmula de precios
+                            <a href="{% url 'configuracion_precio_editar' %}?origen=producto" target='_blank' rel='noopener noreferrer' class='btn btn-outline-secondary'>
+                                Configurar Cálculo de Precios
                             </a>
-                            <span class="precio-nota">(abre otra pestaña)</span>
                         {% endif %}
                     </section>
                 </div>
