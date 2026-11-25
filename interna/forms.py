@@ -13,7 +13,10 @@ from .models import (Producto,
     ProductoVariante,
     DetallePedidoPersonalizado,
     MaterialPedidoPersonalizado,
-    Pedido)
+    Pedido,
+    Proveedor,
+    OrdenCompra,
+    DetalleOrdenCompra)
 
 class ProductoForm(forms.ModelForm):
     tiempo_fabricacion_minutos = forms.IntegerField(
@@ -69,28 +72,18 @@ class ProductoVarianteForm(forms.Form):
         return datos
 
 class MateriaPrimaForm(forms.ModelForm):
-    observacion = forms.CharField(
-        label = 'Observación',
-        required = False,
-        max_length = 300,
-        help_text = 'Obligatorio cuando Modificas la Cantidad Actual',
-        widget = forms.Textarea(attrs={"rows":3})
-    )
 
     class Meta:
         model = MateriaPrima
         fields = [
             "nombre",
-            "cantidad_actual",
             "cantidad_critica",
             "unidad_de_medida",
             "costo_unitario",
-            "estado",
-            "observacion"
+            "estado"
         ]
         labels = {
             "nombre": "Nombre",
-            "cantidad_actual": "Cantidad Actual",
             "cantidad_critica": "Cantidad Crítica",
             "unidad_de_medida": "Unidad de Medida",
             "costo_unitario": "Costo por Unidad de Medida",
@@ -100,26 +93,10 @@ class MateriaPrimaForm(forms.ModelForm):
     def clean(self):
         datos = super().clean()
 
-        campos_numericos = [
-            "cantidad_actual",
-            "cantidad_critica",
-            "costo_unitario",
-        ]
-
-        for campo in campos_numericos:
+        for campo in ['cantidad_critica', 'costo_unitario']:
             valor = datos.get(campo)
-
             if valor is not None and valor < 0:
                 self.add_error(campo, 'El Valor no Puede ser Negativo')
-
-        cantidad_nueva = datos.get('cantidad_actual')
-        if (
-            self.instance.pk
-            and cantidad_nueva is not None
-            and cantidad_nueva != self.instance.cantidad_actual
-            and not datos.get('observacion')
-        ):
-            self.add_error('observacion', 'Explica Por Qué Estas Modificando el Stock')
 
         return datos
 
@@ -492,3 +469,105 @@ class CancelacionPedidoPersonalizadoForm(forms.Form):
             }
         )
     )
+
+class ProveedorForm(forms.ModelForm):
+    class Meta:
+        model = Proveedor
+        fields = ['nombre', 'rut', 'contacto', 'telefono', 'email', 'activo']
+        labels = {'contacto': 'Persona de contacto', 'telefono': 'Teléfono', 'email': 'Correo'}
+
+    def clean_rut(self):
+        rut = (self.cleaned_data['rut'].replace('.', '').replace(' ', '').upper())
+        partes = rut.split('-')
+
+        if (
+            len(partes) != 2
+            or not partes[0].isdigit()
+            or not 7 <= len(partes[0]) <= 8
+            or len(partes[1]) != 1
+        ):
+            raise forms.ValidationError('Ingresa un RUT Válido con Guion')
+
+        cuerpo, dv = partes
+        suma = sum(int(digito) * (2 + indice % 6)
+            for indice, digito in enumerate(reversed(cuerpo))
+        )
+        esperado = '0123456789K'[(-suma) % 11]
+
+        if dv != esperado:
+            raise forms.ValidationError('El Dígito Verificador del RUT no es Válido')
+
+        return f'{cuerpo}-{dv}'
+
+class OrdenCompraForm(forms.ModelForm):
+    proveedor = forms.ModelChoiceField(queryset=Proveedor.objects.filter(activo=True))
+
+    class Meta:
+        model = OrdenCompra
+        fields = ['proveedor', 'tipo_documento', 'numero_documento', 'observacion']
+        labels = {
+            'tipo_documento': 'Tipo de Documento',
+            'numero_documento': 'N° de Documento (Opcional)',
+            'observacion': 'Observación',
+        }
+        widgets = {'observacion': forms.Textarea(attrs={'rows': 2})}
+
+    def clean_numero_documento(self):
+        return self.cleaned_data['numero_documento'].strip().upper()
+
+class DetalleOrdenCompraForm(forms.ModelForm):
+    materia_prima = forms.ModelChoiceField(queryset=MateriaPrima.objects.filter(estado=True).order_by('nombre'))
+
+    class Meta:
+        model = DetalleOrdenCompra
+        fields = ['materia_prima', 'cantidad', 'costo_unitario']
+        labels = {'materia_prima': 'Materia Prima', 'costo_unitario': 'Costo Unitario'}
+
+class BaseDetallesCompraFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+
+        if any(self.errors):
+            return
+
+        usados = set()
+
+        for form in self.forms:
+            if not form.cleaned_data or form.cleaned_data.get('DELETE'):
+                continue
+
+            materia = form.cleaned_data['materia_prima']
+
+            if materia.pk in usados:
+                raise forms.ValidationError('Incluye Cada Materia Prima una Sola Vez')
+
+            usados.add(materia.pk)
+
+DetallesCompraFormSet = inlineformset_factory(
+    OrdenCompra,
+    DetalleOrdenCompra,
+    form=DetalleOrdenCompraForm,
+    formset=BaseDetallesCompraFormSet,
+    extra=0,
+    min_num=1,
+    validate_min=True,
+    max_num=30,
+    validate_max=True,
+    absolute_max=30,
+    can_delete=True
+)
+
+class BajaMateriaPrimaForm(forms.Form):
+    cantidad = forms.DecimalField(max_digits=10, decimal_places=3, min_value=Decimal('0.001'))
+    motivo = forms.ChoiceField(choices=[('PERDIDA', 'Pérdida'), ('DANO', 'Daño')])
+    observacion = forms.CharField(label='Observación', max_length=300, widget=forms.Textarea(attrs={'rows': 3}))
+    stock_esperado = forms.DecimalField(max_digits=10, decimal_places=3, widget=forms.HiddenInput)
+
+class AjusteMateriaPrimaForm(forms.Form):
+    operacion = forms.ChoiceField(
+        label='Operación',
+        choices=[('INICIAL', 'Carga Inicial'), ('ENTRADA', 'Ajuste Positivo'), ('SALIDA', 'Ajuste Negativo')]
+    )
+    cantidad = forms.DecimalField(max_digits=10, decimal_places=3, min_value=Decimal('0.001'))
+    observacion = forms.CharField(label='Justificación', max_length=300, widget=forms.Textarea(attrs={'rows': 3}))
+    stock_esperado = forms.DecimalField(max_digits=10, decimal_places=3, widget=forms.HiddenInput)

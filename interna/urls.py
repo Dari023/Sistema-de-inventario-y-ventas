@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from . import views, pagos_personalizados
+from . import views, pagos_personalizados, compras
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -43,5 +43,15 @@ urlpatterns = [
     path('pedidos/<int:pk>/articulos/<int:detalle_pk>/fabricar/', views.pedido_personalizado_fabricar, name='pedido_personalizado_fabricar'),
     path('pedidos/<int:pk>/datos/editar/', views.pedido_personalizado_datos_editar, name='pedido_personalizado_datos_editar'),
     path('pedidos/<int:pk>/articulos/<int:detalle_pk>/receta/editar/', views.pedido_personalizado_receta_editar, name='pedido_personalizado_receta_editar'),
-    path('pedidos/<int:pk>/cancelar/', views.pedido_personalizado_cancelar, name='pedido_personalizado_cancelar')
+    path('pedidos/<int:pk>/cancelar/', views.pedido_personalizado_cancelar, name='pedido_personalizado_cancelar'),
+    path('proveedores/', compras.proveedores_listar, name='proveedores_listar'),
+    path('proveedores/crear/', compras.proveedor_crear, name='proveedor_crear'),
+    path('proveedores/<int:pk>/editar/', compras.proveedor_editar, name='proveedor_editar'),
+    path('compras/', compras.ordenes_compra_listar, name='ordenes_compra_listar'),
+    path('compras/crear/', compras.orden_compra_crear, name='orden_compra_crear'),
+    path('compras/<int:pk>/', compras.orden_compra_detalles, name='orden_compra_detalles'),
+    path('compras/<int:pk>/recibir/', compras.orden_compra_recibir, name='orden_compra_recibir'),
+    path('compras/<int:pk>/cancelar/', compras.orden_compra_cancelar, name='orden_compra_cancelar'),
+    path('materias-primas/<int:pk>/baja/', compras.materia_prima_baja, name='materia_prima_baja'),
+    path('materias-primas/<int:pk>/ajuste/', compras.materia_prima_ajustar, name='materia_prima_ajustar')
 ]

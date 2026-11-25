@@ -1,0 +1,74 @@
+{% extends 'interna/base.html' %}
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+<link rel='stylesheet' href="{% static 'interna/css/detalles.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>ÓRDENES DE COMPRA</h1>
+            <p>Consulta las Compras y su Estado de Recepción</p>
+        </div>
+
+        <div class='d-flex flex-wrap gap-2'>
+            <a class='detalle-boton detalle-boton-secundario' href="{% url 'inventario' %}">Volver Atrás</a>
+            <a href="{% url 'orden_compra_crear' %}" class='boton-crear'>Crear Orden</a>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+        <table class='js-datatable' data-columna-acciones='6'>
+            <thead>
+                <tr>
+                    <th>Orden</th>
+                    <th>Fecha y Hora</th>
+                    <th>Proveedor</th>
+                    <th>Documento</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for orden in ordenes %}
+                    <tr>
+                        <td class='text-nowrap'>OC-{{ orden.pk }}</td>
+                        <td data-order="{{ orden.fecha|date:'U' }}">
+                            {{ orden.fecha|date:'d/m/Y H:i' }}
+                        </td>
+                        <td>{{ orden.proveedor.nombre }}</td>
+                        <td>
+                            <span class='d-block'>
+                                {{ orden.get_tipo_documento_display }}
+                            </span>
+                            <small class='text-secondary'>
+                                {{ orden.numero_documento|default:'Sin número' }}
+                            </small>
+                        </td>
+                        <td class='text-nowrap' data-order='{{ orden.total|unlocalize }}'>
+                            ${{ orden.total|floatformat:'2g' }}
+                        </td>
+                        <td>
+                            <span class="estado {% if orden.estado == 'recibida' %}estado-activo{% elif orden.estado == 'cancelada' %}estado-deshabilitado{% else %}bg-warning text-dark{% endif %}">
+                                {{ orden.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class='acciones'>
+                                <a href="{% url 'orden_compra_detalles' orden.pk %}">
+                                    Ver Detalles
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</main>
+{% endblock %}

@@ -409,68 +409,42 @@ def materia_prima_detalles(request, pk):
 
 @login_required
 @permission_required('interna.add_materiaprima', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
 def materia_prima_crear(request):
-    if request.method == "POST":
-        form = MateriaPrimaForm(request.POST)
-        form.fields.pop('observacion')
-        if form.is_valid():
-            with transaction.atomic():
-                materia_prima = form.save()
-                if materia_prima.cantidad_actual > 0:
-                    MovimientoMateriaPrima.objects.create(
-                        materia_prima=materia_prima,
-                        tipo="ENTRADA",
-                        motivo="INICIAL",
-                        cantidad=materia_prima.cantidad_actual,
-                        saldo_resultante=materia_prima.cantidad_actual,
-                        responsable=request.user,
-                    )
-
-            return redirect("materia_prima_listar")
-    else:
-        form = MateriaPrimaForm()
-        form.fields.pop("observacion")
-
-    return render(
-        request,
-        "interna/inventario/materia_prima_crear.html",
-        {"form": form},
-    )
-
-@login_required
-@permission_required('interna.change_materiaprima', raise_exception=True,)
-@transaction.atomic
-def materia_prima_editar(request, pk):
-    consulta = MateriaPrima.objects.all()
-    if request.method == 'POST':
-        consulta = consulta.select_for_update()
-    materia_prima = get_object_or_404(consulta, pk=pk)
-    cantidad_anterior = materia_prima.cantidad_actual
-    datos = request.POST if request.method == 'POST' else None
-    form = MateriaPrimaForm(datos, instance=materia_prima)
-
-    form.fields['cantidad_actual'].widget.attrs.update({'data-cantidad-inicial': str(cantidad_anterior)})
-    form.fields['unidad_de_medida'].disabled = True
-
-    if materia_prima.movimientos.exists():
-        form.fields['unidad_de_medida'].disabled = True
+    form = MateriaPrimaForm(request.POST if request.method == 'POST' else None)
 
     if request.method == 'POST' and form.is_valid():
-        materia_prima = form.save()
-        diferencia = (materia_prima.cantidad_actual - cantidad_anterior)
+        materia = form.save(commit=False)
+        materia.cantidad_actual = 0
+        materia.save()
 
-        if diferencia !=0:
-            MovimientoMateriaPrima.objects.create(
-                materia_prima=materia_prima,
-                tipo='ENTRADA' if diferencia > 0 else 'SALIDA',
-                motivo='AJUSTE',
-                cantidad=abs(diferencia),
-                saldo_resultante=materia_prima.cantidad_actual,
-                responsable=request.user,
-                observacion=form.cleaned_data['observacion']
-            )
-        return redirect ('materia_prima_listar')
-    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
+        messages.success(request, 'Materia Prima Creada con Existencias en Cero')
+        return redirect('materia_prima_listar')
+
+    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form})
+
+@login_required
+@permission_required('interna.change_materiaprima', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def materia_prima_editar(request, pk):
+    consulta = (MateriaPrima.objects.select_for_update()
+        if request.method == 'POST'
+        else MateriaPrima.objects.all()
+    )
+    materia = get_object_or_404(consulta, pk=pk)
+
+    form = MateriaPrimaForm(request.POST if request.method == 'POST' else None, instance=materia)
+    form.fields['unidad_de_medida'].disabled = True
+
+    if request.method == 'POST' and form.is_valid():
+        materia = form.save(commit=False)
+        materia.save(update_fields=['nombre', 'cantidad_critica', 'unidad_de_medida', 'costo_unitario', 'estado'])
+
+        messages.success(request, 'Materia Prima Actualizada')
+        return redirect('materia_prima_listar')
+
+    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia})
 
 @login_required
 @permission_required('interna.view_movimientomateriaprima', raise_exception=True)
