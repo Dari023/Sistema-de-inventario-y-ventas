@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.forms import BaseInlineFormSet, BaseFormSet, inlineformset_factory, formset_factory
+from api.models import Cliente
 from .models import (Producto, 
     MateriaPrima, 
     ProductoMateriaPrima, 
@@ -355,6 +356,29 @@ class PedidoPersonalizadoForm(forms.ModelForm):
         datos['direccion_invitado'] = direccion
         return datos
 
+class ClientePedidoChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, cliente):
+        return (
+            f'{cliente.nombre} {cliente.apellido} · '
+            f'{cliente.correo} · {cliente.rut}'
+        )
+
+class PedidoPersonalizadoCrearForm(PedidoPersonalizadoForm):
+    cliente = ClientePedidoChoiceField(
+        queryset=Cliente.objects.filter(
+            usuario__is_active=True,
+            usuario__usuarios__isnull=True
+        ).select_related('usuario').order_by('usuario__first_name', 'usuario__last_name', 'pk'),
+        required=False,
+        empty_label='Sin Cuenta / Invitado',
+        label='Cliente Registrado',
+        help_text='Selecciona una Cuenta Para Cargar sus Datos de Contacto',
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    class Meta(PedidoPersonalizadoForm.Meta):
+        fields = ['cliente'] + PedidoPersonalizadoForm.Meta.fields
+
 class DetallePedidoPersonalizadoForm(forms.ModelForm):
     class Meta:
         model = DetallePedidoPersonalizado
@@ -543,6 +567,12 @@ class BaseDetallesCompraFormSet(BaseInlineFormSet):
 
             usados.add(materia.pk)
 
+    def get_unique_error_message(self, unique_check):
+        return 'Incluye Cada Materia Prima una Sola vez en la Orden'
+
+    def get_form_error(self):
+        return 'Esta Materia Prima ya Está Incluida en Otra Fila'
+
 DetallesCompraFormSet = inlineformset_factory(
     OrdenCompra,
     DetalleOrdenCompra,
@@ -559,7 +589,6 @@ DetallesCompraFormSet = inlineformset_factory(
 
 class BajaMateriaPrimaForm(forms.Form):
     cantidad = forms.DecimalField(max_digits=10, decimal_places=3, min_value=Decimal('0.001'))
-    motivo = forms.ChoiceField(choices=[('PERDIDA', 'Pérdida'), ('DANO', 'Daño')])
     observacion = forms.CharField(label='Observación', max_length=300, widget=forms.Textarea(attrs={'rows': 3}))
     stock_esperado = forms.DecimalField(max_digits=10, decimal_places=3, widget=forms.HiddenInput)
 

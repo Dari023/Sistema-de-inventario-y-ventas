@@ -7,23 +7,50 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (!boton || !total || !maximo || !filas || !plantilla) return;
 
-    function actualizarBoton() {
-        boton.disabled = Number(total.value) >= Number(maximo.value);
+    function actualizarFilas() {
+        const lista = filas.querySelectorAll('tr');
+
+        lista.forEach(function (fila, indice) {
+            fila.querySelectorAll('[name], [id], [for]').forEach(function (elemento) {
+                ['name', 'id', 'for'].forEach(function (atributo) {
+                    const valor = elemento.getAttribute(atributo);
+
+                    if (valor) {
+                        elemento.setAttribute(
+                            atributo,
+                            valor.replace(
+                                /detalles-\d+-/g,
+                                'detalles-' + indice + '-'
+                            )
+                        );
+                    }
+                });
+            });
+        });
+
+        total.value = lista.length;
+        boton.disabled = lista.length >= Number(maximo.value);
     }
 
     boton.addEventListener('click', function () {
-        const indice = Number(total.value);
-
-        if (indice >= Number(maximo.value)) return;
+        if (Number(total.value) >= Number(maximo.value)) return;
 
         filas.insertAdjacentHTML(
             'beforeend',
-            plantilla.innerHTML.replaceAll('__prefix__', indice)
+            plantilla.innerHTML.replaceAll('__prefix__', total.value)
         );
 
-        total.value = indice + 1;
-        actualizarBoton();
+        actualizarFilas();
     });
 
-    actualizarBoton();
+    filas.addEventListener('click', function (evento) {
+        const quitar = evento.target.closest('.quitar-material');
+
+        if (!quitar) return;
+
+        quitar.closest('tr').remove();
+        actualizarFilas();
+    });
+
+    actualizarFilas();
 });

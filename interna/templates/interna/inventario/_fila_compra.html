@@ -2,9 +2,25 @@
     <td>
         {% for campo in fila.hidden_fields %}{{ campo }}{% endfor %}
         {{ fila.materia_prima }}
-        <div class='small text-danger'>{{ fila.materia_prima.errors }}{{ fila.non_field_errors }}</div>
+        <div class='small text-danger'>
+            {{ fila.materia_prima.errors }}
+            {{ fila.non_field_errors }}
+        </div>
     </td>
-    <td>{{ fila.cantidad }}<div class='small text-danger'>{{ fila.cantidad.errors }}</div></td>
-    <td>{{ fila.costo_unitario }}<div class='small text-danger'>{{ fila.costo_unitario.errors }}</div></td>
-    <td>{{ fila.DELETE }}</td>
+
+    <td>
+        {{ fila.cantidad }}
+        <div class='small text-danger'>{{ fila.cantidad.errors }}</div>
+    </td>
+
+    <td>
+        {{ fila.costo_unitario }}
+        <div class='small text-danger'>{{ fila.costo_unitario.errors }}</div>
+    </td>
+
+    <td>
+        <button type='button' class='btn btn-outline-danger btn-sm quitar-material'>
+            Quitar
+        </button>
+    </td>
 </tr>

@@ -53,5 +53,6 @@ urlpatterns = [
     path('compras/<int:pk>/recibir/', compras.orden_compra_recibir, name='orden_compra_recibir'),
     path('compras/<int:pk>/cancelar/', compras.orden_compra_cancelar, name='orden_compra_cancelar'),
     path('materias-primas/<int:pk>/baja/', compras.materia_prima_baja, name='materia_prima_baja'),
-    path('materias-primas/<int:pk>/ajuste/', compras.materia_prima_ajustar, name='materia_prima_ajustar')
+    path('materias-primas/<int:pk>/ajuste/', compras.materia_prima_ajustar, name='materia_prima_ajustar'),
+    path( 'pedidos/personalizados/desde-consulta/<int:consulta_pk>/', views.pedido_personalizado_crear, name='pedido_personalizado_desde_consulta')
 ]

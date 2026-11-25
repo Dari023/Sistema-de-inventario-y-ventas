@@ -83,9 +83,10 @@ class PedidoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pedido
-        fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "etapa", "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado",
-                  "telefono_invitado", "direccion_invitado",  "tipo_entrega",]
-        read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente",]
+        fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "etapa", "tipo_pedido", "cancelado",
+            "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado", "telefono_invitado",
+            "direccion_invitado", "tipo_entrega"]
+        read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente", "tipo_pedido", "cancelado"]
 
     def to_representation(self, instancia):
         datos = super().to_representation(instancia)
@@ -376,10 +377,7 @@ class PreguntaFrecuenteSerializer(serializers.ModelSerializer):
         fields = ['id', 'pregunta', 'respuesta']
         
 class ConsultaCrearSerializer(serializers.ModelSerializer):
-    mensaje = serializers.CharField(
-        allow_blank=False,
-        trim_whitespace=True,
-    )
+    mensaje = serializers.CharField(allow_blank=False, trim_whitespace=True)
 
     class Meta:
         model = Consulta

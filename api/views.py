@@ -532,11 +532,6 @@ class ConsultaCrearView(generics.CreateAPIView):
         cliente = None
 
         if self.request.user.is_authenticated:
-            cliente = Cliente.objects.filter(
-                usuario=self.request.user
-            ).first()
+            cliente = Cliente.objects.filter(usuario=self.request.user).first()
 
-        serializer.save(
-            cliente=cliente,
-            estado="pendiente",
-        )
+        serializer.save(cliente=cliente, estado="pendiente")

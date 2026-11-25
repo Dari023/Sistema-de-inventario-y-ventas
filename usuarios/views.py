@@ -11,6 +11,7 @@ from django.views.decorators.http import require_http_methods
 from .acceso import es_personal
 from .models import Usuario, Rol
 from .forms import UsuarioForm, LoginPersonalForm
+from django.views.decorators.http import require_POST
 from api.models import Cliente
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required, permission_required
@@ -80,7 +81,7 @@ def UsuarioCreateView(request):
 @require_http_methods(['GET', 'POST'])
 @transaction.atomic
 def UsuarioUpdateView(request, id):
-    usuario = get_object_or_404(Usuario, pk=id)
+    usuario = get_object_or_404(Usuario.objects.select_related('user', 'rol'), pk=id, rol__nombre='Colaborador')
     
     form = UsuarioForm(
         request.POST if request.method == 'POST' else None,
@@ -91,35 +92,22 @@ def UsuarioUpdateView(request, id):
             'activo': usuario.user.is_active
         }
     )
+
+    form.fields.pop('password', None)
+
     if request.method == 'POST' and form.is_valid():
         user = usuario.user
         user.username = form.cleaned_data['username']
         user.email = form.cleaned_data['email']
         user.is_active = form.cleaned_data['activo']
-        password = form.cleaned_data['password']
+        user.save(update_fields=['username', 'email', 'is_active'])
 
-        if password:
-            user.set_password(password)
+        form.save()
 
-        user.save()
-
-        usuario = form.save(commit=False)
-
-        if password:
-            usuario.cambio_password_pendiente = True
-
-        usuario.save()
-
-        if user.pk == request.user.pk and password:
-            update_session_auth_hash(request, user)
-
-        messages.success(request, 'Cuenta actualizada.')
+        messages.success(request, 'Cuenta Actualizada')
         return redirect('usuario-list')
 
-    return render(request, 'usuarios/usuario_form.html', {
-        'form': form,
-        'action': 'Modificar',
-    })
+    return render(request, 'usuarios/usuario_form.html', {'form': form, 'action': 'Modificar'})
 
 @sensitive_post_parameters()
 @never_cache
@@ -193,3 +181,33 @@ def logout_view(request):
         return redirect('login')
 
     return render(request, 'usuarios/logout_confirmar.html')
+
+@login_required
+@permission_required('api.change_cliente', raise_exception=True)
+@require_POST
+def cliente_cambiar_estado(request, id):
+    cliente = get_object_or_404(Cliente, pk=id, usuario__usuarios__isnull=True)
+    activo = request.POST.get('activo')
+
+    if activo not in ('0', '1'):
+        messages.error(request, 'Selecciona un Estado Válido')
+        return redirect('usuario-list')
+
+    nuevo_estado = activo == '1'
+
+    actualizado = (User.objects
+        .filter(pk=cliente.usuario_id)
+        .exclude(is_active=nuevo_estado)
+        .update(is_active=nuevo_estado)
+    )
+
+    if actualizado:
+        mensaje = ('Cuenta del Cliente Reactivada'
+            if nuevo_estado
+            else 'Cuenta del Cliente Deshabilitada'
+        )
+        messages.success(request, mensaje)
+    else:
+        messages.info(request, 'La Cuenta ya Tenía ese Estado')
+
+    return redirect('usuario-list')

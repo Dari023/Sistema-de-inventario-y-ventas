@@ -1,5 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
+from pathlib import Path
+from django.contrib.auth.models import User
+from django.core.files import File
 from django.db.models import F
 from django.utils import timezone
 from django import forms
@@ -50,7 +53,8 @@ from .forms import (
     ArticulosPedidoPersonalizadoFormSet,
     FabricacionPedidoPersonalizadoForm,
     PedidoPersonalizadoDatosForm,
-    CancelacionPedidoPersonalizadoForm)
+    CancelacionPedidoPersonalizadoForm,
+    PedidoPersonalizadoCrearForm)
 
 @login_required
 def home(request):
@@ -877,21 +881,67 @@ def consultas_listar(request):
 @require_http_methods(["GET"])
 def consulta_detalle(request, pk):
     consulta = get_object_or_404(Consulta, pk=pk)
+    pedido_generado = Pedido.objects.filter(consulta_origen=consulta).first()
 
-    return render(
-        request,
-        "interna/inventario/consulta_detalle.html",
-        {"consulta": consulta},
-    )
+    return render(request, "interna/inventario/consulta_detalle.html", {"consulta": consulta, 'pedido_generado': pedido_generado})
+
+def _datos_contacto_cliente(cliente):
+    return {
+        'nombre_invitado': f'{cliente.nombre} {cliente.apellido}'.strip(),
+        'rut_invitado': cliente.rut,
+        'email_invitado': cliente.correo,
+        'telefono_invitado': cliente.telefono,
+        'direccion_invitado': cliente.direccion
+    }
 
 @login_required
 @permission_required('interna.add_pedido', raise_exception=True)
-def pedido_personalizado_crear(request):
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def pedido_personalizado_crear(request, consulta_pk=None):
     es_post = request.method == 'POST'
     datos = request.POST if es_post else None
     archivos = request.FILES if es_post else None
+    consulta = None
+    incial = {}
+
+    if consulta_pk is not None:
+        if not request.user.has_perm('interna.view_consulta'):
+            raise PermissionDenied
+
+        consultas = Consulta.objects.all()
+
+        if es_post:
+            consultas = consultas.select_for_update()
+
+        consulta = get_object_or_404(consultas, pk=consulta_pk, es_personalizado=True)
+        existente = Pedido.objects.filter(consulta_origen=consulta).first()
+
+        if existente:
+            messages.info(request, 'Esta Consulta ya Tiene un Pedido Asociado')
+            return redirect('pedido_detalles', pk=existente.pk)
+
+        if consulta.cliente_id:
+            inicial = _datos_contacto_cliente(consulta.cliente)
+            inicial['cliente'] = consulta.cliente_id
+        else:
+            inicial = {
+                'nombre_invitado': consulta.nombre,
+                'email_invitado': consulta.correo
+            }
+
     pedido = Pedido(tipo_pedido='personalizado')
-    form_pedido = PedidoPersonalizadoForm(datos, instance=pedido, prefix='pedido')
+    form_pedido = PedidoPersonalizadoCrearForm(datos, instance=pedido, initial=inicial, prefix='pedido')
+
+    campo_cliente = form_pedido.fields['cliente']
+
+    if consulta and consulta.cliente_id:
+        if not campo_cliente.queryset.filter(pk=consulta.cliente_id).exists():
+            messages.error(request,'La cuenta vinculada no está disponible, revisa su estado antes de preparar el pedido')
+            return redirect('consulta_detalle', pk=consulta.pk)
+
+        campo_cliente.disabled = True
+
     articulos = ArticulosPedidoPersonalizadoFormSet(datos, archivos, instance=pedido, prefix='articulos', queryset=DetallePedidoPersonalizado.objects.none())
 
     if es_post:
@@ -932,27 +982,53 @@ def pedido_personalizado_crear(request):
                 pedido_valido = False
 
         if pedido_valido and articulos_validos and recetas_validas:
-            with transaction.atomic():
+            cliente = form_pedido.cleaned_data['cliente']
+
+            if cliente:
+                cuenta = get_object_or_404(User.objects.select_for_update(), pk=cliente.usuario_id)
+
+                if not cuenta.is_active:
+                    form_pedido.add_error('cliente', 'La Cuenta fue Deshabilitada, Revisa el Cliente')
+                    pedido_valido = False
+
+            if pedido_valido:
                 pedido = form_pedido.save(commit=False)
+                pedido.consulta_origen = consulta
                 pedido.tipo_pedido = 'personalizado'
                 pedido.estado = 'pendiente'
                 pedido.etapa = None
                 pedido.save()
 
-                for fila in filas_a_guardar:
+                for indice, fila in enumerate(filas_a_guardar):
                     detalle = fila.save(commit=False)
                     detalle.pedido = pedido
-                    detalle.save()
 
+                    if (
+                        indice == 0
+                        and consulta
+                        and consulta.imagen_referencia
+                        and not detalle.imagen_referencia
+                    ):
+                        nombre = Path(consulta.imagen_referencia.name).name
+
+                        with consulta.imagen_referencia.open('rb') as archivo:
+                            detalle.imagen_referencia.save(nombre, File(archivo), save=False)
+
+                    detalle.save()
                     fila.materiales.instance = detalle
                     fila.materiales.save()
 
-            return redirect('pedido_detalles', pk=pedido.pk)
+                messages.success(request, 'Pedido Personalizado Creado')
+                return redirect('pedido_detalles', pk=pedido.pk)
+
+    clientes_datos = {str(cliente.pk): _datos_contacto_cliente(cliente) for cliente in campo_cliente.queryset}
 
     return render(request, 'interna/inventario/pedido_personalizado_crear.html',
         {
             'form_pedido': form_pedido,
-            'articulos': articulos
+            'articulos': articulos,
+            'consulta': consulta,
+            'clientes_datos': clientes_datos
         }
     )
 

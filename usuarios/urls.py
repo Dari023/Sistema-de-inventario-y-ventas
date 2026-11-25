@@ -10,6 +10,7 @@ urlpatterns = [
     path('usuarios/editar/<int:id>/', views.UsuarioUpdateView, name='usuario-update'),
     path('login/', views.login_view, name="login"),
     path('logout/', views.logout_view, name="logout"),
+    path('clientes/<int:id>/estado/', views.cliente_cambiar_estado, name='cliente-cambiar-estado')
 ]
 
 urlpatterns += [

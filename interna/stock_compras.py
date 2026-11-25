@@ -214,9 +214,6 @@ def registrar_cambio_materia(pk, datos, responsable, es_ajuste=False):
 
     else:
         tipo = 'SALIDA'
-        motivo = datos['motivo']
-
-        if motivo not in ('PERDIDA', 'DANO', 'MERMA'):
-            raise ValidationError('Selecciona un Motivo Válido Para la Baja')
+        motivo = 'PERDIDA'
 
     return _mover_stock(materia, tipo, motivo, datos['cantidad'], responsable, observacion)

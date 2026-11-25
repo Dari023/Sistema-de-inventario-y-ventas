@@ -55,6 +55,7 @@ class MovimientoMateriaPrima(models.Model):
         ("COMPRA", "Compra"),
         ("FABRICACION", "Fabricación"),
         ("PERDIDA", "Baja por Pérdida o Daño"),
+        ("DANO", "Daño"),
         ("AJUSTE", "Ajuste de Inventario")
     ]
 
@@ -176,6 +177,8 @@ class Pedido(models.Model):
     email_invitado = models.EmailField(null=True, blank=True)
     telefono_invitado = models.CharField(max_length=20, null=True, blank=True)
     direccion_invitado = models.CharField(max_length=200, null=True, blank=True)
+    consulta_origen = models.OneToOneField('interna.Consulta', on_delete=models.SET_NULL, null=True, blank=True, editable=False, related_name='pedido_personalizado')
+
     TIPOS_ENTREGA = [
         ('envio',  'Envío a domicilio'),
         ('retiro', 'Retiro en tienda'),
@@ -339,39 +342,17 @@ class PreguntaFrecuente(models.Model):
         return self.pregunta
     
 class Consulta(models.Model):
-    ESTADOS = [
-        ("pendiente", "Pendiente"),
-        ("respondida", "Respondida"),
-    ]
+    ESTADOS = [("pendiente", "Pendiente"), ("respondida", "Respondida")]
 
-    cliente = models.ForeignKey(
-        Cliente,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="consultas",
-    )
-
+    cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True, related_name="consultas")
     nombre = models.CharField(max_length=150)
     correo = models.EmailField()
     asunto = models.CharField(max_length=150)
     mensaje = models.TextField()
-
     es_personalizado = models.BooleanField(default=False)
-
-    imagen_referencia = models.ImageField(
-        upload_to="consultas/",
-        blank=True,
-        null=True,
-    )
-
+    imagen_referencia = models.ImageField(upload_to="consultas/", blank=True, null=True)
     fecha = models.DateTimeField(auto_now_add=True)
-
-    estado = models.CharField(
-        max_length=20,
-        choices=ESTADOS,
-        default="pendiente",
-    )
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
 
     class Meta:
         ordering = ["-fecha", "-pk"]
