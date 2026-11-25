@@ -114,11 +114,7 @@ class Producto(models.Model):
         return self.nombre
 
 class ProductoVariante(models.Model):
-    TALLAS = [
-        ('S', 'S'),
-        ('M', 'M'),
-        ('L', 'L')
-    ]
+    TALLAS = [('S', 'S'), ('M', 'M'), ('L', 'L')]
 
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='variantes')
     talla = models.CharField(max_length=1, choices=TALLAS)
@@ -288,9 +284,7 @@ class ConfiguracionPrecio(models.Model):
     comision_afecta_iva = models.BooleanField(default=True)
 
     class Meta:
-        constraints = [
-            models.CheckConstraint(condition=models.Q(id=1), name='configuracion_precio_unica')
-        ]
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name='configuracion_precio_unica')]
 
     def __str__(self):
         return 'Configuración General de Precios'

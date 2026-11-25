@@ -296,13 +296,13 @@ class ConfiguracionPrecioForm(forms.ModelForm):
             'porcentaje_iva', 'porcentaje_comision', 'comision_afecta_iva'
         ]
         labels = {
-            'costo_hora': 'Costo por hora de trabajo',
-            'costo_bolsa': 'Bolsa por producto',
-            'costo_stickers': 'Stickers por producto',
-            'margen_ganancia': 'Margen sobre el precio sin IVA',
-            'porcentaje_iva': 'IVA',
-            'porcentaje_comision': 'Comisión del medio de pago',
-            'comision_afecta_iva': 'La comisión está afecta a IVA'
+            'costo_hora': 'Costo por Hora de Trabajo',
+            'costo_bolsa': 'Costo de Bolsa por Producto',
+            'costo_stickers': 'Costo de Stickers por Producto',
+            'margen_ganancia': 'Margen sobre el precio sin IVA (%)',
+            'porcentaje_iva': 'Margen de IVA (%)',
+            'porcentaje_comision': 'Comisión del Medio de Pago (Por Ejemplo, Webpay)',
+            'comision_afecta_iva': 'Incluir el IVA que Webpay Cobra Sobre su Comisión'
         }
         help_texts = {
             'costo_bolsa': 'Usa 0 si este costo ya está incluido en la receta',
