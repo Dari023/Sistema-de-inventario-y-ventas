@@ -1,0 +1,99 @@
+{% extends 'interna/base.html' %}
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>REGISTRAR FABRICACIÓN</h1>
+            <p>Pedido Personalizado #{{ pedido.pk }}</p>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+        <h2>Artículo Encargado</h2>
+
+        <div>{{ detalle.descripcion|linebreaks }}</div>
+
+        <p>
+            <strong>Unidades Encargadas:</strong>
+            {{ detalle.cantidad }}
+        </p>
+
+        <p>
+            <strong>Unidades Fabricadas:</strong>
+            {{ detalle.unidades_fabricadas }}
+        </p>
+
+        <p>
+            <strong>Unidades Pendientes:</strong>
+            {{ detalle.unidades_pendientes }}
+        </p>
+
+        <h2>Materiales por Unidad</h2>
+
+        <table class='tabla'>
+            <thead>
+                <tr>
+                    <th>Materia Prima</th>
+                    <th>Cantidad por Unidad</th>
+                    <th>Stock Actual</th>
+                    <th>Unidad de Medida</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for material in materiales %}
+                    <tr>
+                        <td>{{ material.materia_prima.nombre }}</td>
+                        <td>{{ material.cantidad_por_unidad }}</td>
+                        <td>{{ material.materia_prima.cantidad_actual }}</td>
+                        <td>
+                            {{ material.materia_prima.get_unidad_de_medida_display }}
+                        </td>
+                        <td>
+                            {{ material.materia_prima.estado|yesno:'Activa,Deshabilitada' }}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan='5'>Sin Receta Registrada</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p>
+            Al registrar la fabricación se descontarán los materiales
+            correspondientes a las unidades indicadas, las unidades
+            fabricadas quedarán destinadas a este pedido.
+        </p>
+
+        {% if detalle.unidades_pendientes > 0 %}
+            <form method='post'>
+                {% csrf_token %}
+                {{ form.as_p }}
+
+                <div class='detalle-acciones'>
+                    <button type='submit' class='boton-crear'>Registrar Fabricación</button>
+
+                    <a href="{% url 'pedido_detalles' pedido.pk %}">
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        {% else %}
+            <p>Este Artículo ya Tiene Todas sus Unidades Fabricadas</p>
+
+            <a href="{% url 'pedido_detalles' pedido.pk %}">
+                Volver al pedido
+            </a>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

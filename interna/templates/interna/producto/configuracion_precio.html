@@ -1,0 +1,78 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<main class='container py-4'>
+    <header class='d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4'>
+        <div>
+            <h1 class='h3 mb-1'>CONFIGURACIÓN DE PRECIOS</h1>
+            <p class='text-secondary mb-0'>Define los parámetros utilizados para calcular el precio sugerido</p>
+        </div>
+        <a href="{% url 'producto_listar' %}' class='btn btn-outline-secondary">
+            Volver
+        </a>
+    </header>
+
+    <div class='alert alert-info'>
+        Los cambios se aplican al cálculo de la sugerencia, el precio de venta definitivo se establece desde cada producto
+    </div>
+
+    <section class='card border-0 shadow-sm'>
+        <div class='card-body p-4'>
+            <h2 class='h5 mb-2'>Costos y Porcentajes</h2>
+            <p class='text-secondary small mb-4'>
+                Ingresa los costos en pesos chilenos y los porcentajes como números, por ejemplo, 30 representa un 30 %
+            </p>
+
+            <form method='post'>
+                {% csrf_token %}
+
+                {% for error in form.non_field_errors %}
+                    <div class='alert alert-danger'>{{ error }}</div>
+                {% endfor %}
+
+                <div class='row g-4'>
+                    {% for campo in form %}
+                        <div class="{% if campo.field.widget.input_type == 'checkbox' %}col-12{% else %}col-md-6{% endif %}">
+                            {% if campo.field.widget.input_type == 'checkbox' %}
+                                <div class='form-check'>
+                                    {{ campo }}
+                                    <label for='{{ campo.id_for_label }}' class='form-check-label'>
+                                        {{ campo.label }}
+                                    </label>
+                                </div>
+                            {% else %}
+                                <label for='{{ campo.id_for_label }}' class='form-label'>
+                                    {{ campo.label }}
+                                </label>
+                                {{ campo }}
+                            {% endif %}
+
+                            {% if campo.help_text %}
+                                <div class='form-text'>{{ campo.help_text }}</div>
+                            {% endif %}
+
+                            {% for error in campo.errors %}
+                                <div class='text-danger small mt-1'>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class='border-top mt-4 pt-3'>
+                    <p class='text-secondary small'>
+                        Modificar estos parámetros no modifica los precios de venta guardados ni los importes de compras anteriores
+                    </p>
+                    <div class='d-flex flex-wrap gap-2'>
+                        <button type='submit' class='btn btn-dark'>
+                            Guardar Configuración
+                        </button>
+                        <button type='button' class='btn btn-outline-secondary' onclick='window.close()'>
+                            Volver
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}

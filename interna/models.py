@@ -114,11 +114,7 @@ class Producto(models.Model):
         return self.nombre
 
 class ProductoVariante(models.Model):
-    TALLAS = [
-        ('S', 'S'),
-        ('M', 'M'),
-        ('L', 'L')
-    ]
+    TALLAS = [('S', 'S'), ('M', 'M'), ('L', 'L')]
 
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name='variantes')
     talla = models.CharField(max_length=1, choices=TALLAS)
@@ -163,12 +159,7 @@ class Pedido(models.Model):
     id_compra = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='pedidos', null=True)
     fecha_pedido = models.DateTimeField(auto_now_add=True)
-    estado = models.CharField(
-        max_length=20, 
-        choices=[('pendiente', 'Pendiente'), ('pagado', 'Pagado')], 
-        default='pendiente'
-    )
-
+    estado = models.CharField(max_length=20,  choices=[('pendiente', 'Pendiente'), ('pagado', 'Pagado')], default='pendiente')
     session_key = models.CharField(max_length=40, null=True, blank=True, db_index=True)
     nombre_invitado = models.CharField(max_length=150, null=True, blank=True)
     rut_invitado = models.CharField(max_length=12, null=True, blank=True)
@@ -197,6 +188,13 @@ class Pedido(models.Model):
     tipo_pedido = models.CharField(max_length=20, choices=TIPOS_PEDIDO, default='normal')
     adelanto_requerido = models.DecimalField(max_digits=10, decimal_places=0, default=0, validators=[MinValueValidator(Decimal('0'))])
     fecha_compromiso = models.DateField('Fecha acordada de entrega', null=True, blank=True)
+    cancelado = models.BooleanField(default=False, editable=False)
+    fecha_cancelacion = models.DateTimeField(null=True, blank=True, editable=False)
+    cancelado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, editable=False, related_name='pedidos_cancelados')
+    motivo_cancelacion = models.TextField(default='', blank=True, editable=False)
+
+    class Meta:
+        permissions = [('cancelar_pedido', 'Puede cancelar pedidos personalizados')]
 
     @property
     def total(self):
@@ -286,9 +284,7 @@ class ConfiguracionPrecio(models.Model):
     comision_afecta_iva = models.BooleanField(default=True)
 
     class Meta:
-        constraints = [
-            models.CheckConstraint(condition=models.Q(id=1), name='configuracion_precio_unica')
-        ]
+        constraints = [models.CheckConstraint(condition=models.Q(id=1), name='configuracion_precio_unica')]
 
     def __str__(self):
         return 'Configuración General de Precios'
