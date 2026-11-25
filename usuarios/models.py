@@ -14,6 +14,7 @@ class Usuario(models.Model):
     rut = models.CharField(max_length=12, unique=True)
     telefono = models.CharField(max_length=15, blank=True, null=True)
     rol = models.ForeignKey(Rol, on_delete=models.CASCADE)
+    cambio_password_pendiente = models.BooleanField(default=False, editable=False)
 
     def __str__(self):
         return self.user.username

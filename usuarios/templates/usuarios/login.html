@@ -10,8 +10,9 @@
     <section class="login-tarjeta" aria-labelledby="login-titulo">
 
         <header class="login-cabecera">
-            <h1 id="login-titulo">Iniciar sesióon</h1>
-            <p>Acceso al sistema de administración</p>
+            <h1 id="login-titulo">INICIAR SESIÓN</h1>
+            <p>Acceso al Sistema de Administración</p>
+            <p>Puedes usar tu Usuario o Correo</p>
         </header>
 
         <form method="post" class="login-formulario">
@@ -47,6 +48,10 @@
                 Iniciar sesión
             </button>
         </form>
+
+        <a href="{% url 'password_recuperar' %}" class='d-block text-center mt-3'>
+            ¿Olvidaste tu Contraseña?
+        </a>
 
     </section>
 </main>
