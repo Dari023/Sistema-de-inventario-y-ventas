@@ -14,8 +14,11 @@
             <h1>PRODUCTOS</h1>
             <p>Consulta y Administra los Productos de la Tienda.</p>
         </div>
-        <a class="detalle-boton detalle-boton-secundario" href="{% url 'inventario' %}" style="margin-right:-26rem;">Volver Atrás</a>
-        <a class="boton-crear" href="{% url 'producto_crear' %}">Crear Producto</a>
+        <a class="detalle-boton detalle-boton-secundario" href="{% url 'inventario' %}" style="margin-right:-20rem;">Volver Atrás</a>
+        <div>
+            <a class="boton-crear" href="{% url 'exportar_productos' %}">Descargar excel</a>
+            <a class="boton-crear" href="{% url 'producto_crear' %}">Crear Producto</a>
+        </div>
     </header>
 
     <section class="inventario-panel">

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from . import views, pagos_personalizados
+from . import views, pagos_personalizados, exportaciones
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -40,5 +40,8 @@ urlpatterns = [
     path('encargos/<str:token>/', views.pedido_personalizado_publico, name='pedido_personalizado_publico'),
     path('encargos/<str:token>/webpay/iniciar/', pagos_personalizados.pedido_personalizado_webpay_iniciar, name='pedido_personalizado_webpay_iniciar'),
     path('encargos/<str:token>/webpay/retorno/', pagos_personalizados.pedido_personalizado_webpay_retorno,name='pedido_personalizado_webpay_retorno',),
-    path('encargos/<str:token>/webpay/<int:pago_pk>/consultar/', pagos_personalizados.pedido_personalizado_webpay_consultar, name='pedido_personalizado_webpay_consultar')
+    path('encargos/<str:token>/webpay/<int:pago_pk>/consultar/', pagos_personalizados.pedido_personalizado_webpay_consultar, name='pedido_personalizado_webpay_consultar'),
+    path('exportar/productos/', exportaciones.producto_exportar, name='exportar_productos'),
+    path('exportar/materias-primas/', exportaciones.materia_prima_exportar, name='exportar_materias_primas'),
+    path('exportar/pedidos/', exportaciones.pedido_exportar, name='exportar_pedidos'),
 ]
