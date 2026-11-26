@@ -20,26 +20,31 @@ from django.contrib.auth.decorators import login_required, permission_required
 @permission_required('usuarios.view_usuario', raise_exception=True)
 def UsuarioListView(request):
     query = request.GET.get('q', '').strip()
-    usuarios = Usuario.objects.select_related(
-        'user',
-        'rol'
-    ).all()
+    usuarios = Usuario.objects.select_related('user', 'rol').all()
 
-    
+    clientes = (Cliente.objects
+        .select_related('usuario')
+        .filter(usuario__usuarios__isnull=True)
+    )
+
     if query:
         usuarios = usuarios.filter(
             Q(user__username__icontains=query) | 
             Q(user__email__icontains = query) |
             Q(nombre_completo__icontains=query) |
-            Q(rut__icontains=query)
+            Q(rut__icontains=query) |
+            Q(rol__nombre__icontains=query)
         )
 
-            
-    contexto = {
-        'usuarios': usuarios,
-        'query': query
-    }
-    return render(request, 'usuarios/usuario_list.html', contexto)
+        clientes = clientes.filter(
+            Q(usuario__username__icontains=query)
+            | Q(usuario__email__icontains=query)
+            | Q(usuario__first_name__icontains=query)
+            | Q(usuario__last_name__icontains=query)
+            | Q(rut__icontains=query)
+        )
+
+    return render(request, 'usuarios/usuario_list.html', {'usuarios': usuarios, 'clientes': clientes, 'query': query})
 
 @sensitive_post_parameters('password')
 @login_required
