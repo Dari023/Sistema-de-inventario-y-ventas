@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>INVENTARIO</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/css/bootstrap.min.css" integrity="sha384-yEPZ7jP9S0QKiUQ0m3jjsO4ProIW7wvR9gXkI7JOGa2XVsw53Yke2bsdkBbjmmiX" crossorigin="anonymous">
     <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
     <link rel="stylesheet" href="https://cdn.datatables.net/3.1.2/css/dataTables.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -15,6 +16,23 @@
 </head>
 
 <body>
+    {% if messages %}
+        <div class='toast-container position-fixed top-0 end-0 p-3'>
+            {% for mensaje in messages %}
+                <div class="toast notificacion border-0 shadow text-bg-{% if mensaje.tags == 'error' %}danger{% else %}{{ mensaje.tags|default:'info' }}{% endif %}" data-bs-delay="4000">
+                    <div class='d-flex align-items-center'>
+                        <div class='toast-body'>
+                            {{ mensaje }}
+                        </div>
+                        <button type='button' class='btn btn-sm text-reset me-2' data-bs-dismiss='toast'>
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     {% if user.is_authenticated %}
     <div class="panel-layout">
 
@@ -65,7 +83,7 @@
                         Consultas
                     </a>
                 {% endif %}
-                
+
                 <a href="{% url 'usuario-list' %}"
                     class="{% if ruta == 'usuario-list' or ruta == 'usuario-create' or ruta == 'usuario-update' or ruta == 'usuario-delete' %}activo{% endif %}">
                     <i class="bi bi-people"></i>
@@ -99,6 +117,15 @@
 
     <script src="https://cdn.datatables.net/3.1.2/js/dataTables.min.js"></script>
     <script src="{% static 'interna/js/tablas.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.9/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll(".notificacion").forEach(function (elemento) {
+                bootstrap.Toast.getOrCreateInstance(elemento).show();
+            });
+        });
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

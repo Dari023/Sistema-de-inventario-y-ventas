@@ -115,6 +115,10 @@ def pedido_personalizado_webpay_iniciar(request, token):
 
     with transaction.atomic():
         pedido = Pedido.objects.select_for_update().get(pk=acceso.pk, tipo_pedido='personalizado')
+
+        if pedido.cancelado:
+            return _volver_al_encargo(token, 'pedido_cancelado')
+
         resumen = resumen_pagos_personalizado(pedido)
 
         if resumen['saldo'] <= 0:

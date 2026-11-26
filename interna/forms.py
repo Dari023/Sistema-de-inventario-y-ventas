@@ -296,13 +296,13 @@ class ConfiguracionPrecioForm(forms.ModelForm):
             'porcentaje_iva', 'porcentaje_comision', 'comision_afecta_iva'
         ]
         labels = {
-            'costo_hora': 'Costo por hora de trabajo',
-            'costo_bolsa': 'Bolsa por producto',
-            'costo_stickers': 'Stickers por producto',
-            'margen_ganancia': 'Margen sobre el precio sin IVA',
-            'porcentaje_iva': 'IVA',
-            'porcentaje_comision': 'Comisión del medio de pago',
-            'comision_afecta_iva': 'La comisión está afecta a IVA'
+            'costo_hora': 'Costo por Hora de Trabajo',
+            'costo_bolsa': 'Costo de Bolsa por Producto',
+            'costo_stickers': 'Costo de Stickers por Producto',
+            'margen_ganancia': 'Margen sobre el precio sin IVA (%)',
+            'porcentaje_iva': 'Margen de IVA (%)',
+            'porcentaje_comision': 'Comisión del Medio de Pago (Por Ejemplo, Webpay)',
+            'comision_afecta_iva': 'Incluir el IVA que Webpay Cobra Sobre su Comisión'
         }
         help_texts = {
             'costo_bolsa': 'Usa 0 si este costo ya está incluido en la receta',
@@ -441,3 +441,54 @@ ArticulosPedidoPersonalizadoFormSet = inlineformset_factory(
     validate_min=True,
     can_delete=True,
 )
+
+class FabricacionPedidoPersonalizadoForm(forms.Form):
+    cantidad = forms.IntegerField(label='Unidades a Fabricar', min_value=1)
+    fabricadas_iniciales = forms.IntegerField(min_value=0, widget=forms.HiddenInput())
+
+class PedidoPersonalizadoDatosForm(PedidoPersonalizadoForm):
+    def __init__(self, data=None, instance=None):
+        super().__init__(data=data, instance=instance)
+
+        pedido = self.instance
+
+        entrega_bloqueada = pedido.etapa in ('enviado', 'disponible_retiro', 'entregado')
+
+        if entrega_bloqueada:
+            for nombre in ('tipo_entrega', 'direccion_invitado', 'fecha_compromiso'):
+                self.fields[nombre].disabled = True
+                self.fields[nombre].help_text = ('No se Puede Modificar en Esta Etapa del Pedido')
+
+        adelanto_bloqueado = (
+            pedido.estado != 'pendiente'
+            or bool(pedido.etapa)
+            or pedido.pagos.exclude(estado='rechazado').exists()
+            or pedido.detalles_personalizados.filter(unidades_fabricadas__gt=0).exists()
+        )
+
+        if adelanto_bloqueado:
+            self.fields['adelanto_requerido'].disabled = True
+            self.fields['adelanto_requerido'].help_text = ('El Adelanto Queda Fijado al Iniciar el Pago o la Preparación')
+
+        for campo in self.fields.values():
+            if isinstance(campo.widget, forms.Select):
+                campo.widget.attrs['class'] = 'form-select'
+            else:
+                campo.widget.attrs['class'] = 'form-control'
+
+    def clean_adelanto_requerido(self):
+        adelanto = self.cleaned_data['adelanto_requerido']
+        campo = self.fields['adelanto_requerido']
+
+        if not campo.disabled and adelanto > self.instance.total:
+            raise forms.ValidationError('El Adelanto no Puede Superar el Total del Pedido')
+
+        return adelanto
+
+class CancelacionPedidoPersonalizadoForm(forms.Form):
+    motivo = forms.CharField(label='Motivo de cancelación', max_length=500, widget=forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3
+            }
+        )
+    )

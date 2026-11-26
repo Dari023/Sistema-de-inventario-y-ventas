@@ -1,0 +1,58 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<main class='container py-4'>
+    <header class='d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4'>
+        <div>
+            <h1 class='h3 mb-1'>EDITAR DATOS DEL PEDIDO #{{ pedido.pk }}</h1>
+            <p class='text-secondary mb-0'>Actualiza el Contacto y las Condiciones de Entrega</p>
+        </div>
+        <a href="{% url 'pedido_detalles' pedido.pk %}" class='btn btn-outline-secondary'>
+            Volver al Pedido
+        </a>
+    </header>
+
+    <section class='card border-0 shadow-sm'>
+        <div class='card-body p-4'>
+            <p class='text-secondary small'>Los Campos Bloqueados Conservan los Datos Acordados</p>
+
+            <form method='post'>
+                {% csrf_token %}
+
+                {% for error in form.non_field_errors %}
+                    <div class='alert alert-danger'>{{ error }}</div>
+                {% endfor %}
+
+                <div class='row g-3'>
+                    {% for campo in form %}
+                        <div class='col-md-6'>
+                            <label for='{{ campo.id_for_label }}' class='form-label'>
+                                {{ campo.label }}
+                            </label>
+
+                            {{ campo }}
+
+                            {% if campo.help_text %}
+                                <div class='form-text'>{{ campo.help_text }}</div>
+                            {% endif %}
+
+                            {% for error in campo.errors %}
+                                <div class='text-danger small mt-1'>
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class='d-flex flex-wrap gap-2 border-top pt-3 mt-4'>
+                    <button type='submit' class='btn btn-dark'>Guardar Cambios</button>
+                    <a href="{% url 'pedido_detalles' pedido.pk %}" class='btn btn-outline-secondary'>
+                        Cancelar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}
