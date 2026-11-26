@@ -61,10 +61,6 @@
                         <dt>Descuento</dt>
                         <dd>{{ producto.descuento_porcentaje }} %</dd>
                     </div>
-                    <div>
-                        <dt>Admite Personalización</dt>
-                        <dd>{{ producto.admite_personalizacion|yesno:"Sí,No" }}</dd>
-                    </div>
 
                     {% if not variantes %}
                         <div>

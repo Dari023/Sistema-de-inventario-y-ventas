@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework import routers
-from . import views
+from . import views, envios
 from rest_framework_simplejwt.views import TokenRefreshView
 
 router = routers.DefaultRouter()
@@ -24,4 +24,5 @@ urlpatterns = [
     path("consultas/",views.ConsultaCrearView.as_view(), name="api_consulta_crear"),
     path("password-reset/", views.PedirResetPasswordView.as_view(), name="restablecer-password"),
     path("password-reset/confirm/", views.ResetPasswordView.as_view(), name="restablecer-password-confirm"),
+    path('opciones-entrega/', envios.OpcionesEnvioView.as_view(), name='api_opciones_entrega')
 ]

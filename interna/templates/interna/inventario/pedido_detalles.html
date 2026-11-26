@@ -22,10 +22,10 @@
                 <div class='card-body p-4'>
                     <h2 class='h5 mb-3'>Datos del Comprador</h2>
                     {% if pedido.cliente %}
-                        <p class='mb-2'><strong>Nombre:</strong> {{ pedido.cliente.nombre }} {{ pedido.cliente.apellido }}</p>
-                        <p class='mb-2 text-break'><strong>Correo:</strong> {{ pedido.cliente.correo|default:pedido.cliente.usuario.email|default:'No registrado' }}</p>
-                        <p class='mb-2'><strong>RUT:</strong> {{ pedido.cliente.rut|default:'No registrado' }}</p>
-                        <p class='mb-0'><strong>Teléfono:</strong> {{ pedido.cliente.telefono|default:'No registrado' }}</p>
+                        <p class='mb-2'><strong>Nombre:</strong> {{ pedido.nombre_invitado|default:"No registrado" }}</p>
+                        <p class='mb-2 text-break'><strong>Correo:</strong> {{ pedido.email_invitado|default:"No registrado" }}</p>
+                        <p class='mb-2'><strong>RUT:</strong> {{ pedido.rut_invitado|default:"No registrado" }}</p>
+                        <p class='mb-0'><strong>Teléfono:</strong> {{ pedido.telefono_invitado|default:"No registrado" }}</p>
                     {% else %}
                         <p class='mb-2'><strong>Nombre:</strong> {{ pedido.nombre_invitado|default:'Invitado' }}</p>
                         <p class='mb-2 text-break'><strong>Correo:</strong> {{ pedido.email_invitado|default:'No registrado' }}</p>
