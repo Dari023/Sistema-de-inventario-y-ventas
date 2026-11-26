@@ -14,8 +14,12 @@
             <h1>MATERIAS PRIMAS</h1>
             <p>Consulta y Administra las Materias Primas de la Tienda.</p>
         </div>
-        <a class="detalle-boton detalle-boton-secundario" href="{% url 'inventario' %}" style="margin-right:-26rem;">Volver Atrás</a>
-        <a class="boton-crear" href="{% url 'materia_prima_crear' %}">Crear MP </a>
+        <a class="detalle-boton detalle-boton-secundario" href="{% url 'inventario' %}" style="margin-right:-20rem;">Volver Atrás</a>
+        <div>
+            <a href="{% url 'exportar_materias_primas' %}" class="boton-crear">Descargar excel</a>
+            <a class="boton-crear" href="{% url 'materia_prima_crear' %}">Crear MP </a> 
+        </div>
+        
     </header>
 
     <section class="inventario-panel">

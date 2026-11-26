@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { api } from "../api/Api";
+import { api } from "../../api/Api";
 
 export const Seguimiento = () => {
   const { id_compra } = useParams();

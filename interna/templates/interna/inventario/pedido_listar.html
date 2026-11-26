@@ -12,11 +12,14 @@
             <h1>PEDIDOS</h1>
             <p>Busca un Pedido por su Código</p>
         </div>
-        {% if perms.interna.add_pedido %}
-            <a href="{% url 'pedido_personalizado_crear' %}" class='boton-crear'>
-                Crear Pedido Personalizado
-            </a>
-        {% endif %}
+        <div>
+            <a href="{% url 'exportar_pedidos' %}" class='boton-crear'>Descargar excel</a>
+           {% if perms.interna.add_pedido %}
+                <a href="{% url 'pedido_personalizado_crear' %}" class='boton-crear'>
+                    Crear Pedido Personalizado
+                </a>
+            {% endif %} 
+        </div>
     </header>
 
     <section class="inventario-panel">

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from . import views, pagos_personalizados
+from . import views, pagos_personalizados, exportaciones
 
 urlpatterns = [
     path('', views.home, name='home'),
@@ -40,8 +40,7 @@ urlpatterns = [
     path('encargos/<str:token>/webpay/iniciar/', pagos_personalizados.pedido_personalizado_webpay_iniciar, name='pedido_personalizado_webpay_iniciar'),
     path('encargos/<str:token>/webpay/retorno/', pagos_personalizados.pedido_personalizado_webpay_retorno,name='pedido_personalizado_webpay_retorno',),
     path('encargos/<str:token>/webpay/<int:pago_pk>/consultar/', pagos_personalizados.pedido_personalizado_webpay_consultar, name='pedido_personalizado_webpay_consultar'),
-    path('pedidos/<int:pk>/articulos/<int:detalle_pk>/fabricar/', views.pedido_personalizado_fabricar, name='pedido_personalizado_fabricar'),
-    path('pedidos/<int:pk>/datos/editar/', views.pedido_personalizado_datos_editar, name='pedido_personalizado_datos_editar'),
-    path('pedidos/<int:pk>/articulos/<int:detalle_pk>/receta/editar/', views.pedido_personalizado_receta_editar, name='pedido_personalizado_receta_editar'),
-    path('pedidos/<int:pk>/cancelar/', views.pedido_personalizado_cancelar, name='pedido_personalizado_cancelar')
+    path('exportar/productos/', exportaciones.producto_exportar, name='exportar_productos'),
+    path('exportar/materias-primas/', exportaciones.materia_prima_exportar, name='exportar_materias_primas'),
+    path('exportar/pedidos/', exportaciones.pedido_exportar, name='exportar_pedidos'),
 ]
