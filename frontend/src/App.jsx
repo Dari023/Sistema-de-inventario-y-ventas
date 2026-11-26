@@ -4,14 +4,16 @@ import { Inicio } from "./modules/Inicio";
 import { ProductoListar } from "./modules/ProductoListar";
 import { ProductoDetalles } from "./modules/ProductoDetalles";
 import { Carrito } from "./modules/Carrito";
-import { Login } from "./modules/Login";
-import { Registro } from "./modules/Registro";
-import { MiCuenta } from "./modules/MiCuenta";
+import { Login } from "./modules/cuenta/Login";
+import { Registro } from "./modules/cuenta/Registro";
+import { MiCuenta } from "./modules/cuenta/MiCuenta";
 import { Checkout } from "./modules/Checkout";
 import { CompraDetail } from "./modules/CompraDetail";
 import { ToastContainer } from 'react-toastify';
 import { Resenas } from "./modules/Resenas";
-import { Seguimiento } from "./modules/Seguimiento";
+import { Seguimiento } from "./modules/cuenta/Seguimiento";
+import { RecuperarPassword } from "./modules/cuenta/RecuperarPassword";
+import { RestablecerPassword } from "./modules/cuenta/RestablecerPassword";
 import 'react-toastify/dist/ReactToastify.css';
 import Logo from "./assets/Logo.jpeg";
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -174,6 +176,8 @@ export const App = () => {
           <Route path='/resenas/:token' element={<Resenas />} />
           <Route path="/contacto" element={<Contacto />} />
           <Route path="/seguimiento/:id_compra" element={<Seguimiento />} />
+          <Route path="/recuperar-password" element={<RecuperarPassword />} />
+          <Route path="/restablecer-password/:token" element={<RestablecerPassword />} /> 
         </Routes>
       </main>
 

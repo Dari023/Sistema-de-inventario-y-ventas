@@ -22,4 +22,6 @@ urlpatterns = [
     path('productos/<int:pk>/resenas/', views.ResenasProductoView.as_view(), name='api_resenas_producto'),
     path('preguntas-frecuentes/', views.PreguntasFrecuentesView.as_view(), name='api_preguntas_frecuentes'),
     path("consultas/",views.ConsultaCrearView.as_view(), name="api_consulta_crear"),
+    path("password-reset/", views.PedirResetPasswordView.as_view(), name="restablecer-password"),
+    path("password-reset/confirm/", views.ResetPasswordView.as_view(), name="restablecer-password-confirm"),
 ]

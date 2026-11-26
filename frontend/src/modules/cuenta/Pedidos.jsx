@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/Api";
+import { api } from "../../api/Api";
 
 export const Pedidos = () => {
   const [pedidos, setPedidos] = useState(null);
