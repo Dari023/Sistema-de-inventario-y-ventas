@@ -80,7 +80,26 @@
                             <span class="estado estado-deshabilitado">Deshabilitado</span>
                         {% endif %}
                     </td>
-                    <td>—</td>
+                    <td>
+                    {% if perms.api.change_cliente %}
+                        <form method='post' action="{% url 'cliente-cambiar-estado' cliente.pk %}" class='m-0'>
+                            {% csrf_token %}
+                            {% if cliente.usuario.is_active %}
+                                <input type='hidden' name='activo' value='0'>
+                                <button type='submit' class='btn btn-outline-danger btn-sm'>
+                                    Deshabilitar
+                                </button>
+                            {% else %}
+                                <input type='hidden' name='activo' value='1'>
+                                <button type='submit' class='btn btn-outline-success btn-sm'>
+                                    Reactivar
+                                </button>
+                            {% endif %}
+                        </form>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -26,11 +26,20 @@ class MateriaPrima(models.Model):
     ]
 
     nombre = models.CharField(max_length=100)
-    cantidad_actual = models.DecimalField(max_digits=10, decimal_places=3, default=0)
+    cantidad_actual = models.DecimalField(max_digits=10, decimal_places=3, default=0, editable=False)
     cantidad_critica = models.DecimalField(max_digits=10, decimal_places=3, default=0)
     unidad_de_medida = models.CharField(max_length=20, choices=UNIDADES_MEDIDA, default='UN')
     costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     estado = models.BooleanField(default=True)
+
+    class Meta:
+        permissions = [
+            ('registrar_baja_materiaprima', 'Puede Registrar Bajas de Materias Primas'),
+            ('ajustar_stock_materiaprima', 'Puede Registrar Stock Inicial y Ajustes de Materias Primas')
+        ]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(cantidad_actual__gte=0), name='mp_stock_no_negativo')
+        ]
 
     def __str__(self):
         return f"{self.nombre} ({self.cantidad_actual} {self.unidad_de_medida})"
@@ -45,7 +54,8 @@ class MovimientoMateriaPrima(models.Model):
         ("INICIAL", "Stock Inicial"),
         ("COMPRA", "Compra"),
         ("FABRICACION", "Fabricación"),
-        ("PERDIDA", "Pérdida"),
+        ("PERDIDA", "Baja por Pérdida o Daño"),
+        ("DANO", "Daño"),
         ("AJUSTE", "Ajuste de Inventario")
     ]
 
@@ -53,6 +63,7 @@ class MovimientoMateriaPrima(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
     tipo = models.CharField(max_length=10, choices=TIPOS)
     motivo = models.CharField(max_length=20, choices=MOTIVOS)
+    orden_compra = models.ForeignKey('OrdenCompra', on_delete=models.PROTECT, null=True, blank=True, related_name='movimientos')
     cantidad = models.DecimalField(max_digits=10, decimal_places=3)
     saldo_resultante = models.DecimalField(max_digits=10, decimal_places=3 )
     responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
@@ -166,6 +177,8 @@ class Pedido(models.Model):
     email_invitado = models.EmailField(null=True, blank=True)
     telefono_invitado = models.CharField(max_length=20, null=True, blank=True)
     direccion_invitado = models.CharField(max_length=200, null=True, blank=True)
+    consulta_origen = models.OneToOneField('interna.Consulta', on_delete=models.SET_NULL, null=True, blank=True, editable=False, related_name='pedido_personalizado')
+
     TIPOS_ENTREGA = [
         ('envio',  'Envío a domicilio'),
         ('retiro', 'Retiro en tienda'),
@@ -329,39 +342,21 @@ class PreguntaFrecuente(models.Model):
         return self.pregunta
     
 class Consulta(models.Model):
-    ESTADOS = [
-        ("pendiente", "Pendiente"),
-        ("respondida", "Respondida"),
-    ]
+    ESTADOS = [("pendiente", "Pendiente"), ("respondida", "Respondida")]
 
-    cliente = models.ForeignKey(
-        Cliente,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="consultas",
-    )
-
+    cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True, related_name="consultas")
     nombre = models.CharField(max_length=150)
     correo = models.EmailField()
     asunto = models.CharField(max_length=150)
     mensaje = models.TextField()
-
     es_personalizado = models.BooleanField(default=False)
-
-    imagen_referencia = models.ImageField(
-        upload_to="consultas/",
-        blank=True,
-        null=True,
-    )
-
+    imagen_referencia = models.ImageField(upload_to="consultas/", blank=True, null=True)
     fecha = models.DateTimeField(auto_now_add=True)
-
-    estado = models.CharField(
-        max_length=20,
-        choices=ESTADOS,
-        default="pendiente",
-    )
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
+    tipo_entrega = models.CharField(max_length=10, choices=[('retiro', 'Retiro en tienda'), ('envio', 'Envío a domicilio')], blank=True, default='')
+    direccion_entrega = models.CharField(max_length=200, blank=True, default='')
+    rut = models.CharField(max_length=12, blank=True, default='')
+    telefono = models.CharField(max_length=20, blank=True, default='')
 
     class Meta:
         ordering = ["-fecha", "-pk"]
@@ -370,6 +365,25 @@ class Consulta(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.asunto}"
+
+class RespuestaConsulta(models.Model):
+    consulta = models.ForeignKey(Consulta, on_delete=models.PROTECT, related_name='respuestas')
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_consultas')
+    correo_destino = models.EmailField()
+    asunto = models.CharField(max_length=200)
+    mensaje = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+    fecha_envio = models.DateTimeField(null=True, blank=True)
+
+    estado = models.CharField(
+        max_length=10,
+        choices=[('pendiente', 'Pendiente de Envío'), ('enviada', 'Enviada'), ('error', 'Envío no Confirmado')],
+        default='pendiente'
+    )
+    clave_envio = models.UUIDField(default=uuid.uuid4, unique=True, editable=False,)
+
+    class Meta:
+        ordering = ['-fecha', '-pk']
 
 class DetallePedidoPersonalizado(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='detalles_personalizados')
@@ -431,3 +445,71 @@ class FabricacionPedidoPersonalizado(models.Model):
 
     def __str__(self):
         return f"Fabricación {self.pk} - Encargo {self.detalle_id}"
+
+class Proveedor(models.Model):
+    nombre = models.CharField(max_length=150)
+    rut = models.CharField(max_length=12, unique=True)
+    contacto = models.CharField(max_length=100, blank=True)
+    telefono = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nombre', 'pk']
+
+    def __str__(self):
+        return self.nombre
+
+class OrdenCompra(models.Model):
+    ESTADOS = [('pendiente', 'Pendiente de Recepción'), ('recibida', 'Recibida'), ('cancelada', 'Cancelada')]
+    DOCUMENTOS = [('FACTURA', 'Factura'), ('BOLETA', 'Boleta'), ('OTRO', 'Otro')]
+
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.PROTECT, related_name='ordenes')
+    tipo_documento = models.CharField(max_length=10, choices=DOCUMENTOS, default='FACTURA')
+    numero_documento = models.CharField(max_length=40, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='ordenes_compra')
+    estado = models.CharField( max_length=10, choices=ESTADOS, default='pendiente', editable=False)
+    observacion = models.CharField(max_length=300, blank=True)
+    fecha_gestion = models.DateTimeField(null=True, blank=True, editable=False)
+    gestionado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', editable=False)
+    motivo_cancelacion = models.CharField( max_length=300, blank=True, editable=False)
+
+    class Meta:
+        ordering = ['-fecha', '-pk']
+        permissions = [
+            ('recibir_ordencompra', 'Puede Confirmar Recepción de Órdenes de Compra'),
+            ('cancelar_ordencompra', 'Puede Cancelar Órdenes de Compra Pendientes')
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['proveedor', 'tipo_documento', 'numero_documento'],
+                condition=(~models.Q(numero_documento='') & ~models.Q(estado='cancelada')),
+                name='oc_documento_proveedor_unico'
+            )
+        ]
+
+    @property
+    def total(self):
+        return sum((fila.subtotal for fila in self.detalles.all()), Decimal('0'))
+
+    def __str__(self):
+        return f'OC-{self.pk}'
+
+class DetalleOrdenCompra(models.Model):
+    orden = models.ForeignKey(OrdenCompra, on_delete=models.CASCADE, related_name='detalles')
+    materia_prima = models.ForeignKey(MateriaPrima, on_delete=models.PROTECT)
+    cantidad = models.DecimalField(max_digits=10, decimal_places=3, validators=[MinValueValidator(Decimal('0.001'))])
+    costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    unidad = models.CharField(max_length=20, editable=False)
+
+    @property
+    def subtotal(self):
+        return (self.cantidad * self.costo_unitario).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['orden', 'materia_prima'], name='oc_material_unico'),
+            models.CheckConstraint(condition=models.Q(cantidad__gt=0), name='oc_cantidad_positiva'),
+            models.CheckConstraint(condition=models.Q(costo_unitario__gt=0), name='oc_costo_positivo')
+        ]

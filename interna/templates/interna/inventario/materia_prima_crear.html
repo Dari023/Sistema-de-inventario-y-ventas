@@ -3,7 +3,6 @@
 
 {% block extra_css %}
 {{ block.super }}
-<script src="{% static 'interna/js/materia_prima_editar.js' %}"></script>
 <link rel="stylesheet" href="{% static 'interna/css/inventario.css' %}">
 <link rel="stylesheet" href="{% static 'interna/css/formularios.css' %}">
 {% endblock %}
@@ -22,6 +21,30 @@
             {% endif %}
         </div>
     </header>
+
+    {% if materia_prima %}
+        <div class='d-flex align-items-center flex-wrap gap-2 mb-3'>
+            <span class='me-auto'>
+                <strong>Existencias:</strong>
+                {{ materia_prima.cantidad_actual }}
+                {{ materia_prima.get_unidad_de_medida_display }}
+            </span>
+
+            {% if perms.interna.registrar_baja_materiaprima %}
+                <a class='btn btn-outline-danger btn-sm' href="{% url 'materia_prima_baja' materia_prima.pk %}">
+                    Registrar Baja
+                </a>
+            {% endif %}
+
+            {% if perms.interna.ajustar_stock_materiaprima %}
+                <a class='btn btn-outline-secondary btn-sm' href="{% url 'materia_prima_ajustar' materia_prima.pk %}">
+                    Stock Inicial / Ajuste
+                </a>
+            {% endif %}
+        </div>
+    {% else %}
+        <p class='text-secondary'>La materia prima se creará con existencias en cero, registra una compra recibida o una carga inicial para incorporar stock</p>
+    {% endif %}
 
     <section class="inventario-panel">
         <p class="formulario-aviso">Los Campos con <span>*</span> son Obligatorios.</p>

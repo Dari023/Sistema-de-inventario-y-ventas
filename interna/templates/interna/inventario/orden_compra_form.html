@@ -1,0 +1,51 @@
+{% extends 'interna/base.html' %}
+{% load static %}
+
+{% block content %}
+<main class='container py-4'>
+    <h1 class='h3 mb-3'>CREAR ORDEN DE COMPRA</h1>
+    <p class='text-secondary'>Las cantidades se expresan en la unidad de cada materia prima, crear la orden no aumenta el stock</p>
+
+    <form method='post' class='card border-0 shadow-sm'>
+        <div class='card-body p-4'>
+            {% csrf_token %}
+            {% include 'interna/inventario/_campos_gestion.html' %}
+
+            <h2 class='h5 mt-4'>Materiales</h2>
+            {{ detalles.management_form }}
+            <div class='text-danger'>{{ detalles.non_form_errors }}</div>
+
+            <div class='table-responsive'>
+                <table class='table align-middle'>
+                    <thead>
+                        <tr><th>Materia Prima</th><th>Cantidad</th><th>Costo Unitario</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody id='filas-compra'>
+                        {% for fila in detalles %}
+                            {% include 'interna/inventario/_fila_compra.html' %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <button type='button' id='agregar-material' class='btn btn-outline-secondary btn-sm'>
+                Agregar Material
+            </button>
+
+            <div class='d-flex gap-2 mt-4'>
+                <button type='submit' class='btn btn-dark'>Crear Orden</button>
+                <a class='btn btn-outline-secondary' href="{% url 'ordenes_compra_listar' %}">Cancelar</a>
+            </div>
+        </div>
+    </form>
+
+    <template id='fila-compra-vacia'>
+        {% include 'interna/inventario/_fila_compra.html' with fila=fila_vacia %}
+    </template>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'interna/js/orden_compra.js' %}" defer></script>
+{% endblock %}

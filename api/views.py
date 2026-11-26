@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib.auth.models import User
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction, IntegrityError
-from django.db.models import F
+from django.db.models import F, Q
 from django.conf import settings
 from django.core import signing
 from django.http import Http404
@@ -15,6 +15,7 @@ from django.template.loader import render_to_string
 from transbank.webpay.webpay_plus.transaction import Transaction as WpTx
 from transbank.common.integration_commerce_codes import IntegrationCommerceCodes
 from transbank.common.integration_api_keys import IntegrationApiKeys
+from rest_framework.exceptions import PermissionDenied as PermisoResenaDenegado
 from uuid import UUID
 from urllib.parse import quote
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente, ProductoVariante
@@ -363,7 +364,8 @@ class CompraDetailView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, id_compra):
-        pedidos = Pedido.objects.filter(estado="pagado")
+        pedidos = (Pedido.objects.filter(Q(tipo_pedido='normal', estado='pagado') | Q(tipo_pedido='personalizado'))
+            .prefetch_related('detallepedido_set__producto','detallepedido_set__variante', 'detalles_personalizados'))
 
         if request.user.is_authenticated:
             pedidos = pedidos.filter(cliente__usuario=request.user)
@@ -371,17 +373,21 @@ class CompraDetailView(APIView):
             clave_sesion = request.session.session_key
 
             if clave_sesion:
-                pedidos = pedidos.filter(
-                    cliente__isnull=True,
-                    session_key=clave_sesion,
-                )
+                pedidos = pedidos.filter(cliente__isnull=True, session_key=clave_sesion)
             else:
                 pedidos = pedidos.none()
 
         pedido = get_object_or_404(pedidos, id_compra=id_compra)
-        datos = PedidoSerializer(pedido).data
-        firmador = signing.Signer(salt='resenas-pedido')
-        datos['token_resenas'] = firmador.sign(str(pedido.id_compra))
+        datos = PedidoSerializer(pedido, context={'request': request}).data
+
+        datos['puede_resenar'] = (pedido.tipo_pedido == 'normal' and pedido.estado == 'pagado' and pedido.etapa == 'entregado'
+            and not pedido.cancelado
+        )
+        datos['token_resenas'] = None
+
+        if datos['puede_resenar']:
+            firmador = signing.Signer(salt='resenas-pedido')
+            datos['token_resenas'] = firmador.sign(str(pedido.id_compra))
 
         respuesta = Response(datos)
         respuesta["Cache-Control"] = "no-store"
@@ -417,26 +423,30 @@ class HistorialPedidosView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return (
-            Pedido.objects
-            .filter(
-                cliente__usuario=self.request.user,
-                estado="pagado",
-            )
-            .prefetch_related("detallepedido_set__producto")
-            .order_by("-fecha_pedido")
+        return (Pedido.objects
+            .filter(cliente__usuario=self.request.user)
+            .filter(Q(tipo_pedido='normal', estado='pagado') | Q(tipo_pedido='personalizado'))
+            .prefetch_related('detallepedido_set__producto', 'detallepedido_set__variante', 'detalles_personalizados')
+            .order_by('-fecha_pedido', '-pk')
         )
 
-def obtener_pedido_resena(token):
+def obtener_pedido_resena(token, bloquear=False):
     firmador = signing.Signer(salt='resenas-pedido')
 
     try:
-        codigo_compra = firmador.unsign(token)
-        codigo_compra = UUID(codigo_compra)
+        codigo_compra = UUID(firmador.unsign(token))
     except (signing.BadSignature, ValueError):
         raise Http404('El Enlace de Reseñas no es Válido')
 
-    pedido = get_object_or_404(Pedido, id_compra=codigo_compra, estado='pagado')
+    consulta = Pedido.objects.all()
+
+    if bloquear:
+        consulta = consulta.select_for_update()
+
+    pedido = get_object_or_404(consulta, id_compra=codigo_compra, tipo_pedido='normal', estado='pagado', cancelado=False)
+
+    if pedido.etapa != 'entregado':
+        raise PermisoResenaDenegado('Podrás Dejar tu Reseña Después de Retirar o Recibir el Pedido')
 
     return pedido
 
@@ -467,12 +477,11 @@ class ResenaCompraView(APIView):
         return respuesta
 
     def post(self, request, token):
-        pedido = obtener_pedido_resena(token)
-        serializer = ResenaCrearSerializer(data=request.data, context={'pedido': pedido})
-        serializer.is_valid(raise_exception=True)
-
         try:
             with transaction.atomic():
+                pedido = obtener_pedido_resena(token, bloquear=True)
+                serializer = ResenaCrearSerializer(data=request.data, context={'pedido': pedido})
+                serializer.is_valid(raise_exception=True)
                 serializer.save(pedido=pedido)
         except IntegrityError:
             return Response(
@@ -532,14 +541,9 @@ class ConsultaCrearView(generics.CreateAPIView):
         cliente = None
 
         if self.request.user.is_authenticated:
-            cliente = Cliente.objects.filter(
-                usuario=self.request.user
-            ).first()
+            cliente = Cliente.objects.filter(usuario=self.request.user).first()
 
-        serializer.save(
-            cliente=cliente,
-            estado="pendiente",
-        )
+        serializer.save(cliente=cliente, estado="pendiente")
 
 def enviar_correo_reset(usuario, enlace):
     html = render_to_string(
@@ -553,7 +557,6 @@ def enviar_correo_reset(usuario, enlace):
     )
     mensaje.attach_alternative(html, 'text/html')
     mensaje.send()
-
 
 class PedirResetPasswordView(APIView):
     permission_classes = [AllowAny]
@@ -569,7 +572,6 @@ class PedirResetPasswordView(APIView):
             enviar_correo_reset(usuario, f"{frontend.rstrip('/')}/restablecer-password/{quote(token, safe='')}")
 
         return Response({"mensaje": "Si el correo existe, te enviamos un enlace."})
-
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]

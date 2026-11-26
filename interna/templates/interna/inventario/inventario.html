@@ -22,8 +22,24 @@
         <a class="panel-acceso" href="{% url 'materia_prima_listar' %}">
             <i class="bi bi-layers" aria-hidden="true"></i>
             <div>
-                <strong>Materias primas</strong>
+                <strong>Materias Primas</strong>
                 <p>Consulta las existencias de materiales.</p>
+            </div>
+        </a>
+
+        <a class='panel-acceso' href="{% url 'proveedores_listar' %}">
+            <i class='bi bi-truck'></i>
+            <div>
+                <strong>Proveedores</strong>
+                <p>Consulta Proveedores Registrados</p>
+            </div>
+        </a>
+
+        <a class='panel-acceso' href="{% url 'ordenes_compra_listar' %}">
+            <i class="bi bi-cart-check"></i>
+            <div>
+                <strong>Órdenes de Compra</strong>
+                <p>Consulta las Órdenes de Compra Realizadas</p>
             </div>
         </a>
 

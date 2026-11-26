@@ -15,11 +15,42 @@
         </div>
     </header>
 
+    {% if consulta %}
+        <div class='alert alert-light border mb-3'>
+            <div class='d-flex justify-content-between flex-wrap gap-2'>
+                <strong>Desde la Consulta #{{ consulta.pk }}</strong>
+                <a href="{% url 'consulta_detalle' consulta.pk %}">
+                    Ver Consulta
+                </a>
+            </div>
+            <p class="mb-0 mt-2">
+                Revisa la Descripción y Completa las Condiciones Acordadas
+            </p>
+
+            {% if consulta.imagen_referencia %}
+                <a href="{{ consulta.imagen_referencia.url }}" target='_blank' rel='noopener noreferrer'>
+                    Ver Imagen de Referencia
+                </a>
+                <p class="small text-secondary mb-0 mt-1">Se Copiará al Primer Artículo si no Adjuntas Otra Imagen</p>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <section class='inventario-panel'>
         <form method='post' enctype='multipart/form-data'>
             {% csrf_token %}
 
             <h2>Contacto, Entrega y Adelanto</h2>
+
+            {% if not form_pedido.cliente.field.disabled %}
+                <div class='mb-3'>
+                    <label for='buscar-cliente' class='form-label'>
+                        Buscar Cliente
+                    </label>
+                    <input id='buscar-cliente' type='search' class='form-control' placeholder='Nombre, Correo o RUT'>
+                </div>
+            {% endif %}
+
             {{ form_pedido.as_p }}
 
             <h2>Artículos del Pedido</h2>
@@ -48,9 +79,11 @@
             </div>
         </form>
     </section>
+    {{ clientes_datos|json_script:"clientes-pedido-datos" }}
 </main>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'interna/js/pedido_personalizado_crear.js' %}"></script>
+<script src="{% static 'interna/js/pedido_personalizado_cliente.js' %}"></script>
 {% endblock %}

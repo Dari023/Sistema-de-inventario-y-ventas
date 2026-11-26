@@ -1,6 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
-from django.db.models import F
+from pathlib import Path
+import logging
+from django.conf import settings
+from django.contrib.auth.models import User
+from django.core.files import File
+from django.core.mail import send_mail
+from django.db.models import F, Q
 from django.utils import timezone
 from django import forms
 from django.contrib import messages
@@ -10,8 +16,8 @@ from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbid
 from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods, require_GET
 from django.contrib.auth.decorators import login_required, permission_required
-from django.db.models import Q
 from django.views.decorators.cache import never_cache
+logger = logging.getLogger(__name__)
 from .pedidos_personalizados import (
     crear_enlace_pedido_personalizado,
     obtener_pedido_personalizado_por_token,
@@ -30,7 +36,8 @@ from .models import (Producto,
     Consulta,
     DetallePedidoPersonalizado,
     MaterialPedidoPersonalizado,
-    FabricacionPedidoPersonalizado)
+    FabricacionPedidoPersonalizado,
+    RespuestaConsulta)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -50,7 +57,9 @@ from .forms import (
     ArticulosPedidoPersonalizadoFormSet,
     FabricacionPedidoPersonalizadoForm,
     PedidoPersonalizadoDatosForm,
-    CancelacionPedidoPersonalizadoForm)
+    CancelacionPedidoPersonalizadoForm,
+    PedidoPersonalizadoCrearForm,
+    RespuestaConsultaForm)
 
 @login_required
 def home(request):
@@ -409,68 +418,42 @@ def materia_prima_detalles(request, pk):
 
 @login_required
 @permission_required('interna.add_materiaprima', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
 def materia_prima_crear(request):
-    if request.method == "POST":
-        form = MateriaPrimaForm(request.POST)
-        form.fields.pop('observacion')
-        if form.is_valid():
-            with transaction.atomic():
-                materia_prima = form.save()
-                if materia_prima.cantidad_actual > 0:
-                    MovimientoMateriaPrima.objects.create(
-                        materia_prima=materia_prima,
-                        tipo="ENTRADA",
-                        motivo="INICIAL",
-                        cantidad=materia_prima.cantidad_actual,
-                        saldo_resultante=materia_prima.cantidad_actual,
-                        responsable=request.user,
-                    )
-
-            return redirect("materia_prima_listar")
-    else:
-        form = MateriaPrimaForm()
-        form.fields.pop("observacion")
-
-    return render(
-        request,
-        "interna/inventario/materia_prima_crear.html",
-        {"form": form},
-    )
-
-@login_required
-@permission_required('interna.change_materiaprima', raise_exception=True,)
-@transaction.atomic
-def materia_prima_editar(request, pk):
-    consulta = MateriaPrima.objects.all()
-    if request.method == 'POST':
-        consulta = consulta.select_for_update()
-    materia_prima = get_object_or_404(consulta, pk=pk)
-    cantidad_anterior = materia_prima.cantidad_actual
-    datos = request.POST if request.method == 'POST' else None
-    form = MateriaPrimaForm(datos, instance=materia_prima)
-
-    form.fields['cantidad_actual'].widget.attrs.update({'data-cantidad-inicial': str(cantidad_anterior)})
-    form.fields['unidad_de_medida'].disabled = True
-
-    if materia_prima.movimientos.exists():
-        form.fields['unidad_de_medida'].disabled = True
+    form = MateriaPrimaForm(request.POST if request.method == 'POST' else None)
 
     if request.method == 'POST' and form.is_valid():
-        materia_prima = form.save()
-        diferencia = (materia_prima.cantidad_actual - cantidad_anterior)
+        materia = form.save(commit=False)
+        materia.cantidad_actual = 0
+        materia.save()
 
-        if diferencia !=0:
-            MovimientoMateriaPrima.objects.create(
-                materia_prima=materia_prima,
-                tipo='ENTRADA' if diferencia > 0 else 'SALIDA',
-                motivo='AJUSTE',
-                cantidad=abs(diferencia),
-                saldo_resultante=materia_prima.cantidad_actual,
-                responsable=request.user,
-                observacion=form.cleaned_data['observacion']
-            )
-        return redirect ('materia_prima_listar')
-    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia_prima})
+        messages.success(request, 'Materia Prima Creada con Existencias en Cero')
+        return redirect('materia_prima_listar')
+
+    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form})
+
+@login_required
+@permission_required('interna.change_materiaprima', raise_exception=True)
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def materia_prima_editar(request, pk):
+    consulta = (MateriaPrima.objects.select_for_update()
+        if request.method == 'POST'
+        else MateriaPrima.objects.all()
+    )
+    materia = get_object_or_404(consulta, pk=pk)
+
+    form = MateriaPrimaForm(request.POST if request.method == 'POST' else None, instance=materia)
+    form.fields['unidad_de_medida'].disabled = True
+
+    if request.method == 'POST' and form.is_valid():
+        materia = form.save(commit=False)
+        materia.save(update_fields=['nombre', 'cantidad_critica', 'unidad_de_medida', 'costo_unitario', 'estado'])
+
+        messages.success(request, 'Materia Prima Actualizada')
+        return redirect('materia_prima_listar')
+
+    return render(request, 'interna/inventario/materia_prima_crear.html', {'form': form, 'materia_prima': materia})
 
 @login_required
 @permission_required('interna.view_movimientomateriaprima', raise_exception=True)
@@ -898,27 +881,167 @@ def consultas_listar(request):
         },
     )
 
+@transaction.non_atomic_requests
 @login_required
 @permission_required("interna.view_consulta", raise_exception=True)
-@require_http_methods(["GET"])
+@require_http_methods(['GET', 'POST'])
 def consulta_detalle(request, pk):
     consulta = get_object_or_404(Consulta, pk=pk)
+    pedido_generado = Pedido.objects.filter(consulta_origen=consulta).first()
+    sugerencia = (f'Hola {consulta.nombre}:\n\n Gracias por Contactarnos')
 
-    return render(
-        request,
-        "interna/inventario/consulta_detalle.html",
-        {"consulta": consulta},
+    if pedido_generado and not pedido_generado.cancelado:
+        enlace = crear_enlace_pedido_personalizado(request, pedido_generado,)
+        sugerencia = (f'Hola {consulta.nombre}:\n\n''Gracias por Contactarnos')
+
+    if pedido_generado and not pedido_generado.cancelado:
+        enlace = crear_enlace_pedido_personalizado(request, pedido_generado)
+        sugerencia = (
+            f'Hola {consulta.nombre}:\n\n'
+            f'Hemos registrado tu pedido personalizado '
+            f'#{pedido_generado.pk}. '
+            'Muchas gracias por tu preferencia.\n\n'
+            'Puedes revisar tu encargo, pagar el adelanto o saldo '
+            'y consultar su seguimiento en este enlace:\n'
+            f'{enlace}\n\n'
+            'Este enlace permite acceder sin iniciar sesión '
+            'y tiene una vigencia de 30 días desde su generación.'
+        )
+
+        if pedido_generado.cliente_id:
+            sugerencia += ('\n\nTambién puedes acceder desde Mi cuenta → Pedidos en nuestra tienda')
+
+    form_respuesta = RespuestaConsultaForm(request.POST if request.method == 'POST' else None, initial={'mensaje': sugerencia})
+
+    if request.method == 'POST':
+        if not request.user.has_perm('interna.change_consulta'):
+            raise PermissionDenied
+
+        if form_respuesta.is_valid():
+            asunto = ' '.join(f'Re: {consulta.asunto}'.split())[:200]
+            respuesta, creada = RespuestaConsulta.objects.get_or_create(
+                clave_envio=form_respuesta.cleaned_data['clave_envio'],
+                defaults={
+                    'consulta': consulta,
+                    'responsable': request.user,
+                    'correo_destino': consulta.correo,
+                    'asunto': asunto,
+                    'mensaje': form_respuesta.cleaned_data['mensaje']
+                }
+            )
+
+            if not creada:
+                if (respuesta.consulta_id != consulta.pk or respuesta.responsable_id != request.user.pk):
+                    raise PermissionDenied
+
+                messages.info(request,'Esta Respuesta ya fue Registrada, Revisa su Estado en el Historial')
+                return redirect('consulta_detalle', pk=consulta.pk)
+
+            try:
+                enviados = send_mail(
+                    subject=respuesta.asunto,
+                    message=respuesta.mensaje,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[respuesta.correo_destino],
+                    fail_silently=False
+                )
+
+                if enviados != 1:
+                    raise RuntimeError('No se Confirmó el Envío del Correo')
+
+            except Exception:
+                RespuestaConsulta.objects.filter(pk=respuesta.pk).update(estado='error')
+
+                logger.exception('No se pudo confirmar el envío de la respuesta %s', respuesta.pk)
+
+                messages.error(request,'La respuesta quedó registrada, pero no pudimos confirmar el envío del correo, revisa el historial')
+
+            else:
+                with transaction.atomic():
+                    RespuestaConsulta.objects.filter(pk=respuesta.pk).update(estado='enviada', fecha_envio=timezone.now())
+                    Consulta.objects.filter(pk=consulta.pk).update(estado='respondida')
+
+                messages.success(request, 'Respuesta Enviada por Correo y Registrada')
+
+            return redirect('consulta_detalle', pk=consulta.pk)
+
+    return render(request, 'interna/inventario/consulta_detalle.html',
+        {
+            'consulta': consulta,
+            'pedido_generado': pedido_generado,
+            'form_respuesta': form_respuesta,
+            'respuestas': consulta.respuestas.select_related('responsable')
+        }
     )
+
+def _datos_contacto_cliente(cliente):
+    return {
+        'nombre_invitado': f'{cliente.nombre} {cliente.apellido}'.strip(),
+        'rut_invitado': cliente.rut,
+        'email_invitado': cliente.correo,
+        'telefono_invitado': cliente.telefono,
+        'direccion_invitado': cliente.direccion
+    }
 
 @login_required
 @permission_required('interna.add_pedido', raise_exception=True)
-def pedido_personalizado_crear(request):
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def pedido_personalizado_crear(request, consulta_pk=None):
     es_post = request.method == 'POST'
     datos = request.POST if es_post else None
     archivos = request.FILES if es_post else None
+    consulta = None
+    inicial = {}
+
+    if consulta_pk is not None:
+        if not request.user.has_perm('interna.view_consulta'):
+            raise PermissionDenied
+
+        consultas = Consulta.objects.all()
+
+        if es_post:
+            consultas = consultas.select_for_update()
+
+        consulta = get_object_or_404(consultas, pk=consulta_pk, es_personalizado=True)
+        existente = Pedido.objects.filter(consulta_origen=consulta).first()
+
+        if existente:
+            messages.info(request, 'Esta Consulta ya Tiene un Pedido Asociado')
+            return redirect('pedido_detalles', pk=existente.pk)
+
+        if consulta.cliente_id:
+            inicial.update(_datos_contacto_cliente(consulta.cliente))
+            inicial['cliente'] = consulta.cliente_id
+
+        inicial['nombre_invitado'] = consulta.nombre
+        inicial['email_invitado'] = consulta.correo
+
+        if consulta.rut:
+            inicial['rut_invitado'] = consulta.rut
+
+        if consulta.telefono:
+            inicial['telefono_invitado'] = consulta.telefono
+
+        if consulta.tipo_entrega in ('retiro', 'envio'):
+            inicial['tipo_entrega'] = consulta.tipo_entrega
+            inicial['direccion_invitado'] = consulta.direccion_entrega
+
     pedido = Pedido(tipo_pedido='personalizado')
-    form_pedido = PedidoPersonalizadoForm(datos, instance=pedido, prefix='pedido')
+    form_pedido = PedidoPersonalizadoCrearForm(datos,instance=pedido, initial=inicial, prefix='pedido')
+    campo_cliente = form_pedido.fields['cliente']
+
+    if consulta and consulta.cliente_id:
+        if not campo_cliente.queryset.filter(pk=consulta.cliente_id).exists():
+            messages.error(request, 'La cuenta vinculada no está disponible, revisa su estado antes de preparar el pedido')
+            return redirect('consulta_detalle', pk=consulta.pk)
+
+        campo_cliente.disabled = True
+
     articulos = ArticulosPedidoPersonalizadoFormSet(datos, archivos, instance=pedido, prefix='articulos', queryset=DetallePedidoPersonalizado.objects.none())
+
+    if not es_post and consulta and articulos.forms:
+        articulos.forms[0].initial['descripcion'] = consulta.mensaje
 
     if es_post:
         pedido_valido = form_pedido.is_valid()
@@ -942,8 +1065,7 @@ def pedido_personalizado_crear(request):
         filas_a_guardar= []
 
         if articulos_validos:
-            filas_a_guardar = [
-                fila
+            filas_a_guardar = [fila
                 for fila in articulos.forms
                 if fila.cleaned_data
                 and not fila.cleaned_data.get('DELETE')
@@ -958,27 +1080,53 @@ def pedido_personalizado_crear(request):
                 pedido_valido = False
 
         if pedido_valido and articulos_validos and recetas_validas:
-            with transaction.atomic():
+            cliente = form_pedido.cleaned_data['cliente']
+
+            if cliente:
+                cuenta = get_object_or_404(User.objects.select_for_update(), pk=cliente.usuario_id)
+
+                if not cuenta.is_active:
+                    form_pedido.add_error('cliente', 'La Cuenta fue Deshabilitada, Revisa el Cliente')
+                    pedido_valido = False
+
+            if pedido_valido:
                 pedido = form_pedido.save(commit=False)
+                pedido.consulta_origen = consulta
                 pedido.tipo_pedido = 'personalizado'
                 pedido.estado = 'pendiente'
                 pedido.etapa = None
                 pedido.save()
 
-                for fila in filas_a_guardar:
+                for indice, fila in enumerate(filas_a_guardar):
                     detalle = fila.save(commit=False)
                     detalle.pedido = pedido
-                    detalle.save()
 
+                    if (
+                        indice == 0
+                        and consulta
+                        and consulta.imagen_referencia
+                        and not detalle.imagen_referencia
+                    ):
+                        nombre = Path(consulta.imagen_referencia.name).name
+
+                        with consulta.imagen_referencia.open('rb') as archivo:
+                            detalle.imagen_referencia.save(nombre, File(archivo), save=False)
+
+                    detalle.save()
                     fila.materiales.instance = detalle
                     fila.materiales.save()
 
-            return redirect('pedido_detalles', pk=pedido.pk)
+                messages.success(request, 'Pedido Personalizado Creado')
+                return redirect('pedido_detalles', pk=pedido.pk)
+
+    clientes_datos = {str(cliente.pk): _datos_contacto_cliente(cliente) for cliente in campo_cliente.queryset}
 
     return render(request, 'interna/inventario/pedido_personalizado_crear.html',
         {
             'form_pedido': form_pedido,
-            'articulos': articulos
+            'articulos': articulos,
+            'consulta': consulta,
+            'clientes_datos': clientes_datos
         }
     )
 

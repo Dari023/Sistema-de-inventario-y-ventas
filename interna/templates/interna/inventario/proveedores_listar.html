@@ -1,0 +1,77 @@
+{% extends 'interna/base.html' %}
+
+{% load static l10n %}
+
+{% block extra_css %}
+<link rel='stylesheet' href="{% static 'interna/css/inventario.css' %}">
+<link rel='stylesheet' href="{% static 'interna/css/detalles.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>PROVEEDORES</h1>
+            <p>Consulta y Administra los Proveedores Registrados</p>
+        </div>
+
+        <div class='d-flex flex-wrap gap-2'>
+            <a class='detalle-boton detalle-boton-secundario' href="{% url 'inventario' %}">Volver Atrás</a>
+            <a href="{% url 'proveedor_crear' %}" class='boton-crear'>Crear Proveedor</a>
+        </div>
+    </header>
+
+    <section class='inventario-panel'>
+        <table class='js-datatable' data-columna-acciones='5'>
+            <thead>
+                <tr>
+                    <th>Proveedor</th>
+                    <th>RUT</th>
+                    <th>Contacto</th>
+                    <th>Correo y Teléfono</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for proveedor in proveedores %}
+                    <tr>
+                        <td>{{ proveedor.nombre }}</td>
+                        <td class='text-nowrap'>{{ proveedor.rut }}</td>
+                        <td>{{ proveedor.contacto|default:'No registrado' }}</td>
+                        <td>
+                            <span class='d-block'>
+                                {{ proveedor.email|default:'Sin correo' }}
+                            </span>
+                            <small class='text-secondary'>
+                                {{ proveedor.telefono|default:'Sin teléfono' }}
+                            </small>
+                        </td>
+                        <td>
+                            {% if proveedor.activo %}
+                                <span class='estado estado-activo'>
+                                    Activo
+                                </span>
+                            {% else %}
+                                <span class='estado estado-deshabilitado'>
+                                    Deshabilitado
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class='acciones'>
+                                {% if perms.interna.change_proveedor %}
+                                    <a href="{% url 'proveedor_editar' proveedor.pk %}">
+                                        Editar
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</main>
+{% endblock %}

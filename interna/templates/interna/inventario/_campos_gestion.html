@@ -1,0 +1,27 @@
+{% for campo in form.hidden_fields %}{{ campo }}{% endfor %}
+<div class='text-danger'>{{ form.non_field_errors }}</div>
+
+<div class='row g-3'>
+    {% for campo in form.visible_fields %}
+        <div class="{% if campo.name == 'observacion' %}col-12{% else %}col-md-6{% endif %}">
+            {% if campo.field.widget.input_type == 'checkbox' %}
+                <div class='form-check mt-4'>
+                    {{ campo }}
+                    <label class='form-check-label' for='{{ campo.id_for_label }}'>
+                        {{ campo.label }}
+                    </label>
+                </div>
+            {% else %}
+                <label class='form-label' for='{{ campo.id_for_label }}'>
+                    {{ campo.label }}{% if campo.field.required %} *{% endif %}
+                </label>
+                {{ campo }}
+            {% endif %}
+
+            <div class='small text-danger'>{{ campo.errors }}</div>
+            {% if campo.help_text %}
+                <div class='form-text'>{{ campo.help_text }}</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>

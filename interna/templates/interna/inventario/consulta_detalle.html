@@ -1,48 +1,143 @@
 {% extends 'interna/base.html' %}
 
 {% block content %}
-<main>
-    <h1>Detalle de consulta</h1>
-
-    <p>
-        <a href="{% url 'consultas_listar' %}">Volver a consultas</a>
-    </p>
-
-    <dl>
-        <dt>Nombre</dt>
-        <dd>{{ consulta.nombre }}</dd>
-
-        <dt>Correo electrónico</dt>
-        <dd>{{ consulta.correo }}</dd>
-
-        <dt>Fecha y hora</dt>
-        <dd>{{ consulta.fecha|date:"d/m/Y H:i" }}</dd>
-
-        <dt>Estado</dt>
-        <dd>{{ consulta.get_estado_display }}</dd>
-
-        <dt>Tipo</dt>
-        <dd>
-            {% if consulta.es_personalizado %}
-                Pedido personalizado
-            {% else %}
-                Consulta general
-            {% endif %}
-        </dd>
-    </dl>
-
-    <h2>{{ consulta.asunto }}</h2>
-    <div>{{ consulta.mensaje|linebreaks }}</div>
-
-    <h2>Imagen de referencia</h2>
-    {% if consulta.imagen_referencia %}
-        <a href="{{ consulta.imagen_referencia.url }}"
-           target="_blank"
-           rel="noopener noreferrer">
-            Ver imagen adjunta
+<main class='inventario'>
+    <header class='inventario-cabecera'>
+        <div>
+            <h1>DETALLE DE CONSULTA</h1>
+            <p>{{ consulta.fecha|date:'d/m/Y H:i' }}</p>
+        </div>
+        <a href="{% url 'consultas_listar' %}" class='btn btn-outline-secondary'>
+            Volver a Consultas
         </a>
-    {% else %}
-        <p>No se adjuntó una imagen.</p>
-    {% endif %}
+    </header>
+
+    <section class='card border-0 shadow-sm'>
+        <div class='card-body p-4'>
+            <div class='d-flex justify-content-between flex-wrap gap-2 mb-4'>
+                <span class="badge {% if consulta.estado == 'respondida' %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                    {{ consulta.get_estado_display }}
+                </span>
+                <span class='text-secondary small'>
+                    {% if consulta.es_personalizado %}
+                        Solicitud de Pedido Personalizado
+                    {% else %}
+                        Consulta General
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class='row g-3 mb-4'>
+                <div class='col-md-6'>
+                    <p class='text-secondary small mb-1'>Nombre</p>
+                    <p class='fw-semibold mb-0'>{{ consulta.nombre }}</p>
+                </div>
+                <div class='col-md-6'>
+                    <p class='text-secondary small mb-1'>Correo</p>
+                    <p class='mb-0 text-break'>{{ consulta.correo }}</p>
+                </div>
+            </div>
+
+            {% if consulta.es_personalizado %}
+                <div class='bg-light rounded p-3 mb-4'>
+                    <p class='mb-0'>
+                        <strong>Entrega:</strong>{{ consulta.get_tipo_entrega_display|default:"Sin especificar" }}
+                    </p>
+
+                    {% if consulta.tipo_entrega == 'envio' %}
+                        <p class='mt-2 mb-0 text-break'>
+                            <strong>Dirección:</strong>{{ consulta.direccion_entrega }}
+                        </p>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            <h2 class='h5'>{{ consulta.asunto }}</h2>
+            <div class='text-break'>{{ consulta.mensaje|linebreaks }}</div>
+
+            {% if consulta.imagen_referencia %}
+                <a href='{{ consulta.imagen_referencia.url }}' target='_blank' rel='noopener noreferrer' class='d-inline-block mb-3'>
+                    <img src='{{ consulta.imagen_referencia.url }}' alt='Referencia del encargo' class='img-thumbnail' width='200'>
+                </a>
+            {% endif %}
+
+            <div class='d-flex flex-wrap gap-2 border-top pt-3 mt-3'>
+                {% if pedido_generado %}
+                    {% if perms.interna.view_pedido %}
+                        <a href="{% url 'pedido_detalles' pedido_generado.pk %}" class='btn btn-dark'>
+                            Ver Pedido #{{ pedido_generado.pk }}
+                        </a>
+                    {% endif %}
+                {% elif consulta.es_personalizado and perms.interna.add_pedido %}
+                    <a href="{% url 'pedido_personalizado_desde_consulta' consulta.pk %}" class='btn btn-dark'>
+                        Preparar Pedido
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+    {% if perms.interna.change_consulta %}
+    <section id="respuesta-consulta" class="card border-0 shadow-sm mt-4">
+        <div class="card-body p-4">
+            <h2 class="h5 mb-2">Responder Consulta</h2>
+            <p class="text-secondary small">
+                Se enviará al correo {{ consulta.correo }}.
+                Revisa el mensaje antes de enviarlo.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                {{ form_respuesta.clave_envio }}
+                {{ form_respuesta.clave_envio.errors }}
+                {{ form_respuesta.non_field_errors }}
+
+                <div class="mb-3">
+                    <label for="{{ form_respuesta.mensaje.id_for_label }}"
+                           class="form-label">
+                        {{ form_respuesta.mensaje.label }}
+                    </label>
+                    {{ form_respuesta.mensaje }}
+                    <div class="text-danger small">
+                        {{ form_respuesta.mensaje.errors }}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-dark">
+                    Enviar Respuesta
+                </button>
+            </form>
+        </div>
+    </section>
+{% endif %}
+
+    <section class='card border-0 shadow-sm mt-4'>
+        <div class='card-body p-4'>
+            <h2 class='h5 mb-3'>Historial de Respuestas</h2>
+
+            {% for respuesta in respuestas %}
+                <article class='border-top pt-3 mt-3'>
+                    <div class='d-flex justify-content-between flex-wrap gap-2'>
+                        <strong>
+                            {{ respuesta.responsable.username|default:"Sin registro" }}
+                        </strong>
+                        <span class="badge {% if respuesta.estado == 'enviada' %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                            {{ respuesta.get_estado_display }}
+                        </span>
+                    </div>
+
+                    <p class='small text-secondary mt-2 mb-2'>
+                        {{ respuesta.fecha|date:"d/m/Y H:i" }}
+                        · Para: {{ respuesta.correo_destino }}
+                    </p>
+
+                    <div class='text-break'>
+                        {{ respuesta.mensaje|linebreaksbr }}
+                    </div>
+                </article>
+            {% empty %}
+                <p class='text-secondary mb-0'>Aún no hay Respuestas Registradas</p>
+            {% endfor %}
+        </div>
+    </section>
 </main>
 {% endblock %}
