@@ -544,3 +544,55 @@ class ConsultaCrearView(generics.CreateAPIView):
             cliente = Cliente.objects.filter(usuario=self.request.user).first()
 
         serializer.save(cliente=cliente, estado="pendiente")
+
+def enviar_correo_reset(usuario, enlace):
+    html = render_to_string(
+        'interna/inventario/restablecerContraseña.html',
+        {'nombre': usuario.first_name or 'cliente', 'enlace': enlace},
+    )
+    mensaje = EmailMultiAlternatives(
+        subject='Restablece tu contraseña | Amigos del Vuelo',
+        body=f"Abre este enlace para crear una nueva contraseña (válido 1 hora):\n{enlace}",
+        to=[usuario.email],
+    )
+    mensaje.attach_alternative(html, 'text/html')
+    mensaje.send()
+
+class PedirResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        email = str(request.data.get("email") or "").strip()
+        usuario = User.objects.filter(email__iexact=email, is_active=True).first()
+
+        if usuario:
+            token = signing.dumps(usuario.pk, salt="reset-password")
+            frontend = getattr(settings, "WEBPAY_FRONTEND_URL", "http://localhost:5173")
+            enviar_correo_reset(usuario, f"{frontend.rstrip('/')}/restablecer-password/{quote(token, safe='')}")
+
+        return Response({"mensaje": "Si el correo existe, te enviamos un enlace."})
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        try:
+            usuario = User.objects.get(
+                pk=signing.loads(request.data.get("token", ""), salt="reset-password", max_age=3600),
+                is_active=True,
+            )
+        except Exception:
+            return Response({"error": "El enlace es inválido o ha expirado"}, status=400)
+
+        password = str(request.data.get("password") or "")
+
+        if not password:
+            return Response({"error": "Ingresa una contraseña"}, status=400)
+        if password != request.data.get("password_confirmacion"):
+            return Response({"error": "Las contraseñas no coinciden"}, status=400)
+
+        usuario.set_password(password)
+        usuario.save(update_fields=["password"])
+        return Response({"mensaje": "Contraseña actualizada correctamente"})

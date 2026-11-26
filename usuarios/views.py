@@ -20,8 +20,11 @@ from django.contrib.auth.decorators import login_required, permission_required
 @permission_required('usuarios.view_usuario', raise_exception=True)
 def UsuarioListView(request):
     query = request.GET.get('q', '').strip()
-    usuarios = Usuario.objects.select_related('user','rol').all()
-    clientes = Cliente.objects.select_related('usuario',).filter(usuario__usuarios__isnull = True)
+    usuarios = Usuario.objects.select_related(
+        'user',
+        'rol'
+    ).all()
+
     
     if query:
         usuarios = usuarios.filter(
@@ -31,16 +34,9 @@ def UsuarioListView(request):
             Q(rut__icontains=query)
         )
 
-        clientes = clientes.filter(
-            Q(usuario__email__icontains=query) | 
-            Q(usuario__first_name__icontains = query) |
-            Q(usuario__last_name__icontains=query) |
-            Q(rut__icontains=query)
-        )
             
     contexto = {
         'usuarios': usuarios,
-        'clientes': clientes,
         'query': query
     }
     return render(request, 'usuarios/usuario_list.html', contexto)

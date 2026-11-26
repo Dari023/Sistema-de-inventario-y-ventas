@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
-import { api } from "../api/Api";
+import { api } from "../../api/Api";
 
 export const Login = () => {
     const [email, setEmail] = useState("");
@@ -67,7 +67,11 @@ export const Login = () => {
                     <button type="submit" className="btn registro-boton">
                         Iniciar Sesión
                     </button>
-
+                    <div className="text-end mb-4">
+                    <Link to="/recuperar-password" className="small">
+                        ¿Olvidaste tu Contraseña?
+                    </Link>
+                    </div>
                     <p className="registro-texto small mb-0">
                         ¿No tienes una Cuenta?{" "}
                         <Link to="/registro">Regístrate</Link>

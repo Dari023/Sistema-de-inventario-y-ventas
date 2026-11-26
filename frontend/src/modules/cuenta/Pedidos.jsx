@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { api } from '../api/Api';
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { api } from "../../api/Api";
 
 const moneda = (valor) =>
-  Number(valor).toLocaleString('es-CL', {style: 'currency', currency: 'CLP', maximumFractionDigits: 0});
+  Number(valor).toLocaleString("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    maximumFractionDigits: 0,
+  });
 
 export const Pedidos = () => {
   const [pedidos, setPedidos] = useState(null);
