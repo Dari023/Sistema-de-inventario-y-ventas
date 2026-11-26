@@ -5,11 +5,7 @@ import { toast } from 'react-toastify';
 import { ResenasProducto } from "./Resenas";
 import "../styles/ProductoDetalles.css";
 
-const formatoPrecio = new Intl.NumberFormat("es-CL", {
-  style: "currency",
-  currency: "CLP",
-  maximumFractionDigits: 0,
-});
+const formatoPrecio = new Intl.NumberFormat("es-CL", {style: "currency", currency: "CLP", maximumFractionDigits: 0});
 
 export const ProductoDetalles = () => {
   const { id } = useParams();
@@ -43,13 +39,29 @@ export const ProductoDetalles = () => {
     );
   }
 
-  if (!producto) {return <p role='status'>Cargando detalles…</p>;}
+  if (!producto) {return <p role='status'>Cargando Detalles</p>;}
 
   const variantes = producto.variantes ?? [];
   const tieneTallas = variantes.length > 0;
   const variante = variantes.find((v) => String(v.id) === varianteId);
-  const precio = variante ? (variante.precio_final ?? variante.precio) : (producto.precio_final ?? producto.precio);
-  const stock = variante?.stock_actual ?? producto.stock_actual;
+  const opcionPrecio = variante ?? (tieneTallas
+    ? variantes.reduce((menor, actual) =>
+        Number(actual.precio_final ?? actual.precio)
+          < Number(menor.precio_final ?? menor.precio)
+          ? actual
+          : menor
+      )
+    : producto
+  );
+  const precioOriginal = Number(opcionPrecio.precio);
+  const precio = Number(opcionPrecio.precio_final ?? opcionPrecio.precio);
+  const tieneDescuento = precio < precioOriginal;
+  const stock = variante
+    ? Number(variante.stock_actual)
+    : tieneTallas
+      ? variantes.reduce((total, v) => total + Number(v.stock_actual), 0)
+      : Number(producto.stock_actual);
+
   const agregarAlCarrito = () => {
     if ((tieneTallas && !variante) || stock <= 0) return;
 
@@ -76,13 +88,16 @@ export const ProductoDetalles = () => {
         <Link to="/catalogo">Catálogo</Link>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{producto.nombre}</span>
+        <p className="text-secondary mb-3">
+          <strong>Categoría:</strong> {producto.categoria_nombre}
+        </p>
       </nav>
       <div className="detalle-contenido">
         <div className="detalle-imagen-contenedor">
           {producto.imagen ? (
             <img src={producto.imagen} alt={producto.nombre} className="detalle-imagen"/>
           ) : (
-            <p>Imagen no disponible</p>
+            <p>Imagen no Disponible</p>
           )}
         </div>
       <div className="detalle-informacion">
@@ -90,9 +105,19 @@ export const ProductoDetalles = () => {
 
           <p className="detalle-precio">
             <span className="detalle-precio-etiqueta">
-              {tieneTallas && !variante ? "Desde" : "Precio:          "}
+              {tieneTallas && !variante ? "Desde" : "Precio"}
             </span>
-            <strong>{formatoPrecio.format(Number(precio))}</strong>
+            {tieneDescuento && (
+              <del className='text-secondary'>
+                {formatoPrecio.format(precioOriginal)}
+              </del>
+            )}
+            <strong>{formatoPrecio.format((precio))}</strong>
+            {tieneDescuento && (
+              <span className='detalle-precio-etiqueta'>
+                Precio con Descuento
+              </span>
+            )}
           </p>
 
           {tieneTallas && (
@@ -109,24 +134,28 @@ export const ProductoDetalles = () => {
               </select>
             </div>
           )}
+
+          <p>
+            <strong>Disponibilidad:</strong>{' '}
+            <span className={`badge ${
+              stock > 0 ? 'producto-disponible' : 'producto-agotado'
+            }`}>
+              {stock > 0
+                ? tieneTallas && !variante
+                  ? 'Disponible en Algunas Tallas'
+                  : 'Disponible'
+                : 'Agotado'}
+            </span>
+          </p>
+
           <p><strong>Modalidad de Venta:</strong> {producto.modalidad_de_venta}</p>
           <div>
             <strong>Descripción:</strong>
             <p>{producto.descripcion}</p>
           </div>
-          {producto.admite_personalizacion && (
-            <div className="detalle-personalizacion">
-              <h2>Personaliza este producto</h2>
-              <p>
-                ¿Te gustaría este producto en otro color o con un diseño diferente?
-                Cuéntanos tu idea y te responderemos a la brevedad.
-              </p>
-              <Link to="/contacto" className="btn boton-secundario">Consultar Personalización</Link>
-            </div>
-          )}
           {(!tieneTallas || variante) && stock > 0 && (
             <button type='button' onClick={agregarAlCarrito} className="btn boton-principal detalle-boton-carrito">
-              Agregar al carrito
+              Agregar al Carrito
             </button>
           )}
         </div>

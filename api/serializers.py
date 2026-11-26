@@ -11,6 +11,7 @@ from .models import Cliente
 from uuid import uuid4
 from interna.models import Consulta, DetallePedidoPersonalizado
 import re
+from .envios import resolver_envio
 
 def validar_telefono_chileno(value):
     if not value.strip():
@@ -78,10 +79,10 @@ class ProductoVarianteSerializer(serializers.ModelSerializer):
         fields = ['id', 'talla', 'precio', 'precio_final', 'stock_actual', 'a_pedido']
 
 class ProductoSerializer(serializers.ModelSerializer):
-
     descuento_porcentaje = serializers.IntegerField(read_only = True)
     precio_final = serializers.DecimalField(max_digits=10, decimal_places=0, read_only=True)
     variantes = ProductoVarianteSerializer(many=True, read_only=True)
+    categoria_nombre = serializers.ReadOnlyField(source='categoria.nombre')
 
     class Meta:
         model = Producto
@@ -138,21 +139,26 @@ class PedidoSerializer(serializers.ModelSerializer):
     detalles = DetallePedidoSerializer(source="detallepedido_set", many=True, read_only=True)
     detalles_personalizados = DetallePedidoPersonalizadoSerializer(many=True, read_only=True)
     total = serializers.ReadOnlyField()
+    subtotal_productos = serializers.ReadOnlyField()
     enlace_cliente = serializers.SerializerMethodField()
 
     class Meta:
         model = Pedido
         fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "etapa", "tipo_pedido", "cancelado",
             "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado", "telefono_invitado",
-            "direccion_invitado", "tipo_entrega", "detalles_personalizados", "enlace_cliente"]
-        read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente", "tipo_pedido", "cancelado"]
+            "direccion_invitado", "tipo_entrega", "detalles_personalizados", "enlace_cliente", "subtotal_productos", 
+            'region_entrega', 'comuna_entrega', 'costo_envio']
+        read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente", "tipo_pedido", "cancelado", 'region_entrega', 
+            'comuna_entrega', 'costo_envio']
 
     def to_representation(self, instancia):
         datos = super().to_representation(instancia)
 
         if self.context.get('es_carrito'):
-            total = sum((Decimal(str(linea['subtotal'])) for linea in datos['detalles']), Decimal('0'))
-            datos['total'] = format(total, "f")
+            subtotal = sum((Decimal(str(linea['subtotal'])) for linea in datos['detalles']), Decimal('0'))
+            datos['subtotal_productos'] = format(subtotal, 'f')
+            datos['costo_envio'] = '0'
+            datos['total'] = format(subtotal, 'f')
 
         return datos
 
@@ -446,3 +452,46 @@ class ConsultaCrearSerializer(serializers.ModelSerializer):
 
             datos['direccion_entrega'] = direccion if tipo == 'envio' else ''
             return datos
+
+class DatosCompradorSerializer(serializers.Serializer):
+    nombre_invitado = serializers.CharField(max_length=150)
+    rut_invitado = serializers.CharField(max_length=12)
+    email_invitado = serializers.EmailField()
+    telefono_invitado = serializers.CharField(max_length=20)
+    tipo_entrega = serializers.ChoiceField(choices=['retiro', 'envio'])
+    direccion_invitado = serializers.CharField(max_length=200, required=False, allow_blank=True, default='')
+    codigo_region = serializers.CharField(max_length=2, required=False, allow_blank=True, default='')
+    codigo_comuna = serializers.CharField(max_length=5, required=False, allow_blank=True, default='')
+    complemento = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+
+    def validate_rut_invitado(self, valor):
+        return validar_rut_chileno(valor)
+
+    def validate_telefono_invitado(self, valor):
+        return validar_telefono_chileno(valor)
+
+    def validate(self, datos):
+        region = datos.pop('codigo_region')
+        comuna = datos.pop('codigo_comuna')
+        complemento = datos.pop('complemento')
+        direccion = datos['direccion_invitado']
+
+        datos.update(region_entrega='', comuna_entrega='', costo_envio=Decimal('0'))
+
+        if datos['tipo_entrega'] == 'retiro':
+            datos['direccion_invitado'] = None
+            return datos
+
+        if not direccion:
+            raise serializers.ValidationError({'direccion_invitado': 'Indica la Calle y Número'})
+
+        datos.update(resolver_envio(region, comuna))
+
+        datos['direccion_invitado'] = ', '.join(filter(None, [
+            direccion,
+            complemento,
+            datos['comuna_entrega'],
+            datos['region_entrega']
+        ]))
+
+        return datos

@@ -127,28 +127,3 @@
   outline: 2px solid var(--tienda-naranjo-oscuro);
   outline-offset: 3px;
 }
-
-.detalle-personalizacion {
-  margin-top: 1.5rem;
-  padding: 1.25rem;
-  border: 1px solid var(--tienda-borde);
-  border-radius: 1rem;
-  background-color: var(--tienda-naranjo-suave);
-}
-
-.detalle-personalizacion h2 {
-  margin: 0 0 0.5rem;
-  color: var(--tienda-texto);
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.detalle-personalizacion p {
-  margin: 0 0 1rem;
-  line-height: 1.6;
-}
-
-.detalle-personalizacion .btn {
-  max-width: 100%;
-  white-space: normal;
-}

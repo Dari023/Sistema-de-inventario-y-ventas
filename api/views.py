@@ -9,6 +9,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.db import transaction, IntegrityError
 from django.db.models import F, Q
 from django.conf import settings
+from decimal import Decimal
 from django.core import signing
 from django.http import Http404
 from django.template.loader import render_to_string
@@ -30,7 +31,8 @@ from .serializers import (
     MiCuentaSerializer,
     ResenaCrearSerializer,
     ResenaPublicaSerializer,
-    PreguntaFrecuenteSerializer
+    PreguntaFrecuenteSerializer,
+    DatosCompradorSerializer
 )
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -174,25 +176,31 @@ class WebpayIniciarView(APIView):
         pedido = obtener_carrito(request)
         if pedido is None or not pedido.detallepedido_set.exists():
             return Response({"error": "el carrito está vacío"}, status=status.HTTP_400_BAD_REQUEST)
-        pedido.tipo_entrega = str(request.data.get('tipo_entrega') or 'retiro').strip().lower()
-        if not request.user.is_authenticated:
-            campos = {
-                'nombre_invitado': 'nombre', 'rut_invitado': 'RUT',
-                'email_invitado': 'email', 'telefono_invitado': 'teléfono',
-            }
-            faltantes = [label for campo, label in campos.items() if not str(request.data.get(campo) or '').strip()]
-            if faltantes:
-                return Response({"error": f"Faltan campos: {', '.join(faltantes)}"}, status=status.HTTP_400_BAD_REQUEST)
-            for campo in campos:
-                setattr(pedido, campo, str(request.data[campo]).strip())
-        if pedido.tipo_entrega == 'envio':
-            direccion = str(request.data.get('direccion_invitado') or '').strip()
-            if not direccion:
-                return Response({"error": "Falta la dirección de envío"}, status=status.HTTP_400_BAD_REQUEST)
-            pedido.direccion_invitado = direccion
-        else:
-            pedido.direccion_invitado = None
-        pedido.save()
+    
+        datos = request.data.copy()
+
+        if request.user.is_authenticated:
+            cliente = Cliente.objects.filter(usuario=request.user).first()
+
+            if cliente is None or pedido.cliente_id != cliente.pk:
+                return Response({'error': 'El Carrito no Corresponde a tu Cuenta de Cliente'}, status=status.HTTP_403_FORBIDDEN)
+
+            datos['rut_invitado'] = cliente.rut
+
+        serializer = DatosCompradorSerializer(data=datos)
+
+        if not serializer.is_valid():
+            mensaje = ' '.join(str(error)
+                for errores in serializer.errors.values()
+                for error in errores
+            )
+
+            return Response({'error': mensaje}, status=status.HTTP_400_BAD_REQUEST)
+
+        for campo, valor in serializer.validated_data.items():
+            setattr(pedido, campo, valor)
+
+        pedido.save(update_fields=list(serializer.validated_data))
 
         with transaction.atomic():
             detalles = list(
@@ -220,7 +228,8 @@ class WebpayIniciarView(APIView):
 
                 detalle.precio_unitario = detalle.precio_vigente
 
-            total = sum(detalle.subtotal for detalle in detalles)
+            subtotal = sum((detalle.subtotal for detalle in detalles), Decimal('0'))
+            total = subtotal + pedido.costo_envio
 
             if total <= 0:
                 return Response({'error': 'El Total del Pedido debe ser Mayor que 0'}, status=status.HTTP_400_BAD_REQUEST)

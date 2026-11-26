@@ -87,8 +87,7 @@ export const App = () => {
 )}`;
 
   const redesSociales = [
-    { nombre: "Instagram", icono: "bi-instagram", enlace: "" },
-    { nombre: "Facebook", icono: "bi-facebook", enlace: "" },
+    { nombre: "Instagram", icono: "bi-instagram", enlace: "https://www.instagram.com/latiendadelosamigosdelvuelo?cnvx=MXY3aThydjlnYnI0cw==" },
     { nombre: "WhatsApp", icono: "bi-whatsapp", enlace: enlaceWhatsApp},
 ];
 

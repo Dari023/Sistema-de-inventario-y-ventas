@@ -101,7 +101,6 @@ class Producto(models.Model):
     modalidad_de_venta = models.CharField(max_length=20)
     descuento_porcentaje = models.IntegerField(default=0, validators=[MinValueValidator(0), MaxValueValidator(99)])
     tiempo_fabricacion_minutos = models.PositiveIntegerField(null=True, blank=True, verbose_name='Tiempo de Trabajo por Unidad (Minutos)')
-    admite_personalizacion = models.BooleanField('Admite personalización', default=False)
 
     def aplicar_descuento(self, precio):
         monto = precio * (100 - self.descuento_porcentaje) / Decimal("100")
@@ -176,8 +175,11 @@ class Pedido(models.Model):
     rut_invitado = models.CharField(max_length=12, null=True, blank=True)
     email_invitado = models.EmailField(null=True, blank=True)
     telefono_invitado = models.CharField(max_length=20, null=True, blank=True)
-    direccion_invitado = models.CharField(max_length=200, null=True, blank=True)
+    direccion_invitado = models.CharField(max_length=500, null=True, blank=True)
     consulta_origen = models.OneToOneField('interna.Consulta', on_delete=models.SET_NULL, null=True, blank=True, editable=False, related_name='pedido_personalizado')
+    region_entrega = models.CharField(max_length=100, blank=True, default='')
+    comuna_entrega = models.CharField(max_length=100, blank=True, default='')
+    costo_envio = models.DecimalField(max_digits=10, decimal_places=0, default=0, validators=[MinValueValidator(Decimal('0'))], editable=False)
 
     TIPOS_ENTREGA = [
         ('envio',  'Envío a domicilio'),
@@ -210,11 +212,17 @@ class Pedido(models.Model):
         permissions = [('cancelar_pedido', 'Puede cancelar pedidos personalizados')]
 
     @property
+    def subtotal_productos(self):
+        detalles = (self.detalles_personalizados.all()
+            if self.tipo_pedido == 'personalizado'
+            else self.detallepedido_set.all()
+        )
+
+        return sum((detalle.subtotal for detalle in detalles), Decimal('0'))
+
+    @property
     def total(self):
-        if self.tipo_pedido == 'personalizado':
-            return sum((detalle.subtotal for detalle in self.detalles_personalizados.all()), Decimal('0'))
-                
-        return sum((detalle.subtotal for detalle in self.detallepedido_set.all()), Decimal('0'))
+        return self.subtotal_productos + self.costo_envio
 
     def __str__(self):
         return f"Pedido {self.id} - {self.cliente or self.nombre_invitado or 'Invitado'}"
@@ -513,3 +521,17 @@ class DetalleOrdenCompra(models.Model):
             models.CheckConstraint(condition=models.Q(cantidad__gt=0), name='oc_cantidad_positiva'),
             models.CheckConstraint(condition=models.Q(costo_unitario__gt=0), name='oc_costo_positivo')
         ]
+
+class TarifaEnvio(models.Model):
+    codigo_region = models.CharField('Código de región', max_length=2, unique=True)
+    nombre_region = models.CharField('Región', max_length=100)
+    costo = models.DecimalField('Costo de envío', max_digits=10, decimal_places=0, validators=[MinValueValidator(Decimal('0'))])
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['nombre_region']
+        verbose_name = 'Tarifa de envío'
+        verbose_name_plural = 'Tarifas de envío'
+
+    def __str__(self):
+        return self.nombre_region
