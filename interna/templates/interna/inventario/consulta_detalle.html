@@ -38,6 +38,20 @@
                 </div>
             </div>
 
+            {% if consulta.es_personalizado %}
+                <div class='bg-light rounded p-3 mb-4'>
+                    <p class='mb-0'>
+                        <strong>Entrega:</strong>{{ consulta.get_tipo_entrega_display|default:"Sin especificar" }}
+                    </p>
+
+                    {% if consulta.tipo_entrega == 'envio' %}
+                        <p class='mt-2 mb-0 text-break'>
+                            <strong>Dirección:</strong>{{ consulta.direccion_entrega }}
+                        </p>
+                    {% endif %}
+                </div>
+            {% endif %}
+
             <h2 class='h5'>{{ consulta.asunto }}</h2>
             <div class='text-break'>{{ consulta.mensaje|linebreaks }}</div>
 
@@ -48,10 +62,6 @@
             {% endif %}
 
             <div class='d-flex flex-wrap gap-2 border-top pt-3 mt-3'>
-                <a href='mailto:{{ consulta.correo }}?subject={{ consulta.asunto|urlencode }}' class='btn btn-outline-secondary'>
-                    Responder por Correo
-                </a>
-
                 {% if pedido_generado %}
                     {% if perms.interna.view_pedido %}
                         <a href="{% url 'pedido_detalles' pedido_generado.pk %}" class='btn btn-dark'>
@@ -64,6 +74,69 @@
                     </a>
                 {% endif %}
             </div>
+        </div>
+    </section>
+    {% if perms.interna.change_consulta %}
+    <section id="respuesta-consulta" class="card border-0 shadow-sm mt-4">
+        <div class="card-body p-4">
+            <h2 class="h5 mb-2">Responder Consulta</h2>
+            <p class="text-secondary small">
+                Se enviará al correo {{ consulta.correo }}.
+                Revisa el mensaje antes de enviarlo.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                {{ form_respuesta.clave_envio }}
+                {{ form_respuesta.clave_envio.errors }}
+                {{ form_respuesta.non_field_errors }}
+
+                <div class="mb-3">
+                    <label for="{{ form_respuesta.mensaje.id_for_label }}"
+                           class="form-label">
+                        {{ form_respuesta.mensaje.label }}
+                    </label>
+                    {{ form_respuesta.mensaje }}
+                    <div class="text-danger small">
+                        {{ form_respuesta.mensaje.errors }}
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-dark">
+                    Enviar Respuesta
+                </button>
+            </form>
+        </div>
+    </section>
+{% endif %}
+
+    <section class='card border-0 shadow-sm mt-4'>
+        <div class='card-body p-4'>
+            <h2 class='h5 mb-3'>Historial de Respuestas</h2>
+
+            {% for respuesta in respuestas %}
+                <article class='border-top pt-3 mt-3'>
+                    <div class='d-flex justify-content-between flex-wrap gap-2'>
+                        <strong>
+                            {{ respuesta.responsable.username|default:"Sin registro" }}
+                        </strong>
+                        <span class="badge {% if respuesta.estado == 'enviada' %}text-bg-success{% else %}text-bg-warning{% endif %}">
+                            {{ respuesta.get_estado_display }}
+                        </span>
+                    </div>
+
+                    <p class='small text-secondary mt-2 mb-2'>
+                        {{ respuesta.fecha|date:"d/m/Y H:i" }}
+                        · Para: {{ respuesta.correo_destino }}
+                    </p>
+
+                    <div class='text-break'>
+                        {{ respuesta.mensaje|linebreaksbr }}
+                    </div>
+                </article>
+            {% empty %}
+                <p class='text-secondary mb-0'>Aún no hay Respuestas Registradas</p>
+            {% endfor %}
         </div>
     </section>
 </main>

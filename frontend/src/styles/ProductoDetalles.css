@@ -1,4 +1,7 @@
 .detalle-producto {
+  width: 100%;
+  max-width: 70rem;
+  margin-inline: auto;
   color: var(--tienda-texto);
 }
 
@@ -58,11 +61,11 @@
 
 .detalle-informacion h1 {
   margin-bottom: 1.5rem;
-  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-size: clamp(1.6rem, 2.5vw, 2rem);
   font-weight: 800;
   line-height: 1.2;
 }
-/* prueba para celularesss */
+
 @media (max-width: 767px) {
   .detalle-contenido {
     grid-template-columns: minmax(0, 1fr);
@@ -83,7 +86,7 @@
 
 .detalle-precio strong {
   color: var(--tienda-naranjo-oscuro);
-  font-size: clamp(1.8rem, 3vw, 2.3rem);
+  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
   font-weight: 800;
   line-height: 1.2;
 }
@@ -124,7 +127,7 @@
   outline: 2px solid var(--tienda-naranjo-oscuro);
   outline-offset: 3px;
 }
-/* para productos lo personalizados */
+
 .detalle-personalizacion {
   margin-top: 1.5rem;
   padding: 1.25rem;

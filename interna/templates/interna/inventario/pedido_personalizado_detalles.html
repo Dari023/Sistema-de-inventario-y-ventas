@@ -17,6 +17,13 @@
                 Cancelar Pedido
             </button>
         {% endif %}
+
+        {% if pedido.consulta_origen_id and perms.interna.view_consulta and perms.interna.change_consulta %}
+            <a href="{% url 'consulta_detalle' pedido.consulta_origen_id %}#respuesta-consulta"
+            class='btn btn-outline-secondary'>
+                Responder Consulta
+            </a>
+        {% endif %}
     </header>
 
     {% if pedido.cancelado %}

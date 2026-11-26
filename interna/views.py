@@ -1,9 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from pathlib import Path
+import logging
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files import File
-from django.db.models import F
+from django.core.mail import send_mail
+from django.db.models import F, Q
 from django.utils import timezone
 from django import forms
 from django.contrib import messages
@@ -13,8 +16,8 @@ from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbid
 from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods, require_GET
 from django.contrib.auth.decorators import login_required, permission_required
-from django.db.models import Q
 from django.views.decorators.cache import never_cache
+logger = logging.getLogger(__name__)
 from .pedidos_personalizados import (
     crear_enlace_pedido_personalizado,
     obtener_pedido_personalizado_por_token,
@@ -33,7 +36,8 @@ from .models import (Producto,
     Consulta,
     DetallePedidoPersonalizado,
     MaterialPedidoPersonalizado,
-    FabricacionPedidoPersonalizado)
+    FabricacionPedidoPersonalizado,
+    RespuestaConsulta)
 from .forms import (
     ProductoForm, 
     MateriaPrimaForm, 
@@ -54,7 +58,8 @@ from .forms import (
     FabricacionPedidoPersonalizadoForm,
     PedidoPersonalizadoDatosForm,
     CancelacionPedidoPersonalizadoForm,
-    PedidoPersonalizadoCrearForm)
+    PedidoPersonalizadoCrearForm,
+    RespuestaConsultaForm)
 
 @login_required
 def home(request):
@@ -876,14 +881,98 @@ def consultas_listar(request):
         },
     )
 
+@transaction.non_atomic_requests
 @login_required
 @permission_required("interna.view_consulta", raise_exception=True)
-@require_http_methods(["GET"])
+@require_http_methods(['GET', 'POST'])
 def consulta_detalle(request, pk):
     consulta = get_object_or_404(Consulta, pk=pk)
     pedido_generado = Pedido.objects.filter(consulta_origen=consulta).first()
+    sugerencia = (f'Hola {consulta.nombre}:\n\n Gracias por Contactarnos')
 
-    return render(request, "interna/inventario/consulta_detalle.html", {"consulta": consulta, 'pedido_generado': pedido_generado})
+    if pedido_generado and not pedido_generado.cancelado:
+        enlace = crear_enlace_pedido_personalizado(request, pedido_generado,)
+        sugerencia = (f'Hola {consulta.nombre}:\n\n''Gracias por Contactarnos')
+
+    if pedido_generado and not pedido_generado.cancelado:
+        enlace = crear_enlace_pedido_personalizado(request, pedido_generado)
+        sugerencia = (
+            f'Hola {consulta.nombre}:\n\n'
+            f'Hemos registrado tu pedido personalizado '
+            f'#{pedido_generado.pk}. '
+            'Muchas gracias por tu preferencia.\n\n'
+            'Puedes revisar tu encargo, pagar el adelanto o saldo '
+            'y consultar su seguimiento en este enlace:\n'
+            f'{enlace}\n\n'
+            'Este enlace permite acceder sin iniciar sesión '
+            'y tiene una vigencia de 30 días desde su generación.'
+        )
+
+        if pedido_generado.cliente_id:
+            sugerencia += ('\n\nTambién puedes acceder desde Mi cuenta → Pedidos en nuestra tienda')
+
+    form_respuesta = RespuestaConsultaForm(request.POST if request.method == 'POST' else None, initial={'mensaje': sugerencia})
+
+    if request.method == 'POST':
+        if not request.user.has_perm('interna.change_consulta'):
+            raise PermissionDenied
+
+        if form_respuesta.is_valid():
+            asunto = ' '.join(f'Re: {consulta.asunto}'.split())[:200]
+            respuesta, creada = RespuestaConsulta.objects.get_or_create(
+                clave_envio=form_respuesta.cleaned_data['clave_envio'],
+                defaults={
+                    'consulta': consulta,
+                    'responsable': request.user,
+                    'correo_destino': consulta.correo,
+                    'asunto': asunto,
+                    'mensaje': form_respuesta.cleaned_data['mensaje']
+                }
+            )
+
+            if not creada:
+                if (respuesta.consulta_id != consulta.pk or respuesta.responsable_id != request.user.pk):
+                    raise PermissionDenied
+
+                messages.info(request,'Esta Respuesta ya fue Registrada, Revisa su Estado en el Historial')
+                return redirect('consulta_detalle', pk=consulta.pk)
+
+            try:
+                enviados = send_mail(
+                    subject=respuesta.asunto,
+                    message=respuesta.mensaje,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[respuesta.correo_destino],
+                    fail_silently=False
+                )
+
+                if enviados != 1:
+                    raise RuntimeError('No se Confirmó el Envío del Correo')
+
+            except Exception:
+                RespuestaConsulta.objects.filter(pk=respuesta.pk).update(estado='error')
+
+                logger.exception('No se pudo confirmar el envío de la respuesta %s', respuesta.pk)
+
+                messages.error(request,'La respuesta quedó registrada, pero no pudimos confirmar el envío del correo, revisa el historial')
+
+            else:
+                with transaction.atomic():
+                    RespuestaConsulta.objects.filter(pk=respuesta.pk).update(estado='enviada', fecha_envio=timezone.now())
+                    Consulta.objects.filter(pk=consulta.pk).update(estado='respondida')
+
+                messages.success(request, 'Respuesta Enviada por Correo y Registrada')
+
+            return redirect('consulta_detalle', pk=consulta.pk)
+
+    return render(request, 'interna/inventario/consulta_detalle.html',
+        {
+            'consulta': consulta,
+            'pedido_generado': pedido_generado,
+            'form_respuesta': form_respuesta,
+            'respuestas': consulta.respuestas.select_related('responsable')
+        }
+    )
 
 def _datos_contacto_cliente(cliente):
     return {
@@ -903,7 +992,7 @@ def pedido_personalizado_crear(request, consulta_pk=None):
     datos = request.POST if es_post else None
     archivos = request.FILES if es_post else None
     consulta = None
-    incial = {}
+    inicial = {}
 
     if consulta_pk is not None:
         if not request.user.has_perm('interna.view_consulta'):
@@ -922,27 +1011,37 @@ def pedido_personalizado_crear(request, consulta_pk=None):
             return redirect('pedido_detalles', pk=existente.pk)
 
         if consulta.cliente_id:
-            inicial = _datos_contacto_cliente(consulta.cliente)
+            inicial.update(_datos_contacto_cliente(consulta.cliente))
             inicial['cliente'] = consulta.cliente_id
-        else:
-            inicial = {
-                'nombre_invitado': consulta.nombre,
-                'email_invitado': consulta.correo
-            }
+
+        inicial['nombre_invitado'] = consulta.nombre
+        inicial['email_invitado'] = consulta.correo
+
+        if consulta.rut:
+            inicial['rut_invitado'] = consulta.rut
+
+        if consulta.telefono:
+            inicial['telefono_invitado'] = consulta.telefono
+
+        if consulta.tipo_entrega in ('retiro', 'envio'):
+            inicial['tipo_entrega'] = consulta.tipo_entrega
+            inicial['direccion_invitado'] = consulta.direccion_entrega
 
     pedido = Pedido(tipo_pedido='personalizado')
-    form_pedido = PedidoPersonalizadoCrearForm(datos, instance=pedido, initial=inicial, prefix='pedido')
-
+    form_pedido = PedidoPersonalizadoCrearForm(datos,instance=pedido, initial=inicial, prefix='pedido')
     campo_cliente = form_pedido.fields['cliente']
 
     if consulta and consulta.cliente_id:
         if not campo_cliente.queryset.filter(pk=consulta.cliente_id).exists():
-            messages.error(request,'La cuenta vinculada no está disponible, revisa su estado antes de preparar el pedido')
+            messages.error(request, 'La cuenta vinculada no está disponible, revisa su estado antes de preparar el pedido')
             return redirect('consulta_detalle', pk=consulta.pk)
 
         campo_cliente.disabled = True
 
     articulos = ArticulosPedidoPersonalizadoFormSet(datos, archivos, instance=pedido, prefix='articulos', queryset=DetallePedidoPersonalizado.objects.none())
+
+    if not es_post and consulta and articulos.forms:
+        articulos.forms[0].initial['descripcion'] = consulta.mensaje
 
     if es_post:
         pedido_valido = form_pedido.is_valid()
@@ -966,8 +1065,7 @@ def pedido_personalizado_crear(request, consulta_pk=None):
         filas_a_guardar= []
 
         if articulos_validos:
-            filas_a_guardar = [
-                fila
+            filas_a_guardar = [fila
                 for fila in articulos.forms
                 if fila.cleaned_data
                 and not fila.cleaned_data.get('DELETE')

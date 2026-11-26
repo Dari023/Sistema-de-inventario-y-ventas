@@ -1,4 +1,5 @@
 from django import forms
+import uuid
 from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -600,3 +601,11 @@ class AjusteMateriaPrimaForm(forms.Form):
     cantidad = forms.DecimalField(max_digits=10, decimal_places=3, min_value=Decimal('0.001'))
     observacion = forms.CharField(label='Justificación', max_length=300, widget=forms.Textarea(attrs={'rows': 3}))
     stock_esperado = forms.DecimalField(max_digits=10, decimal_places=3, widget=forms.HiddenInput)
+
+class RespuestaConsultaForm(forms.Form):
+    mensaje = forms.CharField(label='Respuesta', max_length=5000, widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 6,
+        })
+    )
+    clave_envio = forms.UUIDField(initial=uuid.uuid4, widget=forms.HiddenInput())

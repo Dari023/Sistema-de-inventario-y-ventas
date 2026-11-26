@@ -4,11 +4,15 @@ import { api } from "../api/Api";
 import "../styles/contacto.css";
 
 const datosIniciales = {
+  rut: "",
+  telefono: "",
   nombre: "",
   correo: "",
   asunto: "",
   mensaje: "",
   es_personalizado: false,
+  tipo_entrega: "",
+  direccion_entrega: ""
 };
 
 export const Contacto = () => {
@@ -16,6 +20,7 @@ export const Contacto = () => {
   const [imagen, setImagen] = useState(null);
   const [enviando, setEnviando] = useState(false);
   const [cargandoCuenta, setCargandoCuenta] = useState(false);
+  const [direccionCuenta, setDireccionCuenta] = useState('');
 
   useEffect(() => {
     if (!localStorage.getItem("access_token")) return;
@@ -27,10 +32,15 @@ export const Contacto = () => {
       .then(({ data }) => {
         if (!activo) return;
 
+        const direccion = data.direccion || '';
+        setDireccionCuenta(direccion);
         setForm((actual) => ({
           ...actual,
-          nombre: `${data.nombre || ""} ${data.apellido || ""}`.trim(),
-          correo: data.email || "",
+          rut: data.rut || '',
+          telefono: data.telefono || '',
+          nombre: `${data.nombre || ''} ${data.apellido || ''}`.trim(),
+          correo: data.email || '',
+          direccion_entrega: direccion
         }));
       })
       .catch(() => {
@@ -62,6 +72,21 @@ export const Contacto = () => {
     e.preventDefault();
     if (enviando || cargandoCuenta) return;
 
+      if (form.es_personalizado) {
+        if (!['retiro', 'envio'].includes(form.tipo_entrega)) {
+          toast.error('Selecciona Cómo Quieres Recibir el Pedido');
+          return;
+        }
+
+        if (
+          form.tipo_entrega === 'envio' &&
+          !form.direccion_entrega.trim()
+        ) {
+          toast.error('Indica la Dirección de Entrega');
+          return;
+        }
+    }
+
     const formulario = e.currentTarget;
     const datos = new FormData();
 
@@ -70,6 +95,10 @@ export const Contacto = () => {
     datos.append("asunto", form.asunto.trim());
     datos.append("mensaje", form.mensaje.trim());
     datos.append("es_personalizado", String(form.es_personalizado));
+    datos.append('tipo_entrega', form.es_personalizado ? form.tipo_entrega : '');
+    datos.append('direccion_entrega', form.es_personalizado && form.tipo_entrega === 'envio' ? form.direccion_entrega.trim() : '');
+    datos.append('rut', form.es_personalizado ? form.rut.trim() : '');
+    datos.append('telefono', form.es_personalizado ? form.telefono.trim() : '');
 
     if (imagen) {
       datos.append("imagen_referencia", imagen);
@@ -80,12 +109,15 @@ export const Contacto = () => {
     try {
       await api.post("consultas/", datos);
 
-      toast.success("Tu consulta fue enviada correctamente.");
+      toast.success("Tu Consulta fue Enviada Correctamente");
 
       setForm((actual) => ({
         ...datosIniciales,
+        rut: actual.rut,
+        telefono: actual.telefono,
         nombre: actual.nombre,
         correo: actual.correo,
+        direccion_entrega: direccionCuenta
       }));
 
       setImagen(null);
@@ -96,7 +128,7 @@ export const Contacto = () => {
       const mensaje =
         respuesta && typeof respuesta === "object"
           ? Object.values(respuesta).flat().join(" ")
-          : "No se pudo enviar la consulta. Inténtalo nuevamente.";
+          : "No se Pudo Enviar la Consulta, Inténtalo Nuevamente";
 
       toast.error(mensaje);
     } finally {
@@ -117,11 +149,11 @@ export const Contacto = () => {
         <fieldset disabled={enviando || cargandoCuenta}>
           <legend>Envía tu consulta</legend>
 
-          {cargandoCuenta && <p>Cargando los datos de tu cuenta...</p>}
+          {cargandoCuenta && <p>Cargando los Datos de tu Cuenta</p>}
 
           <div className="contacto-campos">
             <div className="contacto-campo">
-              <label htmlFor="contacto-nombre">Nombre completo</label>
+              <label htmlFor="contacto-nombre">Nombre Completo</label>
               <input
                 id="contacto-nombre"
                 name="nombre"
@@ -135,7 +167,7 @@ export const Contacto = () => {
             </div>
 
             <div className="contacto-campo">
-              <label htmlFor="contacto-correo">Correo electrónico</label>
+              <label htmlFor="contacto-correo">Correo Electrónico</label>
               <input
                 id="contacto-correo"
                 name="correo"
@@ -168,8 +200,80 @@ export const Contacto = () => {
                 checked={form.es_personalizado}
                 onChange={cambiarCampo}
               />
-              <span>Mi consulta es sobre un pedido personalizado</span>
+              <span>Mi Consulta es Sobre un Pedido Personalizado</span>
             </label>
+
+            {form.es_personalizado && (
+              <>
+                <div className='contacto-campo contacto-ancho'>
+                  <label htmlFor='contacto-entrega'>
+                    ¿Cómo Quieres Recibir el Pedido?
+                  </label>
+
+                  <select
+                    id='contacto-entrega'
+                    name='tipo_entrega'
+                    className='form-select'
+                    value={form.tipo_entrega}
+                    onChange={cambiarCampo}
+                    required
+                  >
+                    <option value='' disabled>Selecciona una Opción</option>
+                    <option value='retiro'>Retiro en Tienda</option>
+                    <option value='envio'>Envío a Domicilio</option>
+                  </select>
+                </div>
+
+                <div className='contacto-campo'>
+                  <label htmlFor='contacto-rut'>RUT</label>
+                  <input
+                    id='contacto-rut'
+                    name='rut'
+                    type='text'
+                    maxLength={12}
+                    placeholder='12345678-5'
+                    value={form.rut}
+                    onChange={cambiarCampo}
+                    required
+                  />
+                </div>
+
+                <div className='contacto-campo'>
+                  <label htmlFor='contacto-telefono'>Teléfono</label>
+                  <input
+                    id='contacto-telefono'
+                    name='telefono'
+                    type='tel'
+                    autoComplete='tel'
+                    maxLength={20}
+                    placeholder='+56 9 1234 5678'
+                    value={form.telefono}
+                    onChange={cambiarCampo}
+                    required
+                  />
+                </div>
+
+                {form.tipo_entrega === 'envio' && (
+                  <div className='contacto-campo contacto-ancho'>
+                    <label htmlFor='contacto-direccion'>
+                      Dirección de Entrega
+                    </label>
+
+                    <input
+                      id='contacto-direccion'
+                      name='direccion_entrega'
+                      type='text'
+                      autoComplete='street-address'
+                      maxLength={200}
+                      placeholder='Calle, Número, Departamento y Comuna'
+                      value={form.direccion_entrega}
+                      onChange={cambiarCampo}
+                      required
+                    />
+                  </div>
+                )}
+              </>
+            )}
 
             <div className="contacto-campo contacto-ancho">
               <label htmlFor="contacto-mensaje">Mensaje</label>

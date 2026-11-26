@@ -9,7 +9,7 @@ from django.db import transaction
 from decimal import Decimal
 from .models import Cliente
 from uuid import uuid4
-from interna.models import Consulta
+from interna.models import Consulta, DetallePedidoPersonalizado
 import re
 
 def validar_telefono_chileno(value):
@@ -28,6 +28,47 @@ def validar_telefono_chileno(value):
             "Ingresa un Teléfono de 9 dígitos")
 
     return f"+56{telefono}"
+
+def validar_rut_chileno(value):
+    rut = (value.strip()
+        .upper()
+        .replace('.', '')
+        .replace(' ', '')
+    )
+    formato = re.fullmatch(r'([0-9]{1,8})-?([0-9K])', rut)
+
+    if not formato:
+        raise serializers.ValidationError('Ingresa un RUT Válido, Por Ejemplo: 12345678-5')
+
+    cuerpo, verificador = formato.groups()
+    cuerpo = str(int(cuerpo))
+
+    if cuerpo == '0':
+        raise serializers.ValidationError('El RUT no Puede ser Cero')
+
+    suma = 0
+    multiplicador = 2
+
+    for numero in reversed(cuerpo):
+        suma += int(numero) * multiplicador
+        multiplicador += 1
+
+        if multiplicador > 7:
+            multiplicador = 2
+
+    resultado = 11 - (suma % 11)
+
+    if resultado == 11:
+        esperado = '0'
+    elif resultado == 10:
+        esperado = 'K'
+    else:
+        esperado = str(resultado)
+
+    if verificador != esperado:
+        raise serializers.ValidationError('Ingresa un RUT Válido')
+
+    return f'{cuerpo}-{verificador}'
 
 class ProductoVarianteSerializer(serializers.ModelSerializer):
     precio_final = serializers.ReadOnlyField()
@@ -77,15 +118,33 @@ class DetallePedidoSerializer(serializers.ModelSerializer):
 
         return datos
 
+class DetallePedidoPersonalizadoSerializer(serializers.ModelSerializer):
+    subtotal = serializers.ReadOnlyField()
+
+    class Meta:
+        model = DetallePedidoPersonalizado
+        fields = [
+            'id',
+            'descripcion',
+            'imagen_referencia',
+            'cantidad',
+            'precio_unitario',
+            'subtotal',
+            'unidades_fabricadas'
+        ]
+        read_only_fields = fields
+
 class PedidoSerializer(serializers.ModelSerializer):
-    detalles = DetallePedidoSerializer(source="detallepedido_set", many=True, read_only=True,)
+    detalles = DetallePedidoSerializer(source="detallepedido_set", many=True, read_only=True)
+    detalles_personalizados = DetallePedidoPersonalizadoSerializer(many=True, read_only=True)
     total = serializers.ReadOnlyField()
+    enlace_cliente = serializers.SerializerMethodField()
 
     class Meta:
         model = Pedido
         fields = ["id", "id_compra", "cliente", "fecha_pedido", "estado", "etapa", "tipo_pedido", "cancelado",
             "detalles", "total", "nombre_invitado", "rut_invitado", "email_invitado", "telefono_invitado",
-            "direccion_invitado", "tipo_entrega"]
+            "direccion_invitado", "tipo_entrega", "detalles_personalizados", "enlace_cliente"]
         read_only_fields = ["id_compra", "fecha_pedido", "estado", "cliente", "tipo_pedido", "cancelado"]
 
     def to_representation(self, instancia):
@@ -96,6 +155,22 @@ class PedidoSerializer(serializers.ModelSerializer):
             datos['total'] = format(total, "f")
 
         return datos
+
+    def get_enlace_cliente(self, pedido):
+        if pedido.tipo_pedido != 'personalizado':
+            return None
+
+        request = self.context.get('request')
+
+        if request is None or not request.user.is_authenticated:
+            return None
+
+        if (pedido.cliente_id is None or pedido.cliente.usuario_id != request.user.pk):
+            return None
+
+        from interna.views import crear_enlace_pedido_personalizado
+
+        return crear_enlace_pedido_personalizado(request, pedido)
     
 class RegistroClienteSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True)
@@ -113,62 +188,12 @@ class RegistroClienteSerializer(serializers.ModelSerializer):
                   'apellido', 'telefono', 'direccion']
 
     def validate_rut(self, value):
-        rut = (
-            value.strip()
-            .upper()
-            .replace(".", "")
-            .replace(" ", "")
-        )
-        formato = re.fullmatch(
-            r"([0-9]{1,8})-?([0-9K])",
-            rut,
-        )
+        rut = validar_rut_chileno(value)
 
-        if not formato:
-            raise serializers.ValidationError(
-                "Ingresa un RUT Válido, por ejemplo: 12345678-5."
-            )
+        if Cliente.objects.filter(rut=rut).exists():
+            raise serializers.ValidationError('Ya Existe un Cliente con Este RUT')
 
-        cuerpo, verificador = formato.groups()
-        cuerpo = str(int(cuerpo))
-
-        if cuerpo == "0":
-            raise serializers.ValidationError(
-                "El RUT no Puede ser Cero."
-            )
-
-        suma = 0
-        multiplicador = 2
-
-        for numero in reversed(cuerpo):
-            suma += int(numero) * multiplicador
-            multiplicador += 1
-
-            if multiplicador > 7:
-                multiplicador = 2
-
-        resultado = 11 - (suma % 11)
-
-        if resultado == 11:
-            verificador_esperado = "0"
-        elif resultado == 10:
-            verificador_esperado = "K"
-        else:
-            verificador_esperado = str(resultado)
-
-        if verificador != verificador_esperado:
-            raise serializers.ValidationError(
-                "Ingresa un RUT Válido"
-            )
-
-        rut_normalizado = f"{cuerpo}-{verificador}"
-
-        if Cliente.objects.filter(rut=rut_normalizado).exists():
-            raise serializers.ValidationError(
-                "Ya Existe un Cliente con este RUT."
-            )
-
-        return rut_normalizado
+        return rut
 
     def validate_email(self, value):
         correo = value.strip().lower()
@@ -348,16 +373,18 @@ class ResenaCrearSerializer(serializers.ModelSerializer):
 
     def validate(self, datos):
         pedido = self.context['pedido']
+
+        if (pedido.tipo_pedido != 'normal' or pedido.estado != 'pagado' or pedido.etapa != 'entregado' or pedido.cancelado):
+            raise serializers.ValidationError('Solo Puedes Reseñar una Compra Pagada Retirada o Entregada y no Cancelada')
+
         producto = datos['producto']
         pertenece_al_pedido = DetallePedido.objects.filter(pedido=pedido, producto=producto, cantidad__gt=0,).exists()
 
         if not pertenece_al_pedido:
             raise serializers.ValidationError('Este Producto no Pertenece a Esta Compra')
         
-        ya_existe = Resena.objects.filter(pedido=pedido, producto=producto,).exists()
-
-        if ya_existe:
-            raise serializers.ValidationError('Ya Dejaste una Reseña para este Producto en esta Compra')
+        if Resena.objects.filter(pedido=pedido, producto=producto).exists():
+            raise serializers.ValidationError('Ya Dejaste una Reseña Para Este Producto en Esta Compra')
 
         return datos
 
@@ -381,11 +408,41 @@ class ConsultaCrearSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Consulta
-        fields = [
-            "nombre",
-            "correo",
-            "asunto",
-            "mensaje",
-            "es_personalizado",
-            "imagen_referencia",
-        ]
+        fields = ["nombre", "correo", "asunto", "mensaje", "es_personalizado", "imagen_referencia", 'tipo_entrega', 
+                    'direccion_entrega', 'rut', 'telefono']
+
+        def validate(self, datos):
+            if not datos.get('es_personalizado', False):
+                datos['rut'] = ''
+                datos['telefono'] = ''
+                datos['tipo_entrega'] = ''
+                datos['direccion_entrega'] = ''
+                return datos
+
+            tipo = datos.get('tipo_entrega', '')
+            direccion = (datos.get('direccion_entrega') or '').strip()
+            errores = {}
+
+            if tipo not in ('retiro', 'envio'):
+                errores['tipo_entrega'] = ('Selecciona Retiro en Tienda o Envío a Domicilio')
+
+            if tipo == 'envio' and not direccion:
+                errores['direccion_entrega'] = ('Indica la Dirección de Entrega')
+
+            for campo, validador in (('rut', validar_rut_chileno), ('telefono', validar_telefono_chileno)):
+                valor = (datos.get(campo) or '').strip()
+
+                if not valor:
+                    errores[campo] = ('Este Campo es Obligatorio Para un Pedido Personalizado')
+                    continue
+
+                try:
+                    datos[campo] = validador(valor)
+                except serializers.ValidationError as error:
+                    errores[campo] = error.detail
+
+            if errores:
+                raise serializers.ValidationError(errores)
+
+            datos['direccion_entrega'] = direccion if tipo == 'envio' else ''
+            return datos

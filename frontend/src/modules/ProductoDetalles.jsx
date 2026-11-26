@@ -87,19 +87,6 @@ export const ProductoDetalles = () => {
         </div>
       <div className="detalle-informacion">
         <h1>{producto.nombre}</h1>
-          {tieneTallas && (
-            <div>
-              <label htmlFor="talla-producto">Talla</label>
-              <select id="talla-producto" value={varianteId} onChange={(e) => setVarianteId(e.target.value)}>
-                <option value="">Selecciona una Talla</option>
-                {variantes.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.talla}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
 
           <p className="detalle-precio">
             <span className="detalle-precio-etiqueta">
@@ -108,16 +95,16 @@ export const ProductoDetalles = () => {
             <strong>{formatoPrecio.format(Number(precio))}</strong>
           </p>
 
-          {(!tieneTallas || variante) && (
-            <div className="detalle-talla">
-              <label htmlFor="talla-producto">Talla</label>
-              <select
-                id="talla-producto"
-                value={varianteId}
-                onChange={(e) => setVarianteId(e.target.value)}>
-                <option value="">Selecciona una talla</option>
+          {tieneTallas && (
+            <div className='detalle-talla'>
+              <label htmlFor='talla-producto'>Talla</label>
+
+              <select id='talla-producto' value={varianteId} onChange={(e) => setVarianteId(e.target.value)}>
+                <option value="">Selecciona una Talla</option>
                 {variantes.map((v) => (
-                  <option key={v.id} value={v.id}> {v.talla} </option>
+                  <option key={v.id} value={v.id}>
+                    {v.talla}
+                  </option>
                 ))}
               </select>
             </div>

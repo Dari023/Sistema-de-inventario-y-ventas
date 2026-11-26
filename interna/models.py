@@ -353,6 +353,10 @@ class Consulta(models.Model):
     imagen_referencia = models.ImageField(upload_to="consultas/", blank=True, null=True)
     fecha = models.DateTimeField(auto_now_add=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
+    tipo_entrega = models.CharField(max_length=10, choices=[('retiro', 'Retiro en tienda'), ('envio', 'Envío a domicilio')], blank=True, default='')
+    direccion_entrega = models.CharField(max_length=200, blank=True, default='')
+    rut = models.CharField(max_length=12, blank=True, default='')
+    telefono = models.CharField(max_length=20, blank=True, default='')
 
     class Meta:
         ordering = ["-fecha", "-pk"]
@@ -361,6 +365,25 @@ class Consulta(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.asunto}"
+
+class RespuestaConsulta(models.Model):
+    consulta = models.ForeignKey(Consulta, on_delete=models.PROTECT, related_name='respuestas')
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='respuestas_consultas')
+    correo_destino = models.EmailField()
+    asunto = models.CharField(max_length=200)
+    mensaje = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+    fecha_envio = models.DateTimeField(null=True, blank=True)
+
+    estado = models.CharField(
+        max_length=10,
+        choices=[('pendiente', 'Pendiente de Envío'), ('enviada', 'Enviada'), ('error', 'Envío no Confirmado')],
+        default='pendiente'
+    )
+    clave_envio = models.UUIDField(default=uuid.uuid4, unique=True, editable=False,)
+
+    class Meta:
+        ordering = ['-fecha', '-pk']
 
 class DetallePedidoPersonalizado(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='detalles_personalizados')
