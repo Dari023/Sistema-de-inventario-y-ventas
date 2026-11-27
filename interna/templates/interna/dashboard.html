@@ -6,7 +6,7 @@
 {% endblock %}
 
 {% block content %}
-<main class="inventario">
+<main class="inventario dashboard">
 
     <header class="inventario-cabecera">
         <div>
@@ -47,6 +47,24 @@
                 <span>Ventas pagadas</span>
                 <strong>${{ total_ventas|floatformat:"0g" }}</strong>
                 <small>{% if desde or hasta %}Período seleccionado{% else %}Acumulado{% endif %} · Sin envío</small>
+            </div>
+        </div>
+        <div class="dashboard-tarjeta">
+            <i class="bi bi-bag-check" aria-hidden="true"></i>
+            <div>
+                <span>Pedidos pagados</span>
+                <strong>{{ cantidad_pedidos_pagados }}</strong>
+                <small>
+                    {% if desde or hasta %}Período seleccionado{% else %}Acumulado{% endif %}
+                </small>
+            </div>
+        </div>
+        <div class="dashboard-tarjeta">
+            <i class="bi bi-receipt" aria-hidden="true"></i>
+            <div>
+                <span>Ticket promedio</span>
+                <strong>${{ ticket_promedio|floatformat:"0g" }}</strong>
+                <small>Por pedido pagado · Sin envío</small>
             </div>
         </div>
     </div>
