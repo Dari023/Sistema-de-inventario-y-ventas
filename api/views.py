@@ -21,6 +21,7 @@ from uuid import UUID
 from urllib.parse import quote
 from interna.models import Producto, DetallePedido, Pedido, CategoriaProducto, Resena, PreguntaFrecuente, ProductoVariante
 from .models import Cliente
+from interna.views import generar_comprobante_pdf
 from .serializers import ConsultaCrearSerializer
 from .serializers import (
     ProductoSerializer,
@@ -300,6 +301,12 @@ def enviar_correo_compra(pedido_id, frontend):
 
     mensaje = EmailMultiAlternatives(subject='Compra confirmada | Amigos del Vuelo', body=cuerpo, to=[correo])
     mensaje.attach_alternative(html, 'text/html')
+    try:
+        buffer_pdf = generar_comprobante_pdf(pedido)
+        nombre_archivo = f"Comprobante_Pedido_{pedido.pk}.pdf" 
+        mensaje.attach(nombre_archivo, buffer_pdf.getvalue(), 'application/pdf')
+    except Exception as e:
+        print(f"Error al generar o adjuntar el PDF para el pedido {pedido.pk}: {e}")
     mensaje.send()
 
 class WebpayRetornoView(APIView):
