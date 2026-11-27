@@ -70,12 +70,26 @@ def home(request):
         .filter(producto__activo=True, stock_actual__lte=F('producto__stock_critico'))
         .order_by('producto__nombre', 'talla')
     )
+    
+    pedidos_pagados = Pedido.objects.filter(
+        estado='pagado',
+        cancelado=False
+    ).prefetch_related(
+        'detallepedido_set__producto',
+        'detalles_personalizados'
+    )
+
+    total_ventas = sum(
+        (pedido.subtotal_productos for pedido in pedidos_pagados),
+        Decimal('0')
+    )
 
     return render(request, "interna/dashboard.html", {
         "materias_criticas": materias_criticas,
         "productos_criticos": productos_criticos,
         'variantes_criticas': variantes_criticas,
-        'total_alertas': (len(materias_criticas) + len(productos_criticos) + len(variantes_criticas))
+        'total_alertas': (len(materias_criticas) + len(productos_criticos) + len(variantes_criticas)),
+        'total_ventas': total_ventas
     })
 
 @login_required
