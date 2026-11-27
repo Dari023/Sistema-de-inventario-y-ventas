@@ -117,6 +117,39 @@
             </div>
         </section>
     </div>
+    <section class="inventario-panel mt-4">
+        <h2>Pedidos por estado</h2>
+
+        <p class="text-secondary small">
+            {% if desde or hasta %}
+                Pedidos del período seleccionado, por fecha de creación.
+            {% else %}
+                Pedidos acumulados.
+            {% endif %}
+            Incluye compras de catálogo pagadas y pedidos personalizados.
+            Los pendientes corresponden a personalizados.
+        </p>
+
+        <p>
+            Total de pedidos:
+            <strong>{{ total_pedidos_periodo }}</strong>
+        </p>
+
+        <div class="row g-3">
+            {% for estado in resumen_pedidos %}
+                <div class="col-12 col-md-4">
+                    <div class="border rounded-3 p-3 h-100">
+                        <span class="d-block text-secondary">
+                            {{ estado.nombre }}
+                        </span>
+                        <strong class="fs-3">
+                            {{ estado.cantidad }}
+                        </strong>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
 
 </main>
 {% endblock %}

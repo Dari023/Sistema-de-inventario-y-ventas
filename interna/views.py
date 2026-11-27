@@ -148,6 +148,46 @@ def home(request):
         (producto['unidades'] for producto in productos_mas_vendidos),
         default=0
     )
+    # Mismo criterio que el listado de pedidos.
+    pedidos_periodo = Pedido.objects.filter(
+        Q(tipo_pedido='normal', estado='pagado')
+        | Q(tipo_pedido='personalizado')
+    )
+
+    if fecha_desde:
+        pedidos_periodo = pedidos_periodo.filter(
+            fecha_pedido__date__gte=fecha_desde
+        )
+
+    if fecha_hasta:
+        pedidos_periodo = pedidos_periodo.filter(
+            fecha_pedido__date__lte=fecha_hasta
+        )
+
+    resumen_pedidos = [
+        {
+            'nombre': 'Pendientes de pago',
+            'cantidad': pedidos_periodo.filter(
+                estado='pendiente', cancelado=False
+            ).count(),
+        },
+        {
+            'nombre': 'Pagados',
+            'cantidad': pedidos_periodo.filter(
+                estado='pagado', cancelado=False
+            ).count(),
+        },
+        {
+            'nombre': 'Cancelados',
+            'cantidad': pedidos_periodo.filter(
+                cancelado=True
+            ).count(),
+        },
+    ]
+
+    total_pedidos_periodo = sum(
+        estado['cantidad'] for estado in resumen_pedidos
+    )
 
     return render(request, "interna/dashboard.html", {
         "materias_criticas": materias_criticas,
@@ -163,6 +203,8 @@ def home(request):
         'maximo_unidades': maximo_unidades,
         'cantidad_pedidos_pagados': cantidad_pedidos_pagados,
         'ticket_promedio': ticket_promedio,
+        'resumen_pedidos': resumen_pedidos,
+        'total_pedidos_periodo': total_pedidos_periodo,
     })
 
 @login_required
