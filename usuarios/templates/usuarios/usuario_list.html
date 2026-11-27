@@ -7,17 +7,15 @@
 {% endblock %}
 
 {% block content %}
-<main class="inventario inventario-amplio">
+<main class="inventario">
 
     <header class="inventario-cabecera">
         <div>
             <h1>USUARIOS</h1>
             <p>Consulta y Administra las Cuentas del Sistema</p>
         </div>
-        <div>
-            <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}">Volver atrás</a>
+            <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}" style="margin-left: 26rem;">Volver atrás</a>
             <a class="boton-crear" href="{% url 'usuario-create' %}">Crear Colaborador</a>
-        </div>
     </header>
 
     <section class="inventario-panel">
@@ -64,6 +62,20 @@
                     <td>
                         <div class="acciones">
                             <a href="{% url 'usuario-update' usuario.pk %}">Editar</a>
+                            <form method='post' action="{% url 'usuario-cambiar-estado' usuario.pk %}" class='m-0'>
+                                {% csrf_token %}
+                                {% if usuario.user.is_active %}
+                                    <input type='hidden' name='activo' value='0'>
+                                    <button type='submit' class='btn btn-outline-danger btn-sm'>
+                                        Deshabilitar
+                                    </button>
+                                {% else %}
+                                    <input type='hidden' name='activo' value='1'>
+                                    <button type='submit' class='btn btn-outline-success btn-sm'>
+                                        Reactivar
+                                    </button>
+                                {% endif %}
+                            </form>
                         </div>
                     </td>
                 </tr>

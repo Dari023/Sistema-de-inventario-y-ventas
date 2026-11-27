@@ -212,3 +212,37 @@ def cliente_cambiar_estado(request, id):
         messages.info(request, 'La Cuenta ya Tenía ese Estado')
 
     return redirect('usuario-list')
+
+@login_required
+@permission_required('usuarios.change_usuario', raise_exception=True)
+@require_POST
+def usuario_cambiar_estado(request, id):
+    usuario = get_object_or_404(Usuario, pk=id)
+    activo = request.POST.get('activo')
+
+    if activo not in ('0', '1'):
+        messages.error(request, 'Selecciona un Estado Válido')
+        return redirect('usuario-list')
+    
+    if usuario.user == request.user:
+        messages.error(request, 'No puedes deshabilitar tu propia cuenta.')
+        return redirect('usuario-list')
+
+    nuevo_estado = activo == '1'
+
+    actualizado = (User.objects
+        .filter(pk=usuario.user_id)
+        .exclude(is_active=nuevo_estado)
+        .update(is_active=nuevo_estado)
+    )
+
+    if actualizado:
+        mensaje = ('Cuenta del Colaborador Reactivada'
+            if nuevo_estado
+            else 'Cuenta del Colaborador Deshabilitada'
+        )
+        messages.success(request, mensaje)
+    else:
+        messages.info(request, 'La Cuenta ya Tenía ese Estado')
+
+    return redirect('usuario-list')
