@@ -7,15 +7,17 @@
 {% endblock %}
 
 {% block content %}
-<main class="inventario">
+<main class="inventario inventario-amplio">
 
     <header class="inventario-cabecera">
         <div>
             <h1>USUARIOS</h1>
             <p>Consulta y Administra las Cuentas del Sistema</p>
         </div>
-            <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}" style="margin-left: 26rem;">Volver atrás</a>
+        <div>
+            <a class="detalle-boton detalle-boton-secundario" href="{% url 'home' %}">Volver atrás</a>
             <a class="boton-crear" href="{% url 'usuario-create' %}">Crear Colaborador</a>
+        </div>
     </header>
 
     <section class="inventario-panel">

@@ -165,23 +165,47 @@ body {
     vertical-align: middle;
 }
 
-.inventario table.dataTable thead th .dt-column-header {
+/* .inventario table.dataTable thead th .dt-column-header {
     position: relative;
     display: flex;
     justify-content: center !important;
     align-items: center;
     width: 100%;
+} */
+/* .inventario table.dataTable thead th .dt-column-title {
+    flex: 1;
+    padding-inline: 1rem;
+    text-align: center;
+} */
+
+/* .inventario table.dataTable thead th .dt-column-order {
+    position: absolute;
+    right: 0;
+} */
+.inventario table.dataTable thead th .dt-column-header {
+    display: block;
+    position: relative;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 .inventario table.dataTable thead th .dt-column-title {
-    flex: 1;
-    padding-inline: 1rem;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0 1rem;
+    box-sizing: border-box;
     text-align: center;
 }
 
 .inventario table.dataTable thead th .dt-column-order {
     position: absolute;
+    left: auto;
     right: 0;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .inventario .acciones {
@@ -298,6 +322,7 @@ body {
     margin: 0;
 }
 
+/* arreglar tablas */
 .inventario.inventario-amplio {
     max-width: none;
     width: calc(100% - 4rem);
