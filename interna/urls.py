@@ -58,5 +58,6 @@ urlpatterns = [
     path('pedidos/personalizados/desde-consulta/<int:consulta_pk>/', views.pedido_personalizado_crear, name='pedido_personalizado_desde_consulta'),
     path('exportar/productos/', exportaciones.producto_exportar, name='exportar_productos'),
     path('exportar/materias-primas/', exportaciones.materia_prima_exportar, name='exportar_materias_primas'),
-    path('exportar/pedidos/', exportaciones.pedido_exportar, name='exportar_pedidos')
+    path('exportar/pedidos/', exportaciones.pedido_exportar, name='exportar_pedidos'),
+    path('pedidos/<int:pk>/comprobante-pdf/', views.pedido_comprobante_pdf, name='pedido_pdf'),
 ]

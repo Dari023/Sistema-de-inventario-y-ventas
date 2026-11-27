@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm 1.5cm 1cm;
+        }
+
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            color: #000;
+            line-height: 1.3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        /* Encabezado */
+        .header {
+            margin-bottom: 15px;
+        }
+
+        .titulo {
+            font-size: 20pt;
+            font-weight: bold;
+        }
+
+        .numero {
+            font-size: 14pt;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .subtitulo {
+            font-size: 9pt;
+            color: #555;
+            text-align: right;
+        }
+
+        /* Cliente */
+        .cliente {
+            border: 1px solid #000;
+            margin-bottom: 20px;
+        }
+
+        .cliente td {
+            padding: 8px;
+            border-bottom: 1px solid #000;
+        }
+
+        .label {
+            font-weight: bold;
+            background-color: #f2f2f2;
+            border-right: 1px solid #000;
+            width: 15%;
+        }
+
+        /* Productos */
+        .productos {
+            margin-bottom: 20px;
+        }
+
+        .productos th {
+            padding: 8px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            text-align: left;
+            font-size: 9pt;
+        }
+
+        .productos td {
+            padding: 8px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .center {
+            text-align: center;
+        }
+
+        .right {
+            text-align: right;
+        }
+
+        /* Totales */
+        .totales {
+            width: 45%;
+            margin-left: auto;
+            margin-top: 10px;
+        }
+
+        .totales td {
+            padding: 5px 8px;
+        }
+
+        .totales .label {
+            text-align: right;
+            background: none;
+            border: none;
+        }
+
+        .totales .total td {
+            font-size: 12pt;
+            font-weight: bold;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 10px 8px;
+        }
+
+        /* Pie */
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 8pt;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+<table class="header">
+    <tr>
+        <td width="60%">
+            <div class="titulo">Comprobante de Venta</div>
+        </td>
+
+        <td width="40%">
+            <div class="numero">N° {{ pedido.pk|stringformat:"06d" }}</div>
+
+            <div class="subtitulo">
+                Fecha: {{ pedido.fecha_pedido|date:"d/m/Y H:i" }}<br>
+                ID: {{ pedido.id_compra|stringformat:"s"|slice:":8"|upper }}
+            </div>
+        </td>
+    </tr>
+</table>
+
+<table class="cliente">
+    <tr>
+        <td class="label">Cliente:</td>
+        <td colspan="3">
+            {% if pedido.cliente %}
+                {{ pedido.cliente.nombre }} {{ pedido.cliente.apellido }}
+            {% else %}
+                {{ pedido.nombre_invitado|default:"Cliente Invitado" }}
+            {% endif %}
+        </td>
+    </tr>
+
+    <tr>
+        <td class="label">RUT:</td>
+        <td width="35%">
+            {% if pedido.cliente %}
+                {{ pedido.cliente.rut|default:"-" }}
+            {% else %}
+                {{ pedido.rut_invitado|default:"-" }}
+            {% endif %}
+        </td>
+
+        <td class="label">Teléfono:</td>
+        <td width="35%">
+            {% if pedido.cliente %}
+                {{ pedido.cliente.telefono|default:"-" }}
+            {% else %}
+                {{ pedido.telefono_invitado|default:"-" }}
+            {% endif %}
+        </td>
+    </tr>
+
+    <tr>
+        <td class="label">Email:</td>
+        <td colspan="3">
+            {% if pedido.cliente %}
+                {{ pedido.cliente.correo|default:"-" }}
+            {% else %}
+                {{ pedido.email_invitado|default:"-" }}
+            {% endif %}
+        </td>
+    </tr>
+
+    <tr>
+        <td class="label">Entrega:</td>
+        <td colspan="3">
+            {{ pedido.get_tipo_entrega_display }}
+
+            {% if pedido.tipo_entrega == 'envio' %}
+                — {{ pedido.direccion_invitado|default:"" }}
+
+                {% if pedido.comuna_entrega %}
+                    , {{ pedido.comuna_entrega }}
+                {% endif %}
+
+                {% if pedido.region_entrega %}
+                    ({{ pedido.region_entrega }})
+                {% endif %}
+            {% endif %}
+        </td>
+    </tr>
+</table>
+
+<table class="productos">
+    <thead>
+        <tr>
+            <th width="10%" class="center">Cantidad</th>
+            <th width="50%">Descripción</th>
+            <th width="20%" class="right">Precio Unitario</th>
+            <th width="20%" class="right">Total</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% if pedido.tipo_pedido == 'personalizado' %}
+
+            {% for d in pedido.detalles_personalizados.all %}
+                <tr>
+                    <td class="center">{{ d.cantidad }}</td>
+                    <td>{{ d.descripcion }}</td>
+                    <td class="right">${{ d.precio_unitario|floatformat:"0g" }}</td>
+                    <td class="right">${{ d.subtotal|floatformat:"0g" }}</td>
+                </tr>
+            {% endfor %}
+
+        {% else %}
+
+            {% for d in pedido.detallepedido_set.all %}
+                <tr>
+                    <td class="center">{{ d.cantidad }}</td>
+
+                    <td>
+                        {{ d.producto.nombre }}
+
+                        {% if d.variante %}
+                            <br>
+                            <span style="font-size: 8pt; color: #555;">
+                                Talla {{ d.variante.talla }}
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td class="right">${{ d.precio_vigente|floatformat:"0g" }}</td>
+                    <td class="right">${{ d.subtotal|floatformat:"0g" }}</td>
+                </tr>
+            {% endfor %}
+
+        {% endif %}
+    </tbody>
+</table>
+
+<table class="totales">
+    <tr>
+        <td class="label">Subtotal Productos:</td>
+        <td class="right">${{ pedido.subtotal_productos|floatformat:"0g" }}</td>
+    </tr>
+
+    {% if pedido.costo_envio > 0 %}
+        <tr>
+            <td class="label">Costo de Envío:</td>
+            <td class="right">${{ pedido.costo_envio|floatformat:"0g" }}</td>
+        </tr>
+    {% endif %}
+
+    <tr>
+        <td class="label">Neto:</td>
+        <td class="right">${{ neto|floatformat:"0g" }}</td>
+    </tr>
+
+    <tr>
+        <td class="label">IVA (19%):</td>
+        <td class="right">${{ iva|floatformat:"0g" }}</td>
+    </tr>
+
+    <tr class="total">
+        <td class="label">TOTAL:</td>
+        <td class="right">${{ pedido.total|floatformat:"0g" }}</td>
+    </tr>
+</table>
+
+<div class="footer">
+    Documento generado automáticamente el {{ fecha|date:"d/m/Y H:i" }}.<br>
+    Gracias por su compra.
+</div>
+
+</body>
+</html>
