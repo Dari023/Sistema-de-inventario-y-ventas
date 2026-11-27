@@ -4,6 +4,7 @@ from . import views, pagos_personalizados, compras, exportaciones
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('alertas-stock/', views.alertas_stock, name='alertas_stock'),
     path('inventario/', views.inventario, name='inventario'),
     path('producto/', views.producto_listar, name='producto_listar'),
     path('producto/crear/', views.producto_crear, name='producto_crear'),

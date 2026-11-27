@@ -1,6 +1,9 @@
-
 {% extends 'interna/base.html' %}
-{% load l10n %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'interna/css/dashboard.css' %}">
+{% endblock %}
 
 {% block content %}
 <main class="inventario">
@@ -8,142 +11,44 @@
     <header class="inventario-cabecera">
         <div>
             <h1>Dashboard</h1>
-            <div class="alert {% if total_alertas > 0 %}alert-warning{% else %}alert-success{% endif %} d-flex align-items-center gap-3 mb-4">
-                <i class="bi {% if total_alertas > 0 %}bi-exclamation-triangle-fill{% else %}bi-check-circle-fill{% endif %} fs-4"></i>
-
-                <div>
-                    {% if total_alertas > 0 %}
-                        <strong>El Inventario Requiere Atención</strong>
-                        <p class='mb-0'>
-                            Hay {{ total_alertas }} Alertas de Productos o Materias Primas con Stock Crítico o Agotado
-                        </p>
-                    {% else %}
-                        <strong>Inventario sin Alertas</strong>
-                        <p class='mb-0'>
-                            No hay Productos ni Materias Primas con Stock Crítico
-                        </p>
-                    {% endif %}
-                </div>
-            </div>
+            <p>Resumen de ventas e inventario.</p>
         </div>
     </header>
 
-    <section class="inventario-panel alertas-panel">
+    <div class="dashboard-indicadores">
+        <a href="{% url 'alertas_stock' %}" class="dashboard-tarjeta">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <div>
+                <span>Alertas de stock</span>
+                <strong>{{ total_alertas }}</strong>
+                <small>Ver listado →</small>
+            </div>
+        </a>
+        <div class="dashboard-tarjeta">
+            <i class="bi bi-cash-stack" aria-hidden="true"></i>
+            <div>
+                <span>Ventas pagadas</span>
+                <strong>${{ total_ventas|floatformat:"0g" }}</strong>
+                <small>Acumulado · Sin envío</small>
+            </div>
+        </div>
+    </div>
 
-        <h2>
-            <i class="bi bi-exclamation-triangle"></i>
-            Alertas de stock
-        </h2>
+    <div class="dashboard-graficos">
+        <section class="inventario-panel">
+            <h2>Ventas por fecha</h2>
+            <p class="dashboard-pendiente">
+                Aquí se mostara ventas de un period
+            </p>
+        </section>
 
-        <table class="js-datatable"
-            data-columna-acciones="5">
-            <thead>
-                <tr>
-                    <th>Tipo</th>
-                    <th>Nombre</th>
-                    <th>Stock Actual</th>
-                    <th>Stock Crítico</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
+        <section class="inventario-panel">
+            <h2>Productos más vendidos</h2>
+            <p class="dashboard-pendiente">
+                Aquí se mostrara los producto mas vendid
+            </p>
+        </section>
+    </div>
 
-            <tbody>
-                {% for mp in materias_criticas %}
-                <tr>
-                    <td>Materia prima</td>
-                    <td>{{ mp.nombre }}</td>
-                    <td data-order="{{ mp.cantidad_actual|unlocalize }}">
-                        {{ mp.cantidad_actual|floatformat:"-3" }}
-                        {{ mp.get_unidad_de_medida_display }}
-                    </td>
-                    <td data-order="{{ mp.cantidad_critica|unlocalize }}">
-                        {{ mp.cantidad_critica|floatformat:"-3" }}
-                        {{ mp.get_unidad_de_medida_display }}
-                    </td>
-                    <td>
-                        {% if mp.cantidad_actual <= 0 %}
-                            <span class="estado estado-agotado">
-                                Agotado
-                            </span>
-                        {% else %}
-                            <span class="estado estado-critico">
-                                Crítico
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="acciones">
-                            <a href="{% url 'materia_prima_detalles' mp.pk %}">
-                                Ver detalles
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-
-                {% for producto in productos_criticos %}
-                <tr>
-                    <td>Producto</td>
-                    <td>{{ producto.nombre }}</td>
-                    <td>{{ producto.stock_actual }}</td>
-                    <td>{{ producto.stock_critico }}</td>
-                    <td>
-                        {% if producto.stock_actual <= 0 %}
-                            <span class="estado estado-agotado">
-                                Agotado
-                            </span>
-                        {% else %}
-                            <span class="estado estado-critico">
-                                Crítico
-                            </span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="acciones">
-                            <a href="{% url 'producto_detalles' producto.pk %}">
-                                Ver detalles
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-
-                {% for variante in variantes_criticas %}
-                <tr>
-                    <td>Producto</td>
-                    <td>
-                        {{ variante.producto.nombre }}
-                        <small class='d-block text-secondary'>
-                            Talla {{ variante.get_talla_display }}
-                        </small>
-                    </td>
-                    <td data-order='{{ variante.stock_actual|unlocalize }}'>
-                        {{ variante.stock_actual }}
-                    </td>
-                    <td data-order='{{ variante.producto.stock_critico|unlocalize }}'>
-                        {{ variante.producto.stock_critico }}
-                    </td>
-                    <td>
-                        {% if variante.stock_actual <= 0 %}
-                            <span class='estado estado-agotado'>Agotado</span>
-                        {% else %}
-                            <span class='estado estado-critico'>Crítico</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class='acciones'>
-                            <a href="{% url 'producto_detalles' variante.producto_id %}">
-                                Ver Detalles
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-            {% endfor %}
-
-            </tbody>
-        </table>
-
-    </section>
 </main>
 {% endblock %}
