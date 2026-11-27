@@ -1665,3 +1665,19 @@ def _avisar_materiales_fabricacion(request, fabricacion):
 
     for movimiento in movimientos:
         _avisar_stock_materia(request, movimiento.materia_prima, movimiento.saldo_resultante + movimiento.cantidad, movimiento.saldo_resultante)
+@login_required
+def alertas_stock(request):
+    materias_criticas = list(MateriaPrima.objects.filter(estado=True, cantidad_actual__lte=F("cantidad_critica")).order_by("nombre"))
+    productos_criticos = list(Producto.objects.filter(activo=True, variantes__isnull=True, stock_actual__lte=F("stock_critico")).order_by("nombre"))
+    variantes_criticas = list(ProductoVariante.objects
+        .select_related('producto')
+        .filter(producto__activo=True, stock_actual__lte=F('producto__stock_critico'))
+        .order_by('producto__nombre', 'talla')
+    )
+
+    return render(request, "interna/inventario/alertas_stock.html", {
+        "materias_criticas": materias_criticas,
+        "productos_criticos": productos_criticos,
+        'variantes_criticas': variantes_criticas,
+        'total_alertas': (len(materias_criticas) + len(productos_criticos) + len(variantes_criticas))
+    })
