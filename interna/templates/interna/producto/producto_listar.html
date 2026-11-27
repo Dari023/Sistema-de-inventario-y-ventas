@@ -7,15 +7,15 @@
 {% endblock %}
 
 {% block content %}
-<main class="inventario">
+<main class="inventario inventario-amplio">
 
     <header class="inventario-cabecera">
         <div>
             <h1>PRODUCTOS</h1>
             <p>Consulta y Administra los Productos de la Tienda.</p>
         </div>
-        <a class="detalle-boton detalle-boton-secundario" href="{% url 'inventario' %}" style="margin-right:-20rem;">Volver Atrás</a>
-        <div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a class="detalle-boton detalle-boton-secundario" href="{% url 'inventario' %}">Volver Atrás</a>
             <a class="boton-crear" href="{% url 'exportar_productos' %}">Descargar excel</a>
             <a class="boton-crear" href="{% url 'producto_crear' %}">Crear Producto</a>
         </div>
