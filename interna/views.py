@@ -17,6 +17,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods, require_GET
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.cache import never_cache
+from datetime import date
 logger = logging.getLogger(__name__)
 from .pedidos_personalizados import (
     crear_enlace_pedido_personalizado,
@@ -70,6 +71,17 @@ def home(request):
         .filter(producto__activo=True, stock_actual__lte=F('producto__stock_critico'))
         .order_by('producto__nombre', 'talla')
     )
+    desde = request.GET.get('desde', '')
+    hasta = request.GET.get('hasta', '')
+
+    try:
+        fecha_desde = date.fromisoformat(desde) if desde else None
+        fecha_hasta = date.fromisoformat(hasta) if hasta else None
+    except ValueError:
+        return HttpResponseBadRequest('Las fechas no son válidas.')
+
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        return HttpResponseBadRequest('La fecha desde no puede ser posterior a la fecha hasta.')
     
     pedidos_pagados = Pedido.objects.filter(
         estado='pagado',
@@ -77,6 +89,15 @@ def home(request):
     ).prefetch_related(
         'detallepedido_set__producto',
         'detalles_personalizados'
+    )
+    if fecha_desde:
+        pedidos_pagados = pedidos_pagados.filter(
+            fecha_pedido__date__gte=fecha_desde
+    )
+
+    if fecha_hasta:
+        pedidos_pagados = pedidos_pagados.filter(
+            fecha_pedido__date__lte=fecha_hasta
     )
 
     total_ventas = sum(
@@ -89,7 +110,9 @@ def home(request):
         "productos_criticos": productos_criticos,
         'variantes_criticas': variantes_criticas,
         'total_alertas': (len(materias_criticas) + len(productos_criticos) + len(variantes_criticas)),
-        'total_ventas': total_ventas
+        'total_ventas': total_ventas,
+        'desde': desde,
+        'hasta': hasta,
     })
 
 @login_required

@@ -14,6 +14,23 @@
             <p>Resumen de ventas e inventario.</p>
         </div>
     </header>
+        <form method="get" class="d-flex flex-wrap align-items-end gap-3 mb-4">
+            <div>
+                <label for="desde" class="form-label">Desde</label>
+                <input type="date" id="desde" name="desde"
+                    value="{{ desde }}" class="form-control">
+            </div>
+            <div>
+                <label for="hasta" class="form-label">Hasta</label>
+                <input type="date" id="hasta" name="hasta"
+                    value="{{ hasta }}" class="form-control">
+            </div>
+            <button type="submit" class="btn boton-crear">Aplicar</button>
+            <a href="{% url 'home' %}" class="btn boton-crear">Limpiar</a>
+        </form>
+        <p class="text-secondary small">
+            Ventas filtradas por fecha de creación del pedido. Las alertas muestran el stock actual.
+        </p>
 
     <div class="dashboard-indicadores">
         <a href="{% url 'alertas_stock' %}" class="dashboard-tarjeta">
@@ -29,7 +46,7 @@
             <div>
                 <span>Ventas pagadas</span>
                 <strong>${{ total_ventas|floatformat:"0g" }}</strong>
-                <small>Acumulado · Sin envío</small>
+                <small>{% if desde or hasta %}Período seleccionado{% else %}Acumulado{% endif %} · Sin envío</small>
             </div>
         </div>
     </div>
