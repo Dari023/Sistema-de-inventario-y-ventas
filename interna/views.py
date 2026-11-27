@@ -104,6 +104,21 @@ def home(request):
         (pedido.subtotal_productos for pedido in pedidos_pagados),
         Decimal('0')
     )
+    ventas_por_dia = {}
+
+    for pedido in pedidos_pagados:
+        dia = timezone.localtime(pedido.fecha_pedido).date()
+        ventas_por_dia[dia] = (
+            ventas_por_dia.get(dia, Decimal('0'))
+            + pedido.subtotal_productos
+        )
+
+    ventas_diarias = [
+        {'fecha': dia, 'total': total}
+        for dia, total in sorted(ventas_por_dia.items())
+    ]
+
+    venta_maxima = max(ventas_por_dia.values(), default=Decimal('0'))
 
     return render(request, "interna/dashboard.html", {
         "materias_criticas": materias_criticas,
@@ -113,6 +128,8 @@ def home(request):
         'total_ventas': total_ventas,
         'desde': desde,
         'hasta': hasta,
+        'ventas_diarias': ventas_diarias,
+        'venta_maxima': venta_maxima,
     })
 
 @login_required

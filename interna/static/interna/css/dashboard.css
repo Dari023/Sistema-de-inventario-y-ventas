@@ -70,3 +70,32 @@
         grid-template-columns: 1fr;
     }
 }
+.dashboard-ventas {
+    display: grid;
+    gap: 18px;
+    margin-top: 20px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.dashboard-venta-datos {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.dashboard-barra-fondo {
+    height: 14px;
+    border-radius: 7px;
+    background: #fff0e9;
+    overflow: hidden;
+}
+
+.dashboard-barra {
+    height: 100%;
+    border-radius: inherit;
+    background: #f38a6a;
+}
