@@ -148,6 +148,11 @@
         <div class="detalle-acciones">
             <a class="detalle-boton detalle-boton-principal" href="{% url 'producto_editar' producto.pk %}">Editar Producto</a>
             <a class="detalle-boton detalle-boton-secundario" href="{% url 'producto_listar' %}">Volver a la Lista</a>
+            {% if perms.interna.view_producto %}
+                <a class='detalle-boton detalle-boton-secundario' href="{% url 'producto_baja' producto.pk %}">
+                    Bajas de Stock
+                </a>
+            {% endif %}
         </div>
     </section>
 </main>

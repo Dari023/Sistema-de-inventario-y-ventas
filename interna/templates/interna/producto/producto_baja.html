@@ -1,0 +1,114 @@
+{% extends 'interna/base.html' %}
+
+{% block content %}
+<main class='container py-4'>
+    <div class='d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4'>
+        <div>
+            <h1 class='h3'>BAJAS DE STOCK</h1>
+            <p class='mb-0'>{{ producto.nombre }}</p>
+        </div>
+
+        <a class='btn btn-outline-secondary'
+           href="{% url 'producto_detalles' producto.pk %}">
+            Volver al Producto
+        </a>
+    </div>
+
+    {% if form %}
+        <section class='card border-0 shadow-sm mb-4'>
+            <div class='card-body p-4'>
+                <h2 class='h5'>Registrar Baja</h2>
+
+                <p class='text-secondary'>Indica las Unidades Perdidas o Dañadas y el Motivo de la Baja</p>
+
+                <p>
+                    <strong>Stock Disponible:</strong>
+
+                    {% for variante in variantes %}
+                        Talla {{ variante.talla }}: {{ variante.stock_actual }}{% if not forloop.last %} · {% endif %}
+                    {% empty %}
+                        {{ producto.stock_actual }} unidades
+                    {% endfor %}
+                </p>
+
+                <form method='post'>
+                    {% csrf_token %}
+
+                    {{ form.non_field_errors }}
+
+                    {% for campo in form.hidden_fields %}
+                        {{ campo }}
+                        {{ campo.errors }}
+                    {% endfor %}
+
+                    {% for campo in form.visible_fields %}
+                        <div class='mb-3'>
+                            <label class='form-label'
+                                   for='{{ campo.id_for_label }}'>
+                                {{ campo.label }}
+                            </label>
+
+                            {{ campo }}
+                            {{ campo.errors }}
+                        </div>
+                    {% endfor %}
+
+                    <button type='submit' class='btn btn-dark'>
+                        Registrar Baja
+                    </button>
+                </form>
+            </div>
+        </section>
+    {% endif %}
+
+    <section class='card border-0 shadow-sm'>
+        <div class='card-body p-4'>
+            <h2 class='h5 mb-3'>Historial de Bajas</h2>
+
+            <div class='table-responsive'>
+                <table class='table align-middle'>
+                    <thead>
+                        <tr>
+                            <th scope='col'>Fecha</th>
+                            <th scope='col'>Talla</th>
+                            <th scope='col'>Cantidad</th>
+                            <th scope='col'>Stock Anterior</th>
+                            <th scope='col'>Stock Final</th>
+                            <th scope='col'>Responsable</th>
+                            <th scope='col'>Motivo</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for baja in bajas %}
+                            <tr>
+                                <td>{{ baja.fecha|date:'d/m/Y H:i' }}</td>
+                                <td>{{ baja.variante.talla|default:'—' }}</td>
+                                <td>{{ baja.cantidad }}</td>
+                                <td>{{ baja.stock_anterior }}</td>
+                                <td>{{ baja.saldo_resultante }}</td>
+
+                                <td>
+                                    {% if baja.responsable %}
+                                        {{ baja.responsable.get_full_name|default:baja.responsable.username }}
+                                    {% else %}
+                                        No Disponible
+                                    {% endif %}
+                                </td>
+
+                                <td class='text-break'>{{ baja.motivo }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan='7'>
+                                    Este Producto aún no Tiene Bajas Registradas
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+{% endblock %}

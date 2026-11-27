@@ -118,7 +118,8 @@ class Producto(models.Model):
         return self.stock_actual
 
     class Meta:
-        permissions = [('fabricar_producto', 'Puede registrar fabricación')]
+        permissions = [('fabricar_producto', 'Puede registrar fabricación'), 
+                    ('registrar_baja_producto', 'Puede Registrar Bajas de Productos Terminados')]
 
     def __str__(self):
         return self.nombre
@@ -535,3 +536,31 @@ class TarifaEnvio(models.Model):
 
     def __str__(self):
         return self.nombre_region
+
+class BajaProducto(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='bajas')
+    variante = models.ForeignKey(ProductoVariante, on_delete=models.PROTECT, null=True, blank=True)
+    cantidad = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    motivo = models.CharField(max_length=300)
+    stock_anterior = models.PositiveIntegerField()
+    saldo_resultante = models.PositiveIntegerField()
+    fecha = models.DateTimeField(auto_now_add=True)
+    responsable = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-fecha', '-pk']
+        default_permissions = ()
+        verbose_name = 'Baja de producto'
+        verbose_name_plural = 'Bajas de productos'
+        constraints = [
+            models.CheckConstraint(condition=models.Q(cantidad__gt=0), name='baja_producto_cantidad_positiva'),
+            models.CheckConstraint(condition=models.Q(stock_anterior=(models.F('saldo_resultante') + models.F('cantidad'))),
+                name='baja_producto_saldos_coherentes'
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f'Baja {self.pk} - {self.producto} '
+            f'- {self.cantidad} unidades'
+        )
