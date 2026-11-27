@@ -122,16 +122,31 @@ export const ProductoDetalles = () => {
 
           {tieneTallas && (
             <div className='detalle-talla'>
-              <label htmlFor='talla-producto'>Talla</label>
+              <label>
+                Talla: {variante ? <span>{variante.talla}</span> : <span className="fw-normal text-secondary">Selecciona una</span>}
+              </label>
+              <div className="d-flex flex-wrap gap-2 mt-1">
+                {variantes.map((v) => {
+                  const sinStock = Number(v.stock_actual) <= 0;
+                  const estaSeleccionada = varianteId === String(v.id);
 
-              <select id='talla-producto' value={varianteId} onChange={(e) => setVarianteId(e.target.value)}>
-                <option value="">Selecciona una Talla</option>
-                {variantes.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.talla}
-                  </option>
-                ))}
-              </select>
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      disabled={sinStock}
+                      onClick={() => setVarianteId(String(v.id))}
+                      className={`btn fw-bold rounded-3 ${estaSeleccionada
+                          ? 'btn-dark'
+                          : 'btn-outline-secondary'
+                        } ${sinStock ? 'text-decoration-line-through' : ''}`}
+                      style={{ minWidth: '3.5rem' }}
+                    >
+                      {v.talla}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
