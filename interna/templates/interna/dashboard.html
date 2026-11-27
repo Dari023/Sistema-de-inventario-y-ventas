@@ -58,33 +58,51 @@
                     Importe de productos de pedidos pagados, por fecha de creación.
                 </p>
 
-                <div class="dashboard-ventas">
-                    {% for venta in ventas_diarias %}
-                        <div class="dashboard-venta">
-                            <div class="dashboard-venta-datos">
-                                <span>{{ venta.fecha|date:"d/m/Y" }}</span>
-                                <strong>${{ venta.total|floatformat:"0g" }}</strong>
-                            </div>
-                            <div class="dashboard-barra-fondo" aria-hidden="true">
-                                <div class="dashboard-barra"
-                                    style="width: {% widthratio venta.total venta_maxima 100 %}%;">
-                                </div>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <p class="dashboard-pendiente">
-                            No hay ventas pagadas para este período.
-                        </p>
-                    {% endfor %}
+            {% if ventas_diarias %}
+                <div class="dashboard-grafico-contenedor">
+                    <canvas id="grafico-ventas"
+                            role="img"
+                            aria-label="Ventas por fecha en pesos chilenos">
+                    </canvas>
                 </div>
+                {{ ventas_diarias|json_script:"datos-ventas" }}
+            {% else %}
+                <p class="dashboard-pendiente">
+                    No hay ventas pagadas para este período.
+                </p>
+            {% endif %}
         </section>
         <section class="inventario-panel">
             <h2>Productos más vendidos</h2>
-            <p class="dashboard-pendiente">
-                Aquí mostraremos los productos con más unidades vendidas.
+            <p class="text-secondary small mt-2">
+                Hasta 5 productos de catálogo por unidades vendidas.
             </p>
+
+            <div class="dashboard-ventas">
+                {% for producto in productos_mas_vendidos %}
+                    <div class="dashboard-venta">
+                        <div class="dashboard-venta-datos">
+                            <span>{{ producto.producto__nombre }}</span>
+                            <strong>{{ producto.unidades }} unidades</strong>
+                        </div>
+                        <div class="dashboard-barra-fondo" aria-hidden="true">
+                            <div class="dashboard-barra"
+                                style="width: {% widthratio producto.unidades maximo_unidades 100 %}%;">
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="dashboard-pendiente">
+                        No hay productos de catálogo vendidos para este período.
+                    </p>
+                {% endfor %}
+            </div>
         </section>
     </div>
 
 </main>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<script src="{% static 'interna/js/dashboard.js' %}"></script>
 {% endblock %}

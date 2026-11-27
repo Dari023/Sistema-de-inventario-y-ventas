@@ -99,3 +99,12 @@
     border-radius: inherit;
     background: #f38a6a;
 }
+.dashboard-grafico-contenedor {
+    position: relative;
+    height: 300px;
+    margin-top: 20px;
+}
+
+.dashboard-graficos > section {
+    min-width: 0;
+}

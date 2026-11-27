@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.files import File
 from django.core.mail import send_mail
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum
 from django.utils import timezone
 from django import forms
 from django.contrib import messages
@@ -38,6 +38,8 @@ from .models import (Producto,
     DetallePedidoPersonalizado,
     MaterialPedidoPersonalizado,
     FabricacionPedidoPersonalizado,
+    Pedido,
+    DetallePedido,
     RespuestaConsulta)
 from .forms import (
     ProductoForm, 
@@ -119,6 +121,22 @@ def home(request):
     ]
 
     venta_maxima = max(ventas_por_dia.values(), default=Decimal('0'))
+    
+    productos_mas_vendidos = list(
+    DetallePedido.objects
+    .filter(
+        pedido__in=pedidos_pagados,
+        pedido__tipo_pedido='normal'
+    )
+    .values('producto_id', 'producto__nombre')
+    .annotate(unidades=Sum('cantidad'))
+    .order_by('-unidades', 'producto__nombre', 'producto_id')[:5]
+)
+
+    maximo_unidades = max(
+        (producto['unidades'] for producto in productos_mas_vendidos),
+        default=0
+    )
 
     return render(request, "interna/dashboard.html", {
         "materias_criticas": materias_criticas,
@@ -130,6 +148,8 @@ def home(request):
         'hasta': hasta,
         'ventas_diarias': ventas_diarias,
         'venta_maxima': venta_maxima,
+        'productos_mas_vendidos': productos_mas_vendidos,
+        'maximo_unidades': maximo_unidades,
     })
 
 @login_required
