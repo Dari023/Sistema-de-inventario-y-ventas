@@ -27,6 +27,13 @@
             </div>
             <button type="submit" class="btn boton-crear">Aplicar</button>
             <a href="{% url 'home' %}" class="btn boton-crear">Limpiar</a>
+            <button
+                type="submit"
+                formaction="{% url 'dashboard_pdf' %}"
+                class="btn boton-crear">
+                <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i>
+                Descargar PDF
+            </button>
         </form>
         <p class="text-secondary small">
             Ventas filtradas por fecha de creación del pedido. Las alertas muestran el stock actual.

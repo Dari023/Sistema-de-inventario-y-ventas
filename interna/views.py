@@ -19,6 +19,8 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.cache import never_cache
 from datetime import date
 import io
+from django.http import HttpResponse
+from django.views.decorators.http import require_GET
 from xhtml2pdf import pisa
 from django.template.loader import render_to_string
 logger = logging.getLogger(__name__)
@@ -67,8 +69,7 @@ from .forms import (
     PedidoPersonalizadoCrearForm,
     RespuestaConsultaForm)
 
-@login_required
-def home(request):
+def obtener_contexto_dashboard(request):
     materias_criticas = list(MateriaPrima.objects.filter(estado=True, cantidad_actual__lte=F("cantidad_critica")).order_by("nombre"))
     productos_criticos = list(Producto.objects.filter(activo=True, variantes__isnull=True, stock_actual__lte=F("stock_critico")).order_by("nombre"))
     variantes_criticas = list(ProductoVariante.objects
@@ -189,7 +190,7 @@ def home(request):
         estado['cantidad'] for estado in resumen_pedidos
     )
 
-    return render(request, "interna/dashboard.html", {
+    return {
         "materias_criticas": materias_criticas,
         "productos_criticos": productos_criticos,
         'variantes_criticas': variantes_criticas,
@@ -205,7 +206,98 @@ def home(request):
         'ticket_promedio': ticket_promedio,
         'resumen_pedidos': resumen_pedidos,
         'total_pedidos_periodo': total_pedidos_periodo,
-    })
+    }
+@login_required
+def home(request):
+    contexto = obtener_contexto_dashboard(request)
+
+    if isinstance(contexto, HttpResponse):
+        return contexto
+
+    return render(request, "interna/dashboard.html", contexto)
+
+
+@login_required
+@require_GET
+def dashboard_pdf(request):
+    es_admin = (
+        request.user.is_superuser
+        or request.user.groups.filter(name="Administradores").exists()
+    )
+
+    if not es_admin:
+        raise PermissionDenied
+
+    contexto = obtener_contexto_dashboard(request)
+
+    if isinstance(contexto, HttpResponse):
+        return contexto
+
+    contexto["fecha_generacion"] = timezone.localtime()
+    
+    for venta in contexto["ventas_diarias"]:
+        venta["ancho_barra"] = (
+            max(
+                1,
+                round(
+                    float(venta["total"] / contexto["venta_maxima"])
+                    * 300
+                ),
+            )
+            if contexto["venta_maxima"] > 0 and venta["total"] > 0
+            else 0
+        )
+
+    for producto in contexto["productos_mas_vendidos"]:
+        producto["ancho_barra"] = (
+            max(
+                1,
+                round(
+                    producto["unidades"]
+                    / contexto["maximo_unidades"]
+                    * 300
+                ),
+            )
+            if contexto["maximo_unidades"] > 0
+            else 0
+        )
+
+    html = render_to_string(
+        "interna/dashboard_pdf.html",
+        contexto,
+        request=request,
+    )
+
+    archivo = io.BytesIO()
+
+    resultado = pisa.CreatePDF(
+        src=html,
+        dest=archivo,
+        encoding="utf-8",
+    )
+
+    if resultado.err:
+        return HttpResponse(
+            "No se pudo generar el PDF del dashboard.",
+            status=500,
+            content_type="text/plain; charset=utf-8",
+        )
+
+    nombre = (
+        "dashboard_"
+        f"{contexto['fecha_generacion']:%Y%m%d_%H%M%S}.pdf"
+    )
+
+    respuesta = HttpResponse(
+        archivo.getvalue(),
+        content_type="application/pdf",
+    )
+    respuesta["Content-Disposition"] = (
+        f'attachment; filename="{nombre}"'
+    )
+    respuesta["Cache-Control"] = "private, no-store"
+    return respuesta
+
 
 @login_required
 def inventario(request):

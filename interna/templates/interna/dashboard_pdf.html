@@ -1,0 +1,321 @@
+{% load l10n %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte del dashboard</title>
+
+    <style>
+        @page {
+            size: a4 portrait;
+            margin: 40pt;
+
+            @frame pie {
+                -pdf-frame-content: pie-pagina;
+                left: 40pt;
+                width: 515pt;
+                top: 805pt;
+                height: 20pt;
+            }
+        }
+
+        body {
+            font-family: Helvetica;
+            font-size: 10pt;
+            color: #3B3446;
+        }
+
+        h1 {
+            font-size: 21pt;
+            margin-bottom: 5pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            margin-top: 20pt;
+            margin-bottom: 8pt;
+            -pdf-keep-with-next: true;
+        }
+
+        p {
+            margin: 4pt 0;
+        }
+
+        .nota {
+            color: #726B7C;
+            font-size: 9pt;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background-color: #3B3446;
+            color: #FFFFFF;
+            padding: 8pt;
+            text-align: left;
+        }
+
+        td {
+            padding: 8pt;
+            border-bottom: 1pt solid #EDE3DE;
+            vertical-align: middle;
+        }
+
+        .numero {
+            text-align: right;
+        }
+
+        .indicadores td {
+            background-color: #FFF8F4;
+        }
+
+        .indicadores .valor {
+            font-size: 15pt;
+            font-weight: bold;
+        }
+
+        .grafico td {
+            border: none;
+            padding: 4pt 0;
+        }
+
+        .barra td {
+            background-color: #F38A6A;
+            border: none;
+            padding: 0;
+            font-size: 1pt;
+            line-height: 10pt;
+            height: 10pt;
+        }
+
+        .separador {
+            height: 8pt;
+        }
+
+        #pie-pagina {
+            font-size: 8pt;
+            color: #726B7C;
+            text-align: right;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="pie-pagina">
+        Dashboard · Página <pdf:pagenumber>
+        de <pdf:pagecount>
+    </div>
+
+    <h1>Reporte del dashboard</h1>
+    <p>Resumen de ventas e inventario</p>
+
+    <p>
+        <strong>Fecha de generación:</strong>
+        {{ fecha_generacion|date:"d/m/Y H:i" }}
+    </p>
+
+    <p>
+        <strong>Filtro desde:</strong>
+        {{ desde|default:"Sin límite inicial" }}
+        &nbsp; | &nbsp;
+        <strong>Filtro hasta:</strong>
+        {{ hasta|default:"Sin límite final" }}
+    </p>
+
+    <p class="nota">
+        Las ventas se filtran por fecha de creación del pedido.
+        Se consideran pedidos pagados y no cancelados.
+        Los importes están expresados en pesos chilenos y no incluyen envío.
+        Las alertas corresponden al stock actual al generar el reporte.
+    </p>
+
+    <h2>Indicadores principales</h2>
+
+    <table class="indicadores">
+        <tr>
+            <td width="50%">
+                Ventas pagadas<br>
+                <span class="valor">
+                    ${{ total_ventas|floatformat:"0g" }}
+                </span>
+            </td>
+
+            <td width="50%">
+                Pedidos pagados<br>
+                <span class="valor">
+                    {{ cantidad_pedidos_pagados }}
+                </span>
+            </td>
+        </tr>
+
+        <tr>
+            <td>
+                Ticket promedio por pedido pagado<br>
+                <span class="valor">
+                    ${{ ticket_promedio|floatformat:"0g" }}
+                </span>
+            </td>
+
+            <td>
+                Alertas de stock actuales<br>
+                <span class="valor">{{ total_alertas }}</span>
+            </td>
+        </tr>
+    </table>
+
+    <h2>Ventas por fecha</h2>
+
+    <p class="nota">
+        Importe de productos de pedidos pagados, por fecha de creación.
+        Las barras se comparan con el día de mayor venta del período.
+    </p>
+
+    {% for venta in ventas_diarias %}
+        <table class="grafico">
+            <tr>
+                <td width="65%">
+                    {{ venta.fecha|date:"d/m/Y" }}
+                </td>
+                <td width="35%" class="numero">
+                    <strong>
+                        ${{ venta.total|floatformat:"0g" }}
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="2">
+                    {% if venta.ancho_barra %}
+                        <table class="barra"
+                               align="left"
+                               width="{{ venta.ancho_barra }}"
+                               style="width: {{ venta.ancho_barra }}pt;">
+                            <tr>
+                                <td>&nbsp;</td>
+                            </tr>
+                        </table>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+        <p class="separador">&nbsp;</p>
+    {% empty %}
+        <p>No hay ventas pagadas para el período seleccionado.</p>
+    {% endfor %}
+
+    <h2>Productos más vendidos</h2>
+
+    <p class="nota">
+        Hasta cinco productos de catálogo, ordenados por unidades vendidas
+        en pedidos pagados y no cancelados.
+        No incluye artículos de pedidos personalizados.
+    </p>
+
+    {% for producto in productos_mas_vendidos %}
+        <table class="grafico">
+            <tr>
+                <td width="70%">
+                    {{ producto.producto__nombre }}
+                </td>
+                <td width="30%" class="numero">
+                    <strong>
+                        {{ producto.unidades }}
+                        unidad{{ producto.unidades|pluralize:"es" }}
+                    </strong>
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="2">
+                    {% if producto.ancho_barra %}
+                        <table class="barra"
+                               align="left"
+                               width="{{ producto.ancho_barra }}"
+                               style="width: {{ producto.ancho_barra }}pt;">
+                            <tr>
+                                <td>&nbsp;</td>
+                            </tr>
+                        </table>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+        <p class="separador">&nbsp;</p>
+    {% empty %}
+        <p>No hay productos vendidos para el período seleccionado.</p>
+    {% endfor %}
+
+    {% if resumen_pedidos %}
+        <h2>Pedidos por estado</h2>
+
+        <p class="nota">
+            Incluye compras de catálogo pagadas y pedidos personalizados.
+            Los pendientes corresponden a personalizados.
+            Los cancelados se cuentan solamente como cancelados.
+        </p>
+
+        <table repeat="1">
+            <thead>
+                <tr>
+                    <th>Estado</th>
+                    <th class="numero">Cantidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for estado in resumen_pedidos %}
+                    <tr>
+                        <td>{{ estado.nombre }}</td>
+                        <td class="numero">{{ estado.cantidad }}</td>
+                    </tr>
+                {% endfor %}
+                <tr>
+                    <td><strong>Total de pedidos</strong></td>
+                    <td class="numero">
+                        <strong>{{ total_pedidos_periodo }}</strong>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    {% endif %}
+
+    <h2>Resumen de alertas actuales</h2>
+
+    <table repeat="1">
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th class="numero">Cantidad con alerta</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Materias primas</td>
+                <td class="numero">{{ materias_criticas|length }}</td>
+            </tr>
+            <tr>
+                <td>Productos sin variantes</td>
+                <td class="numero">{{ productos_criticos|length }}</td>
+            </tr>
+            <tr>
+                <td>Variantes de productos</td>
+                <td class="numero">{{ variantes_criticas|length }}</td>
+            </tr>
+            <tr>
+                <td><strong>Total</strong></td>
+                <td class="numero">
+                    <strong>{{ total_alertas }}</strong>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p class="nota">
+        Se consideran registros activos cuyo stock es menor o igual
+        al umbral crítico configurado, incluyendo los agotados.
+        Este resumen no representa el stock histórico del período.
+    </p>
+</body>
+</html>
