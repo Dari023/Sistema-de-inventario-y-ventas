@@ -107,6 +107,14 @@ def home(request):
         Decimal('0')
     )
     ventas_por_dia = {}
+    
+    cantidad_pedidos_pagados = len(pedidos_pagados)
+
+    ticket_promedio = (
+        total_ventas / cantidad_pedidos_pagados
+        if cantidad_pedidos_pagados > 0
+        else Decimal('0')
+    )
 
     for pedido in pedidos_pagados:
         dia = timezone.localtime(pedido.fecha_pedido).date()
@@ -150,6 +158,8 @@ def home(request):
         'venta_maxima': venta_maxima,
         'productos_mas_vendidos': productos_mas_vendidos,
         'maximo_unidades': maximo_unidades,
+        'cantidad_pedidos_pagados': cantidad_pedidos_pagados,
+        'ticket_promedio': ticket_promedio,
     })
 
 @login_required

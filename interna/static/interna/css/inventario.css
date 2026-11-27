@@ -297,3 +297,14 @@ body {
 .faq-admin-acciones form {
     margin: 0;
 }
+
+.inventario.inventario-amplio {
+    max-width: none;
+    width: calc(100% - 4rem);
+}
+
+@media (max-width: 768px) {
+    .inventario.inventario-amplio {
+        width: calc(100% - 1.5rem);
+    }
+}

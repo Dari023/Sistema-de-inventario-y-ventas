@@ -108,3 +108,13 @@
 .dashboard-graficos > section {
     min-width: 0;
 }
+.inventario.dashboard {
+    max-width: none;
+    width: calc(100% - 4rem);
+}
+
+@media (max-width: 768px) {
+    .inventario.dashboard {
+        width: calc(100% - 1.5rem);
+    }
+}
