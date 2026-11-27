@@ -1769,6 +1769,25 @@ def alertas_stock(request):
         'total_alertas': (len(materias_criticas) + len(productos_criticos) + len(variantes_criticas))
     })
 
+def generar_comprobante_pdf(pedido):
+    total = pedido.total
+    neto = int((total / Decimal('1.19')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    iva = total - neto
+    html = render_to_string(
+        'interna/inventario/pedido_comprobante_pdf.html',
+        {
+            'pedido': pedido, 
+            'fecha': timezone.now(),
+            'neto': neto,
+            'iva': iva,
+        }
+    )
+    
+    buffer = io.BytesIO()
+    pisa.CreatePDF(html, dest=buffer, encoding='utf-8')
+    buffer.seek(0)
+    return buffer
+
 @login_required
 @permission_required('interna.view_pedido', raise_exception=True)
 def pedido_comprobante_pdf(request, pk):
@@ -1782,23 +1801,7 @@ def pedido_comprobante_pdf(request, pk):
         pk=pk,
     )
     
-    total = pedido.total
-    neto = int((total / Decimal('1.19')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
-    iva = total - neto
-    html = render_to_string(
-        'interna/inventario/pedido_comprobante_pdf.html',
-        {
-            'pedido': pedido, 
-            'fecha': timezone.now(),
-            'neto': neto,
-            'iva': iva,
-        },
-        request=request,
-    )
-    
-    buffer = io.BytesIO()
-    pisa.CreatePDF(html, dest=buffer, encoding='utf-8')
-    buffer.seek(0)
+    buffer = generar_comprobante_pdf(pedido)
     response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="comprobante_{pedido.pk}.pdf"'
     return response
