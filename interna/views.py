@@ -12,12 +12,15 @@ from django import forms
 from django.contrib import messages
 from django.template.defaultfilters import floatformat
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponse
 from decimal import Decimal, ROUND_HALF_UP
 from django.views.decorators.http import require_POST, require_http_methods, require_GET
 from django.contrib.auth.decorators import login_required, permission_required
 from django.views.decorators.cache import never_cache
 from datetime import date
+import io
+from xhtml2pdf import pisa
+from django.template.loader import render_to_string
 logger = logging.getLogger(__name__)
 from .pedidos_personalizados import (
     crear_enlace_pedido_personalizado,
@@ -1765,3 +1768,37 @@ def alertas_stock(request):
         'variantes_criticas': variantes_criticas,
         'total_alertas': (len(materias_criticas) + len(productos_criticos) + len(variantes_criticas))
     })
+
+@login_required
+@permission_required('interna.view_pedido', raise_exception=True)
+def pedido_comprobante_pdf(request, pk):
+    pedido = get_object_or_404(
+        Pedido.objects.select_related('cliente').prefetch_related(
+            'detallepedido_set__producto',
+            'detallepedido_set__variante',
+            'detalles_personalizados',
+            'pagos',
+        ),
+        pk=pk,
+    )
+    
+    total = pedido.total
+    neto = int((total / Decimal('1.19')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+    iva = total - neto
+    html = render_to_string(
+        'interna/inventario/pedido_comprobante_pdf.html',
+        {
+            'pedido': pedido, 
+            'fecha': timezone.now(),
+            'neto': neto,
+            'iva': iva,
+        },
+        request=request,
+    )
+    
+    buffer = io.BytesIO()
+    pisa.CreatePDF(html, dest=buffer, encoding='utf-8')
+    buffer.seek(0)
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="comprobante_{pedido.pk}.pdf"'
+    return response
